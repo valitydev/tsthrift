@@ -52,7 +52,7 @@ test("emits executable referenced, structured, and nested collection constants",
     const Settings SETTINGS = {"name": LABEL, "states": [State.READY]}
   `,
   );
-  await generate(options);
+  await generate({ ...options, i64: "number" });
   const compiled = path.join(options.directory, "compiled");
   await execute(path.resolve("node_modules/.bin/tsc"), [
     "--ignoreConfig",

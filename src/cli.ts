@@ -12,7 +12,7 @@ Generate metadata and public TS models without an external compiler.
   -I, --include     Additional include root (repeatable)
   -n, --namespace   Entry filename without .thrift (repeatable; default: all)
       --target     metadata | models (default) | apache
-      --i64        Public i64 representation: number (default) | bigint
+      --i64        Public i64 representation: bigint (default) | number
       --compiler   Apache 0.24.0 executable (only with --target apache)
   -h, --help       Show this help
 
@@ -28,7 +28,7 @@ try {
       namespace: { type: "string", short: "n", multiple: true },
       compiler: { type: "string" },
       target: { type: "string", default: "models" },
-      i64: { type: "string", default: "number" },
+      i64: { type: "string" },
       help: { type: "boolean", short: "h" },
     },
   });

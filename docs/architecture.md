@@ -92,7 +92,8 @@ must survive compilation. Runtime tests verify forward and reverse mappings and
 that declaration files retain the enum API. Enum values must fit signed i32.
 
 Public `i64` is selected with `--i64 number|bigint` (API: `i64`), defaulting to
-`number` for existing consumers. The model emitter applies the mode to typedefs,
+`bigint`. Existing number-based consumers must select `--i64 number` explicitly.
+The model emitter applies the mode to typedefs,
 fields, method arguments/results, collections, map keys, and executable constants.
 Enums and other numeric types remain `number`. The mode is recorded in
 `generation.json`; metadata remains unchanged. Large IDL literals outside the JS

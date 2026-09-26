@@ -51,7 +51,7 @@ test.each([undefined, "number", "bigint"] as const)(
   "compiles and executes public i64 values in %s mode",
   async (i64) => {
     const options = await setup();
-    const mode = i64 ?? "number";
+    const mode = i64 ?? "bigint";
     const result = await generate({ ...options, i64 });
     expect(result.i64).toBe(mode);
     const manifest = JSON.parse(
@@ -107,23 +107,16 @@ test.each([undefined, "number", "bigint"] as const)(
 
 test("CLI switches public i64 mode without changing metadata", async () => {
   const options = await setup();
-  await generate(options);
-  const metadata = await readFile(path.join(options.output, "metadata.json"), "utf8");
-  await execute(
-    process.execPath,
-    [
-      path.resolve("src/cli.ts"),
-      "--input",
-      options.input,
-      "--output",
-      options.output,
-      "--i64",
-      "bigint",
-    ],
-    { env: { ...process.env, PATH: "" } },
-  );
+  const args = [path.resolve("src/cli.ts"), "--input", options.input, "--output", options.output];
+  const env = { ...process.env, PATH: "" };
+  await execute(process.execPath, args, { env });
   expect(await readFile(path.join(options.output, "models/common.ts"), "utf8")).toContain(
     "export type Identifier = bigint;",
+  );
+  const metadata = await readFile(path.join(options.output, "metadata.json"), "utf8");
+  await execute(process.execPath, [...args, "--i64", "number"], { env });
+  expect(await readFile(path.join(options.output, "models/common.ts"), "utf8")).toContain(
+    "export type Identifier = number;",
   );
   expect(await readFile(path.join(options.output, "metadata.json"), "utf8")).toBe(metadata);
   await generate({ ...options, target: "metadata", i64: "bigint" });

@@ -10,7 +10,7 @@ and consumer verification distinct.
 - [x] Build the native JS/TS serialization and RPC generator on the same schema next.
 - [x] Keep Apache Thrift 0.24 as an optional reference; remove the C++ fork update from the critical path.
 - [x] Emit full exported enums with runtime values and reverse mappings.
-- [x] Default public i64 to number, allow opt-in bigint, and plan bigint internally in serialization.
+- [x] Default public i64 to bigint, provide --i64 number for existing consumers, and plan bigint internally in serialization.
 - [x] Leave Angular, RxJS integration, and form rendering to consumers.
 
 ## 1. Standalone metadata generation
@@ -110,7 +110,7 @@ Damsel metadata/models already pass; native RPC and browser verification are pen
 
 ## Deferred or outside the current scope
 
-- [ ] Migrate consumers that opt into bigint, including form values and JSON handling.
+- [ ] Select --i64 number for existing consumers or migrate their form values and JSON handling to bigint.
 
 Updating the Vality C++ JS generator is no longer a prerequisite or a planned
 production dependency. Full fork synchronization and framework-specific generators

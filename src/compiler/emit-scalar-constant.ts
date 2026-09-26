@@ -12,7 +12,7 @@ export function emitScalarConstant(
   type: string,
   value: unknown,
   location: string,
-  i64: I64Mode = "number",
+  i64: I64Mode,
 ): string {
   const invalid = () =>
     new Error(`Invalid ${type} constant in ${location}: ${JSON.stringify(value)}`);

@@ -9,7 +9,7 @@ export function emitConstant(
   program: Program,
   type: ValueType,
   value: unknown,
-  i64: I64Mode = "number",
+  i64: I64Mode,
   scope = program,
   seen = new Set<string>(),
 ): string {

@@ -14,7 +14,7 @@ Implemented:
 
 - Legacy-format `metadata.json` generation with reachable include resolution.
 - Public TS models, executable constants, and Promise client
-  interfaces, with public `i64` represented as `number` (default) or `bigint`.
+  interfaces, with public `i64` represented as `bigint` (default) or `number`.
 - Full exported TypeScript enums with numeric values and reverse mappings after
   compilation, not type-only declarations or `const enum`.
 - Constant and enum references, structured constants with defaults, and nested
@@ -58,14 +58,15 @@ node dist/cli.mjs --input ./proto --output ./generated --target metadata
 Choose the public `i64` representation with `--i64 number|bigint`:
 
 ```sh
-node dist/cli.mjs --input ./proto --output ./generated --i64 bigint
+node dist/cli.mjs --input ./proto --output ./generated --i64 number
 ```
 
-The default `number` preserves existing consumer types. Opting into `bigint`
-changes i64 typedefs, fields, method arguments/results, collection keys/values,
-and executable constants (for example, `42n`). Other numeric types and enums stay
-`number`. Compile bigint models with an ES2020 or newer target.
-The programmatic API accepts `generate({ input, output, i64: "bigint" })`.
+The default `bigint` applies to i64 typedefs, fields, method arguments/results,
+collection keys/values, and executable constants (for example, `42n`). Pass
+`--i64 number` to preserve existing consumers' numeric types and constants.
+Other numeric types and enums stay `number`. Compile bigint models with an
+ES2020 or newer target. The programmatic API defaults to bigint too;
+use `generate({ input, output, i64: "number" })` for number-based consumers.
 The selected mode is recorded in `generation.json`; `metadata.json` keeps its
 original Thrift types and values in both modes. Apache reference JS always uses
 internal bigint regardless of this public option. Runtime conversion is pending.
