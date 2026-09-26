@@ -44,10 +44,10 @@ test("metadata generation does not depend on supported model constant expression
   const options = await setup();
   await writeFile(
     path.join(options.input, "constants.thrift"),
-    'const string FIRST = "one" const string SECOND = FIRST',
+    "const string FIRST = SECOND const string SECOND = FIRST",
   );
   await generate({ ...options, target: "metadata" });
-  await expect(generate(options)).rejects.toThrow("Referenced or structured constants");
+  await expect(generate(options)).rejects.toThrow("Circular constant reference");
   expect(await readdir(options.output)).not.toContain("models");
 });
 

@@ -7,6 +7,8 @@ import { emitModels } from "./emit-models.ts";
 import { publishOutput } from "./publish-output.ts";
 import { emitMetadata } from "../metadata/emit-metadata.ts";
 import { validateApache } from "./validate-apache.ts";
+import { parseI64Mode } from "./i64-mode.ts";
+import type { I64Mode } from "./i64-mode.ts";
 
 export type GenerateTarget = "metadata" | "models" | "apache";
 
@@ -17,10 +19,12 @@ export interface GenerateOptions {
   namespaces?: string[];
   compiler?: string;
   target?: GenerateTarget;
+  i64?: I64Mode;
 }
 
 export interface GenerateResult {
   target: GenerateTarget;
+  i64: I64Mode;
   compilerVersion?: string;
   modules: string[];
   output: string;
@@ -32,6 +36,7 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
   const includes = [input, ...(options.includes ?? []).map((root) => path.resolve(root))];
   const compiler = options.compiler ?? "thrift";
   const target = options.target ?? "models";
+  const i64 = parseI64Mode(options.i64);
   if (!["metadata", "models", "apache"].includes(target))
     throw new Error(`Unknown generation target: ${target}`);
   if (options.compiler && target !== "apache")
@@ -51,7 +56,7 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
       ? []
       : schema.programs.map((program) => ({
           name: program.name,
-          content: emitModels(program),
+          content: emitModels(program, i64),
         }));
   await publishOutput(output, async (staging) => {
     if (target === "apache") {
@@ -73,6 +78,7 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
         {
           compilerVersion: version,
           target,
+          i64,
           ...(target === "apache" ? { generator: "js:node,bigint" } : {}),
           namespaces: schema.roots.map((root) => root.name),
         },
@@ -83,6 +89,7 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
   });
   return {
     target,
+    i64,
     compilerVersion: version,
     modules: schema.programs.map((program) => program.name),
     output,

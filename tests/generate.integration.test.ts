@@ -28,11 +28,11 @@ async function setup() {
   };
 }
 
-integration(
-  "generates real bigint JS and type-checkable number-based models with external includes",
-  async () => {
+integration.each(["number", "bigint"] as const)(
+  "generates real bigint JS and type-checkable %s-based models with external includes",
+  async (i64) => {
     const options = await setup();
-    const result = await generate(options);
+    const result = await generate({ ...options, i64 });
     expect(result.compilerVersion).toBe("Thrift version 0.24.0");
     expect(result.modules.sort()).toEqual(["common", "example"]);
     const js = await readFile(path.join(options.output, "internal/example_types.js"), "utf8");

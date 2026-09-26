@@ -10,7 +10,7 @@ and consumer verification distinct.
 - [x] Build the native JS/TS serialization and RPC generator on the same schema next.
 - [x] Keep Apache Thrift 0.24 as an optional reference; remove the C++ fork update from the critical path.
 - [x] Emit full exported enums with runtime values and reverse mappings.
-- [x] Keep public i64 as number and use bigint internally in serialization.
+- [x] Default public i64 to number, allow opt-in bigint, and plan bigint internally in serialization.
 - [x] Leave Angular, RxJS integration, and form rendering to consumers.
 
 ## 1. Standalone metadata generation
@@ -32,14 +32,17 @@ The Damsel comparison passed; live Angular form verification remains pending.
 
 ## 2. Public models and runtime enums
 
-- [x] Generate number-based public i64, object-shaped structures, Map, Set, and arrays.
+- [x] Generate selectable number/bigint public i64, object-shaped structures, Map, Set, and arrays.
+- [x] Compile and execute both i64 modes, including included typedefs, constants, defaults, and nested collection keys/values; preserve metadata across modes.
 - [x] Emit ordinary exported enums with explicit/implicit numeric values, negative values, and aliases.
 - [x] Compile generated enums to JavaScript and execute forward/reverse lookup tests.
 - [x] Verify declaration output preserves the enum API.
 - [x] Support struct-keyed maps and callback-named arguments in public models.
 - [x] Avoid built-in collection type collisions, including Damsel's Array typedef.
-- [x] Type-check the 15 generated Damsel model modules.
-- [ ] Emit referenced and structured constants as executable model values; preserve them in metadata in the meantime.
+- [x] Type-check the 15 generated Damsel model modules in both i64 modes and verify identical metadata.
+- [x] Emit local/included constant and enum references, structured values with defaults, and nested collections while preserving original expressions in metadata.
+- [x] Execute compiled constant modules and verify struct-keyed maps, unions, defaults, and declaration-order independence.
+- [x] Reject cyclic references/defaults, invalid scalar ranges, missing or unknown fields, and invalid union constants before output replacement.
 - [ ] Resolve the public binary representation from actual consumer usage.
 - [ ] Define stable public factory names and package export paths for the native client API.
 
@@ -51,7 +54,7 @@ compilation. This does not yet provide executable RPC clients.
 - [ ] Resolve internal field IDs, wire types, typedefs, defaults, recursive references, and inherited services without mutating legacy metadata.
 - [ ] Generate serialization and deserialization for primitives, enums, structs, unions, and exceptions.
 - [ ] Generate collection codecs using native Map and Set, including struct-keyed maps.
-- [ ] Serialize i64 with bigint internally and apply checked number conversion at the public boundary.
+- [ ] Serialize i64 with bigint internally; apply checked conversion in public number mode and retain bigint with signed i64 validation in bigint mode.
 - [ ] Generate method argument/result structures and declared exception handling.
 - [ ] Generate typed Promise-based client implementations without Angular or RxJS.
 - [ ] Validate names and imports, including transitive references and collisions with generated identifiers.
@@ -79,7 +82,8 @@ source output or self-round-trip tests alone are insufficient.
 - [x] Implement input, include root, namespace, output directory, and target selection.
 - [x] Default to models plus metadata; make external compiler execution opt-in.
 - [x] Retain the version-checked Apache target with explicit executable selection for comparisons.
-- [x] Record target and reference compiler details in generation.json.
+- [x] Expose --i64 number|bigint and the API i64 option, rejecting invalid modes.
+- [x] Record target, i64 mode, and reference compiler details in generation.json.
 - [x] Remove stale owned output when switching generation targets.
 - [ ] Build installable protocol packages with JS, declarations, and an independent metadata export.
 - [ ] Choose ESM/CJS support from consumer requirements and verify a packed package in an isolated consumer.
@@ -106,7 +110,7 @@ Damsel metadata/models already pass; native RPC and browser verification are pen
 
 ## Deferred or outside the current scope
 
-- [ ] Consider a public bigint API only as a separate consumer migration.
+- [ ] Migrate consumers that opt into bigint, including form values and JSON handling.
 
 Updating the Vality C++ JS generator is no longer a prerequisite or a planned
 production dependency. Full fork synchronization and framework-specific generators

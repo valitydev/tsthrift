@@ -44,6 +44,14 @@ Metadata is emitted directly from the parsed AST. Models use the same resolved
 program graph. Metadata-only generation does not call the model emitter, so its
 constant-emission limitations cannot block metadata output.
 
+Model constant generation resolves local and included references, enum members,
+structured values, defaults, and nested collections. Referenced values are expanded
+at generation time, avoiding runtime initialization-order dependencies. Field types
+are resolved in their declaration scope, while references inside a literal use the
+literal's source scope. Cycles, invalid scalar values, unknown or missing fields,
+and invalid union values fail before output replacement. Metadata keeps the original
+constant expressions unchanged.
+
 Keep common IDL validation separate from Apache JS restrictions. Struct-keyed maps
 and an argument named `callback` are valid for metadata and public models even when
 the reference compiler cannot generate usable JS for them.
@@ -83,11 +91,18 @@ or `const enum`. Explicit values, implicit increments, negative values, and alia
 must survive compilation. Runtime tests verify forward and reverse mappings and
 that declaration files retain the enum API. Enum values must fit signed i32.
 
-Public `i64` remains `number`. Native generated serialization will use `bigint`
-internally. Recursive conversion must cover arguments, results, declared exceptions,
-structs, unions, collections, and map keys. Proposed safety policy: reject unsafe
-input numbers and reject decoded values outside the safe number range. Document
-this stricter behavior before migrating consumers.
+Public `i64` is selected with `--i64 number|bigint` (API: `i64`), defaulting to
+`number` for existing consumers. The model emitter applies the mode to typedefs,
+fields, method arguments/results, collections, map keys, and executable constants.
+Enums and other numeric types remain `number`. The mode is recorded in
+`generation.json`; metadata remains unchanged. Large IDL literals outside the JS
+safe integer range are still rejected in both modes until exact parsing is added.
+
+Native generated serialization will use `bigint` internally. In number mode,
+recursive conversion must cover arguments, results, declared exceptions, structs,
+unions, collections, and map keys; reject unsafe input numbers and decoded values
+outside the safe number range. Bigint mode must retain bigint at that boundary
+and validate signed i64 bounds. These runtime checks are not implemented yet.
 
 An empty optional struct `{}` remains present. Only `null` and `undefined` denote
 absence at the public conversion boundary. Preserve false, zero, and empty strings.
@@ -121,6 +136,7 @@ Compiler dependencies must stay out of browser runtime bundles.
 `--target apache` uses an explicitly version-checked 0.24.0 executable with
 `--gen js:node,bigint`. It emits internal CommonJS alongside models and metadata.
 `--compiler` selects the executable and is rejected for other targets.
+The public `--i64` mode does not change the reference JS generator's bigint mode.
 
 Apache output expects `toBigInt`/`fromBigInt`, symbol-based structure methods,
 recursion helpers, and UUID imports. Its bigint mode still bridges through Int64.
