@@ -5,6 +5,7 @@ import { afterEach, expect, test } from "vite-plus/test";
 import { loadSchema } from "../src/compiler/load-schema.ts";
 import { validateSchema } from "../src/compiler/validate-schema.ts";
 import { emitModels } from "../src/compiler/emit-models.ts";
+import { validateApache } from "../src/compiler/validate-apache.ts";
 
 const fixtures = path.join(import.meta.dirname, "fixtures");
 const directories: string[] = [];
@@ -49,24 +50,34 @@ test("loads only selected inputs and reachable includes, preserving legacy metad
   expect(program.ast.service?.Example?.extends).toBe("common.Base");
   const models = emitModels(program);
   expect(models).toContain('import * as common from "./common.js"');
-  expect(models).toContain("Map<string, Array<Identifier>>");
-  expect(models).toContain('"labels"?: Map<number, string>');
+  expect(models).toContain("globalThis.Map<string, Identifier[]>");
+  expect(models).toContain('"labels"?: globalThis.Map<number, string>');
   expect(models).toContain("extends common.BaseClient");
   expect(models).toContain('"next"(id: number): Promise<number>');
   expect(models).toContain('"CLOSED" = 5');
-  expect(models).toContain('new Map([["first", 1]])');
+  expect(models).toContain('new globalThis.Map([["first", 1]])');
 });
 
 test.each([
-  ["struct Key { 1: string value } struct X { 1: map<Key, string> values }", /Unsupported map key/],
   ["const i64 LIMIT = 9223372036854775807", /Unsafe numeric literal/],
   ["typedef Missing ID", /Unresolved type Missing/],
   ["typedef B A typedef A B", /Circular typedef/],
-  ["service X { void call(1: i64 callback) }", /callback argument/],
+  ["struct X { 1: i64 a 1: i64 b }", /Duplicate field ID/],
+  ["enum X { A = 2147483647 B }", /outside i32 range/],
   ["service A extends B {} service B extends A {}", /Circular service inheritance/],
 ])("rejects unsupported or unresolved schema: %s", async (text, error) => {
   const schema = await source(text);
   expect(() => validateSchema(schema)).toThrow(error);
+});
+
+test.each([
+  ["struct Key { 1: string value } struct X { 1: map<Key, string> values }", /Unsupported map key/],
+  ["service X { void call(1: i64 callback) }", /callback argument/],
+])("keeps Apache restrictions out of metadata and models: %s", async (text, error) => {
+  const schema = await source(text);
+  expect(() => validateSchema(schema)).not.toThrow();
+  expect(() => emitModels(schema.roots[0]!)).not.toThrow();
+  expect(() => validateApache(schema)).toThrow(error);
 });
 
 test("reports a missing include with its referring file", async () => {

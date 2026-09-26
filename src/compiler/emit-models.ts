@@ -1,11 +1,15 @@
 import type { Field, ValueType } from "../metadata/schema.ts";
 import type { Program } from "./load-schema.ts";
 import { emitConstant } from "./emit-constant.ts";
+import { enumMembers } from "./enum-members.ts";
 
 function tsType(type: ValueType): string {
   if (typeof type !== "string") {
-    if (type.name === "map") return `Map<${tsType(type.keyType)}, ${tsType(type.valueType)}>`;
-    return `${type.name === "set" ? "Set" : "Array"}<${tsType(type.valueType)}>`;
+    if (type.name === "map")
+      return `globalThis.Map<${tsType(type.keyType)}, ${tsType(type.valueType)}>`;
+    return type.name === "set"
+      ? `globalThis.Set<${tsType(type.valueType)}>`
+      : `${tsType(type.valueType)}[]`;
   }
   if (["byte", "i8", "i16", "i32", "i64", "double"].includes(type)) return "number";
   if (type === "bool") return "boolean";
@@ -33,11 +37,9 @@ export function emitModels(program: Program): string {
     lines.push(`export type ${name} = ${tsType(alias.type)};`);
   }
   for (const [name, enumeration] of Object.entries(program.ast.enum ?? {})) {
-    let value = -1;
-    const members = enumeration.items.map((item) => {
-      value = item.value ?? value + 1;
-      return `  ${JSON.stringify(item.name)} = ${value},`;
-    });
+    const members = enumMembers(enumeration, `${program.path}:${name}`).map(
+      (item) => `  ${JSON.stringify(item.name)} = ${item.value},`,
+    );
     lines.push(`export enum ${name} {\n${members.join("\n")}\n}`);
   }
   for (const kind of ["struct", "union", "exception"] as const) {

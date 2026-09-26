@@ -1,0 +1,216 @@
+[
+  {
+    "path": "example.thrift",
+    "name": "example",
+    "ast": {
+      "include": {
+        "common": {
+          "path": "shared/common.thrift"
+        }
+      },
+      "namespace": {
+        "js": {
+          "serviceName": "example"
+        }
+      },
+      "typedef": {
+        "Identifier": {
+          "type": "common.Identifier"
+        },
+        "Groups": {
+          "type": {
+            "name": "map",
+            "keyType": "string",
+            "valueType": {
+              "name": "list",
+              "valueType": "Identifier"
+            }
+          }
+        }
+      },
+      "enum": {
+        "Status": {
+          "items": [
+            {
+              "name": "NEW"
+            },
+            {
+              "name": "ACTIVE",
+              "value": 4
+            },
+            {
+              "name": "CLOSED"
+            }
+          ]
+        }
+      },
+      "const": {
+        "DEFAULT_ID": {
+          "type": "i64",
+          "value": 42
+        },
+        "LABELS": {
+          "type": {
+            "name": "set",
+            "valueType": "string"
+          },
+          "value": ["first", "second"]
+        },
+        "COUNTS": {
+          "type": {
+            "name": "map",
+            "keyType": "string",
+            "valueType": "i32"
+          },
+          "value": [
+            {
+              "key": "first",
+              "value": 1
+            }
+          ]
+        }
+      },
+      "struct": {
+        "Empty": [],
+        "Request": [
+          {
+            "type": "Identifier",
+            "name": "id",
+            "id": 1,
+            "option": "required"
+          },
+          {
+            "type": "Empty",
+            "name": "filter",
+            "id": 2,
+            "option": "optional"
+          },
+          {
+            "type": "Groups",
+            "name": "groups",
+            "id": 3,
+            "option": "optional"
+          },
+          {
+            "type": {
+              "name": "set",
+              "valueType": "i64"
+            },
+            "name": "ids",
+            "id": 4,
+            "option": "optional"
+          },
+          {
+            "type": {
+              "name": "map",
+              "keyType": "i64",
+              "valueType": "string"
+            },
+            "name": "labels",
+            "id": 5,
+            "option": "optional"
+          },
+          {
+            "type": "binary",
+            "name": "payload",
+            "id": 6,
+            "option": "optional"
+          },
+          {
+            "type": "byte",
+            "name": "flags",
+            "id": 7,
+            "option": "optional"
+          }
+        ]
+      },
+      "union": {
+        "Choice": [
+          {
+            "type": "i64",
+            "name": "id",
+            "id": 1
+          },
+          {
+            "type": "string",
+            "name": "name",
+            "id": 2
+          }
+        ]
+      },
+      "exception": {
+        "Failure": [
+          {
+            "type": "string",
+            "name": "message",
+            "id": 1,
+            "option": "required"
+          }
+        ]
+      },
+      "service": {
+        "Example": {
+          "extends": "common.Base",
+          "functions": {
+            "echo": {
+              "type": "Request",
+              "name": "echo",
+              "args": [
+                {
+                  "type": "Request",
+                  "name": "request",
+                  "id": 1
+                }
+              ],
+              "throws": [
+                {
+                  "type": "Failure",
+                  "name": "failure",
+                  "id": 1
+                }
+              ],
+              "oneway": false
+            },
+            "next": {
+              "type": "i64",
+              "name": "next",
+              "args": [
+                {
+                  "type": "i64",
+                  "name": "id",
+                  "id": 1
+                }
+              ],
+              "throws": [],
+              "oneway": false
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "path": "shared/common.thrift",
+    "name": "common",
+    "ast": {
+      "typedef": {
+        "Identifier": {
+          "type": "i64"
+        }
+      },
+      "service": {
+        "Base": {
+          "functions": {
+            "ping": {
+              "type": "void",
+              "name": "ping",
+              "args": [],
+              "throws": [],
+              "oneway": false
+            }
+          }
+        }
+      }
+    }
+  }
+]

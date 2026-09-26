@@ -16,7 +16,7 @@ export function emitConstant(program: Program, type: ValueType, value: unknown):
       })
       .join(", ");
     if (container.name === "list") return `[${entries}]`;
-    return `new ${container.name === "map" ? "Map" : "Set"}([${entries}])`;
+    return `new globalThis.${container.name === "map" ? "Map" : "Set"}([${entries}])`;
   }
   if (value === null || typeof value === "object" || value === undefined) {
     throw new Error(`Referenced or structured constants are not supported yet in ${program.path}`);

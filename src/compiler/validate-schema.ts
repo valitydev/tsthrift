@@ -1,6 +1,7 @@
-import type { ValueType } from "../metadata/schema.ts";
+import type { Field, ValueType } from "../metadata/schema.ts";
 import type { Program, Schema } from "./load-schema.ts";
 import { resolveReference, resolveType } from "./resolve-type.ts";
+import { enumMembers } from "./enum-members.ts";
 
 function validateNumbers(value: unknown, location: string): void {
   if (
@@ -20,17 +21,26 @@ function validateType(program: Program, type: ValueType, seen = new Set<ValueTyp
   seen.add(resolved.type);
   const container = resolved.type;
   if (container.name === "map") {
-    const key = resolveType(resolved.program, container.keyType);
-    if (
-      key.kind !== "enum" &&
-      (typeof key.type !== "string" ||
-        !["string", "byte", "i8", "i16", "i32", "i64"].includes(key.type))
-    ) {
-      throw new Error(`Unsupported map key in ${program.path}: official JS uses object keys`);
-    }
     validateType(resolved.program, container.keyType, seen);
   }
   validateType(resolved.program, container.valueType, seen);
+}
+
+function validateFields(program: Program, fields: Field[], location: string): void {
+  const ids = new Set<number>();
+  const names = new Set<string>();
+  for (const field of fields) {
+    if (names.has(field.name)) throw new Error(`Duplicate field ${location}.${field.name}`);
+    names.add(field.name);
+    if (field.id !== undefined) {
+      if (!Number.isInteger(field.id) || field.id < -32768 || field.id > 32767) {
+        throw new Error(`Field ID outside i16 range: ${location}.${field.name}`);
+      }
+      if (ids.has(field.id)) throw new Error(`Duplicate field ID ${field.id} in ${location}`);
+      ids.add(field.id);
+    }
+    validateType(program, field.type);
+  }
 }
 
 function validateService(program: Program, name: string, seen = new Set<string>()): void {
@@ -43,33 +53,24 @@ function validateService(program: Program, name: string, seen = new Set<string>(
     validateService(parent.program, parent.name, new Set([...seen, id]));
   }
   for (const method of Object.values(service.functions)) {
-    if (method.args.some((arg) => arg.name === "callback")) {
-      throw new Error(
-        `Unsupported callback argument in ${program.name}.${name}.${method.name}: requires the fork's collision fix`,
-      );
-    }
     validateType(program, method.type);
-    for (const field of [...method.args, ...method.throws]) validateType(program, field.type);
+    validateFields(program, method.args, `${program.path}:${name}.${method.name}.args`);
+    validateFields(program, method.throws, `${program.path}:${name}.${method.name}.throws`);
   }
 }
 
 export function validateSchema(schema: Schema): void {
-  const outputs = new Set<string>();
   for (const program of schema.programs) {
     validateNumbers(program.ast, program.path);
-    for (const filename of [
-      `${program.name}_types.js`,
-      ...Object.keys(program.ast.service ?? {}).map((name) => `${name}.js`),
-    ]) {
-      if (outputs.has(filename)) throw new Error(`Conflicting generated JS filename: ${filename}`);
-      outputs.add(filename);
+    for (const [name, enumeration] of Object.entries(program.ast.enum ?? {})) {
+      enumMembers(enumeration, `${program.path}:${name}`);
     }
     for (const alias of Object.values(program.ast.typedef ?? {})) validateType(program, alias.type);
     for (const constant of Object.values(program.ast.const ?? {}))
       validateType(program, constant.type);
     for (const group of [program.ast.struct, program.ast.union, program.ast.exception]) {
-      for (const fields of Object.values(group ?? {})) {
-        for (const field of fields) validateType(program, field.type);
+      for (const [name, fields] of Object.entries(group ?? {})) {
+        validateFields(program, fields, `${program.path}:${name}`);
       }
     }
     for (const name of Object.keys(program.ast.service ?? {})) validateService(program, name);

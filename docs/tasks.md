@@ -1,135 +1,113 @@
 # Implementation checklist
 
-The [architecture](architecture.md) records scope and compatibility decisions.
-Checked items represent completed decisions or verified work, not planned features.
-The initial generation pipeline is implemented. Update this file as work is completed.
-
-Current verification: real Apache Thrift 0.24.0 generation, JS syntax checks, public
-TS model type checking, metadata shape, CLI invocation, and output preservation.
-HTTP/runtime execution and browser consumers are not verified. Full Damsel remains
-blocked by the struct-keyed map in `accounter.InvalidPostingParams.wrong_postings`.
+The [architecture](architecture.md) defines the current scope. Checked items are
+completed decisions or verified work. Keep source generation, runtime execution,
+and consumer verification distinct.
 
 ## 0. Agreed direction
 
-- [x] Start with the official Apache Thrift 0.24 JS generator; the fork update does not block initial implementation.
-- [x] Later switch to `valitydev/thrift` after updating and validating its JS generator, without a full fork synchronization.
-- [x] Use bigint internally and retain number-based public i64 values.
-- [x] Generate framework-independent JS/TS clients; leave Angular and RxJS integration to consumers.
-- [x] Preserve metadata compatibility for existing form consumers.
-- [x] Document architecture, compatibility boundaries, and implementation tasks.
-- [x] Verify that a local 0.24 compiler emits bigint conversion calls for a small i64 fixture; runtime execution remains unverified.
+- [x] Port compatible metadata generation first, independently of an external compiler.
+- [x] Build the native JS/TS serialization and RPC generator on the same schema next.
+- [x] Keep Apache Thrift 0.24 as an optional reference; remove the C++ fork update from the critical path.
+- [x] Emit full exported enums with runtime values and reverse mappings.
+- [x] Keep public i64 as number and use bigint internally in serialization.
+- [x] Leave Angular, RxJS integration, and form rendering to consumers.
 
-## 1. Capture the existing contracts
+## 1. Standalone metadata generation
 
-- [ ] Pin source revisions and compiler/runtime versions used as migration baselines.
-- [ ] Inventory public model exports, service signatures, connection settings, error shapes, and metadata consumers.
-- [ ] Capture representative old JS, TS, metadata, and binary messages as compatibility fixtures.
-- [ ] Cover external include roots, duplicate file basenames, and transitive typedefs in fixtures.
-- [ ] Resolve the public binary representation from actual consumer usage and document any required migration.
-- [ ] Finalize and document the unsafe-i64 policy and exact JSON representation of large IDL constants.
-- [ ] Record consumer changes required by Promise clients and removal of generated Observable services and metadata$.
+- [x] Pin thrift-parser 0.4.2 and reuse the legacy metadata representation.
+- [x] Resolve selected input files and reachable include roots without scanning unrelated dependency fixtures.
+- [x] Separate common schema validation from Apache JS restrictions.
+- [x] Add a metadata-only CLI target with no external compiler dependency.
+- [x] Preserve paths, namespaces, typedefs, defaults, optionality, empty structs, unions, enums, exceptions, and services.
+- [x] Commit a compatibility fixture produced by the old generator and compare it in tests.
+- [x] Generate metadata for all 15 reachable Damsel modules selected by the existing build and compare with the old generator.
+- [x] Preserve prior output on failure and refuse unmanaged or additional user files.
+- [ ] Finalize exact large-integer constant representation instead of relying on legacy parser numbers.
+- [ ] Add broader parser fixtures for annotations, duplicate declarations, recursive types, and constant expressions.
+- [ ] Verify metadata directly in existing ng-thrift forms.
 
-Acceptance: compatibility requirements and intentional API changes are explicit and
-supported by reproducible fixtures.
+Acceptance: metadata matches the existing format without requiring JS generation.
+The Damsel comparison passed; live Angular form verification remains pending.
 
-## 2. Establish official Apache Thrift 0.24 generation
+## 2. Public models and runtime enums
 
-- [ ] Pin an official 0.24 compiler artifact and make its installation reproducible locally and in CI.
-- [x] Generate representative fixtures with js:node,bigint and record the actual compiler version.
-- [ ] Verify i64 literals, defaults, typedefs, map keys, nested containers, method arguments, results, and exceptions.
-- [ ] Audit symbol-based methods, recursion helpers, UUID imports, and runtime helper requirements.
-- [x] Identify differences from the fork, including object-backed maps and callback-name collisions, using real protocol fixtures and a Damsel generation attempt.
-- [ ] Define lossless public Map conversion and diagnose unsupported key types or generated name collisions explicitly.
-- [ ] Resolve generated thrift imports to the compatible runtime without requiring the fork-only runtime_package option.
+- [x] Generate number-based public i64, object-shaped structures, Map, Set, and arrays.
+- [x] Emit ordinary exported enums with explicit/implicit numeric values, negative values, and aliases.
+- [x] Compile generated enums to JavaScript and execute forward/reverse lookup tests.
+- [x] Verify declaration output preserves the enum API.
+- [x] Support struct-keyed maps and callback-named arguments in public models.
+- [x] Avoid built-in collection type collisions, including Damsel's Array typedef.
+- [x] Type-check the 15 generated Damsel model modules.
+- [ ] Emit referenced and structured constants as executable model values; preserve them in metadata in the meantime.
+- [ ] Resolve the public binary representation from actual consumer usage.
+- [ ] Define stable public factory names and package export paths for the native client API.
 
-Acceptance: the official compiler emits usable JS for supported fixtures and its
-runtime requirements and compatibility limitations are explicit. A completed fork
-port is not required for subsequent implementation phases.
+Acceptance: models and enums are usable TS sources, and enums exist after JS
+compilation. This does not yet provide executable RPC clients.
 
-## 3. Generate TS models and metadata in tsthrift
+## 3. Native serialization and RPC generation
 
-- [x] Reuse and pin thrift-parser 0.4.2; verify reachable include parsing and existing metadata shape against representative IDL.
-- [ ] Resolve includes, namespaces, typedefs, constants, and inherited services deterministically.
-- [x] Generate public TS models with number-based i64 and the agreed collection representations.
-- [x] Generate metadata.json in the existing form-consumer format from the same parsed model.
-- [x] Preserve optional presence, empty structures, enums, unions, and exception metadata.
-- [ ] Support referenced and structured constants and finalize exact large-integer metadata handling; currently reject unsupported values.
-- [ ] Verify TS/metadata agreement with the separate C++ JS generator, including transitive type references.
-- [x] Produce actionable diagnostics for unresolved references, unsupported map keys, unsafe literals, callback collisions, and ambiguous outputs.
-- [x] Verify deterministic metadata output and ensure include roots do not indiscriminately parse unrelated dependency fixtures.
+- [ ] Resolve internal field IDs, wire types, typedefs, defaults, recursive references, and inherited services without mutating legacy metadata.
+- [ ] Generate serialization and deserialization for primitives, enums, structs, unions, and exceptions.
+- [ ] Generate collection codecs using native Map and Set, including struct-keyed maps.
+- [ ] Serialize i64 with bigint internally and apply checked number conversion at the public boundary.
+- [ ] Generate method argument/result structures and declared exception handling.
+- [ ] Generate typed Promise-based client implementations without Angular or RxJS.
+- [ ] Validate names and imports, including transitive references and collisions with generated identifiers.
+- [ ] Complete one small end-to-end generated service before expanding coverage to Damsel.
 
-Acceptance: types and metadata match compatibility fixtures and correctly describe
-the values expected by generated JS.
+Acceptance: a native generated client encodes a request and decodes a compatible
+response without invoking Apache Thrift during generation.
 
-## 4. Implement runtime and public clients
+## 4. Runtime and wire compatibility
 
-- [ ] Implement the Binary Protocol/runtime contract required by the official 0.24 generator, reusing suitable code with its license notices.
+- [ ] Implement a browser-compatible Thrift Binary Protocol runtime, reusing suitable code with its license notices where useful.
 - [ ] Implement binary HTTP requests with dynamic headers, endpoint settings, timeout, and cancellation.
-- [ ] Preserve Woody tracing/authentication headers and verify HTTP and Thrift error handling separately.
-- [ ] Implement recursive number/bigint conversion for requests, responses, declared exceptions, and collection keys.
-- [ ] Convert official object-backed maps and array-backed sets to and from the agreed public collections without key loss.
-- [ ] Preserve empty optional structs and omit absent optional fields without changing false, zero, or empty-string values.
-- [ ] Expose typed Promise-based clients without Angular or RxJS dependencies.
-- [ ] Keep form metadata loading independent of RPC execution and isolate compiler-only dependencies.
-- [ ] Add cross-implementation binary tests for signed i64 boundaries, binary data, collections, exceptions, and unknown fields.
-- [ ] Validate malformed-message handling, recursion limits, response correlation, and resource cleanup.
+- [ ] Preserve Woody authentication/tracing conventions and distinguish HTTP, application, and declared errors.
+- [ ] Preserve empty optional structs and absent fields without losing false, zero, or empty-string values.
+- [ ] Validate response correlation, unknown-field skipping, recursion limits, malformed messages, and cleanup.
+- [ ] Cross-decode native messages with a reference runtime and reference messages with the native runtime.
+- [ ] Cover signed i64 boundaries, binary values, exceptions, nested collections, and complex map keys.
+- [ ] Keep runtime dependencies independent of compiler/parser packages and form metadata loading.
 
-Acceptance: a small generated service completes an HTTP round trip and is wire
-compatible with the reference implementation; public values follow the agreed API.
+Acceptance: real HTTP exchange and cross-implementation wire tests pass. Matching
+source output or self-round-trip tests alone are insufficient.
 
-## 5. Implement CLI and package output
+## 5. CLI and package output
 
-- [x] Define CLI options for IDL inputs, include roots, namespace selection, compiler location, and output directory.
-- [x] Run version-checked official 0.24.0 JS generation and TS/metadata generation through one command with actionable failures.
-- [x] Support an explicit compiler executable path so the later fork switch does not require redesigning the CLI.
-- [ ] Build ordinary JS/TS packages and export metadata.json independently.
-- [ ] Choose package export paths and ESM/CJS support using actual consumer requirements.
-- [ ] Validate generated references and fail before packaging unresolved imports.
-- [x] Keep output cleanup scoped to generated files and preserve previous output when generation fails; reject unmanaged output and additional user files.
-- [ ] Verify installation of a packed generated package in an isolated consumer.
-- [ ] Replace starter package metadata and examples once the real API and CLI exist.
+- [x] Implement input, include root, namespace, output directory, and target selection.
+- [x] Default to models plus metadata; make external compiler execution opt-in.
+- [x] Retain the version-checked Apache target with explicit executable selection for comparisons.
+- [x] Record target and reference compiler details in generation.json.
+- [x] Remove stale owned output when switching generation targets.
+- [ ] Build installable protocol packages with JS, declarations, and an independent metadata export.
+- [ ] Choose ESM/CJS support from consumer requirements and verify a packed package in an isolated consumer.
+- [ ] Add native codec/client output to the CLI once implemented.
+- [ ] Document consumer migration from Observable service wrappers and metadata$.
 
-Acceptance: one reproducible command produces an installable protocol package with
-working declarations, runtime imports, and metadata exports.
+Acceptance: one command produces an installable native protocol package with
+working runtime imports, declarations, enums, and metadata.
 
-## 6. Validate real consumers and migrate
+## 6. Reference compiler and real consumers
 
-- [ ] Generate Damsel using the existing include roots and namespace selection.
+- [x] Verify real Apache 0.24 bigint JS generation and generated JS syntax on supported fixtures.
+- [x] Isolate object-map, callback, and file-collision restrictions to the Apache target.
+- [ ] Make the optional reference compiler/runtime installation reproducible in CI.
+- [ ] Capture baseline binary messages and observable error behavior.
+- [ ] Generate native codecs and clients for Damsel using its existing namespace selection.
 - [ ] Validate another protocol package with external includes and transitive typedefs.
-- [ ] Compare emitted metadata and public model declarations with the captured baseline.
-- [ ] Integrate Promise clients into control-center's consumer-owned service layer.
-- [ ] Adapt metadata loading and retain ng-thrift's existing schema interpretation.
-- [ ] Browser-test forms, including empty optional structs, and actual request/response decoding.
-- [ ] Verify timeout, cancellation, authentication refresh, and declared/HTTP errors in the consumer.
+- [ ] Integrate native Promise clients into control-center's consumer-owned service layer.
+- [ ] Browser-test forms, actual request decoding, timeout, cancellation, and authentication refresh.
 - [ ] Confirm rebuilt packages no longer embed woody_js or generated Angular/RxJS wrappers.
-- [ ] Document migration steps, remaining incompatibilities, and reproducible CI checks.
 
-Acceptance: real package generation and consumer runtime behavior are verified.
-Compiler or application type checks alone do not establish runtime compatibility.
+Acceptance: real protocol package generation and consumer behavior are verified.
+Damsel metadata/models already pass; native RPC and browser verification are pending.
 
-## 7. Update the fork's JS generator and switch compilers
+## Deferred or outside the current scope
 
-This work can proceed independently and does not block phases 2–6 for protocols
-supported by the official compiler.
-
-- [ ] Compare the current fork with the pinned upstream 0.24 JS generator and identify compiler dependencies.
-- [ ] Port JS generator changes without modifying unrelated language generators.
-- [ ] Preserve Map generation, runtime_package, and callback-name collision fixes, retaining license notices.
-- [ ] Support opt-in js:node,bigint generation and verify legacy generation remains usable.
-- [ ] Build the compiler and run focused JS generator tests, including regressions for retained fork behavior.
-- [ ] Make the compiler artifact reproducible in CI and identify it as a fork with an updated JS generator.
-- [ ] Adapt internal collection conversion to the fork's output while preserving the public API.
-- [ ] Run the same model, metadata, binary compatibility, and consumer checks against the updated fork.
-- [ ] Switch the pinned compiler to the updated fork and verify previously unsupported protocols.
-
-Acceptance: the fork replaces the official compiler without changing the agreed
-public data representations or wire protocol. Revalidate runtime behavior after
-the switch; source comparison alone does not complete this phase.
-
-## Deferred beyond the first working replacement
-
-- [ ] Evaluate removing the Int64 bridge once the generator/runtime pair is stable.
 - [ ] Consider a public bigint API only as a separate consumer migration.
 
-Full upstream fork synchronization and framework-specific generators are outside
-the current scope.
+Updating the Vality C++ JS generator is no longer a prerequisite or a planned
+production dependency. Full fork synchronization and framework-specific generators
+are outside the current implementation scope.

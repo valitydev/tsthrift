@@ -4,14 +4,14 @@ import { generate } from "./compiler/generate.ts";
 
 const help = `Usage: tsthrift --input <directory> --output <directory> [options]
 
-Generate internal JS clients, public TS models, and metadata.json.
-Requires the official Apache Thrift 0.24.0 compiler.
+Generate metadata and public TS models without an external compiler.
 
   -i, --input       Directory containing entry .thrift files
   -o, --output      Dedicated generated output directory
   -I, --include     Additional include root (repeatable)
   -n, --namespace   Entry filename without .thrift (repeatable; default: all)
-      --compiler   Compiler executable path (default: thrift on PATH)
+      --target     metadata | models (default) | apache
+      --compiler   Apache 0.24.0 executable (only with --target apache)
   -h, --help       Show this help
 
 Output is an intermediate generation artifact, not a bundled RPC package.
@@ -25,6 +25,7 @@ try {
       include: { type: "string", short: "I", multiple: true },
       namespace: { type: "string", short: "n", multiple: true },
       compiler: { type: "string" },
+      target: { type: "string", default: "models" },
       help: { type: "boolean", short: "h" },
     },
   });
@@ -32,15 +33,20 @@ try {
   else {
     if (!values.input || !values.output)
       throw new Error("--input and --output are required. Use --help for usage.");
+    const target = values.target;
+    if (target !== "metadata" && target !== "models" && target !== "apache") {
+      throw new Error(`Unknown target ${target}. Expected metadata, models, or apache.`);
+    }
     const result = await generate({
       input: values.input,
       output: values.output,
       includes: values.include,
       namespaces: values.namespace,
       compiler: values.compiler,
+      target,
     });
     console.log(
-      `${result.compilerVersion}: generated ${result.modules.length} module(s) in ${result.output}`,
+      `${result.compilerVersion ?? result.target}: generated ${result.modules.length} module(s) in ${result.output}`,
     );
   }
 } catch (error) {

@@ -24,6 +24,7 @@ async function setup() {
     includes: [path.join(directory, "dependency")],
     output: path.join(directory, "generated"),
     compiler,
+    target: "apache" as const,
   };
 }
 
@@ -68,7 +69,10 @@ integration("preserves previous output when the actual compiler rejects IDL", as
   const options = await setup();
   await generate(options);
   const before = await readFile(path.join(options.output, "metadata.json"), "utf8");
-  await writeFile(path.join(options.input, "broken.thrift"), "struct Broken { 1: i64 a 1: i64 b }");
+  await writeFile(
+    path.join(options.input, "broken.thrift"),
+    'struct Broken { 1: i32 value = "invalid" }',
+  );
   await expect(generate(options)).rejects.toThrow("Thrift compiler failed");
   expect(await readFile(path.join(options.output, "metadata.json"), "utf8")).toBe(before);
 });
@@ -85,6 +89,8 @@ integration("invokes the CLI with paths containing spaces", async () => {
     options.includes[0]!,
     "--compiler",
     compiler!,
+    "--target",
+    "apache",
     "--namespace",
     "example",
   ]);
