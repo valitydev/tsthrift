@@ -71,9 +71,9 @@ exception through real generated client/processor serialization. It also verifie
 pending callbacks are cleaned up. This establishes the specific workaround;
 other generated identifier collisions need their own coverage.
 
-## Map blocker
+## Map resolution via updated compiler fork
 
-Stock Apache 0.24 still emits `{}`, property indexing, and object-key iteration
+Stock Apache 0.24 emits `{}`, property indexing, and object-key iteration
 for maps in both node and node+es6 modes. The Vality generator and its helper
 runtime use Map. For simple keys a boundary conversion may be possible, but
 structured keys cannot be recovered after object-property coercion.
@@ -81,16 +81,15 @@ structured keys cannot be recovered after object-property coercion.
 An executed stock-ES6 decode of two struct-keyed map entries yielded only
 `{"[object Object]":"second"}`. The first entry and both typed keys were lost.
 Damsel contains this case in `accounter.InvalidPostingParams.wrong_postings`.
-Therefore, only replacing HTTP transport cannot preserve the full current contract.
 
-The next compatibility experiment should reuse official JS generation and apply
-a narrowly scoped transformation for map construction, reads, writes, defaults,
-and constants, with matching runtime copy helpers. Verify nested maps, structured
-keys, primitive key restoration, and property-name edge cases. Avoid broad text
-replacement; use structural transformations with explicit version/shape guards.
-If that surface cannot remain small, compare a focused upstream JS-backend patch
-against alternative generators before building another complete serializer.
-The current Apache-target guard remains until these cases pass.
+Rather than attempting complex AST transformations or post-generation text rewriting
+inside tsthrift, the project resolves this by updating the Vality Thrift C++ compiler
+fork (rebased onto Apache 0.24) to emit native `Map` collections directly in
+`js:node,es6,bigint` mode.
+
+The runtime npm package remains official stock `thrift@0.24.0`: Thrift's `TBinaryProtocol`
+and `TBufferedTransport` operate on wire tokens (`writeMapBegin`/`readMapBegin`) and
+do not depend on whether JavaScript represents the map as an object or a `Map`.
 
 ## Woody responsibilities
 

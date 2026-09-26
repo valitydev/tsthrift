@@ -8,10 +8,13 @@ metadata in tsthrift. Add a public data conversion layer and a replaceable
 Woody-compatible transport. See the [source audit](compatibility.md) for the
 contracts and limitations behind this direction.
 
-A production switch requires resolving Map compatibility. Updating the entire
-Vality C++ fork and writing another full serializer are not prerequisites. A small
-versioned compatibility transformation may be needed around stock JS output;
-its scope must be proven with executable fixtures before adopting it.
+A production switch requires resolving Map compatibility. The compiler strategy
+relies on the updated Vality Thrift C++ fork (rebased on Apache 0.24), which
+directly emits native JavaScript `Map` collections in `js:node,es6,bigint` mode.
+This eliminates the need for AST rewriting or fragile Map conversion in tsthrift.
+The runtime npm package remains official stock `thrift@0.24.0`, as Thrift Binary
+Protocol byte serialization is naturally agnostic to whether the JS container is
+a Map or an Object.
 
 ```text
 Thrift IDL
@@ -61,13 +64,15 @@ the `callback` collision handled by the Vality fork patch. Generated modules are
 still CommonJS and use symbol-based read/write methods, bigint bridge helpers,
 recursion helpers, and UUID imports. Match runtime and compiler versions.
 
-ES6 does not change maps into Map. Object indexing cannot preserve struct keys.
-Before enabling all Damsel clients, evaluate a narrow AST transformation of map
-allocation/read/write/constant expressions plus matching constructor copy helpers.
-A runtime helper alone is insufficient because the generated JS itself indexes
-object properties. Validate scalar and structured keys, nested maps, defaults,
-constants, and special property names. Keep unsupported cases rejected until
-this passes; do not silently convert keys to strings.
+Stock Apache 0.24 does not emit Map, which loses non-string keys upon object property
+coercion. Rather than maintaining complex AST transformations or post-generation
+rewrites in tsthrift, the updated Vality Thrift compiler fork directly generates
+native `Map` instances in its JS output.
+
+The public data conversion layer in tsthrift therefore focuses exclusively on its
+core responsibilities: converting plain typed JSON objects to and from Thrift
+class instances, validating safe i64 numeric bounds when requested, and handling
+declared exceptions.
 
 Preserve guards for conflicting JS filenames and unresolved transitive typedef
 imports. Callback arguments are now permitted. General generated-name collisions

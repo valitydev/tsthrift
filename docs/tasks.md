@@ -28,10 +28,10 @@ project integration defect or a consumer contract that needs protection.
 - [x] Execute callback-named arguments and declared errors through generated Promise clients/processors.
 - [x] Record generator flags and i64 mode in generation.json.
 - [x] Audit thrift-ts, frontend-thrift-codegen, woody_js, the Vality fork, and existing Angular consumers.
-- [x] Confirm stock ES6 JS still loses struct map keys; retain the generation guard.
-- [ ] Implement and validate a bounded map compatibility transformation and matching runtime helpers.
-- [ ] Cover map reads/writes, constructors, defaults, constants, scalar/structured keys, nested maps, and reserved property names.
-- [ ] Preserve recursive public Map/Set/plain-object conversion to and from generated classes.
+- [x] Confirm stock ES6 JS still loses struct map keys; decided to update Vality C++ fork for native Map generation instead of AST transforms in tsthrift.
+- [ ] Integrate and verify updated Vality Thrift compiler fork (Apache 0.24 + native Map generation).
+- [ ] Verify struct-keyed maps (e.g. accounter.InvalidPostingParams.wrong_postings) using the updated compiler.
+- [ ] Implement recursive public plain-object (typed JSON) to/from generated class instance conversion.
 - [ ] Add declared-exception and i64 mode conversion at the public client boundary.
 - [ ] Cover transitive typedef imports and generated identifier collisions beyond callback.
 - [ ] Package generated JS with a compatible browser runtime, bigint helpers, and required polyfills.
