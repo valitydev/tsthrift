@@ -1,6 +1,6 @@
 # Architecture and compatibility
 
-Status: agreed direction; implementation pending.
+Status: initial generation pipeline implemented; runtime and package integration pending.
 
 ## Goal
 
@@ -54,6 +54,11 @@ IDL files + include roots + selected namespaces
 TS models and metadata should share a resolved schema model. The C++ JS backend
 remains a separate generator; integration tests must verify agreement between its
 output and that model. A single parser shared with C++ is not an initial requirement.
+
+The initial pipeline uses `thrift-parser@0.4.2`, matching the previous metadata
+producer. It resolves reachable includes and typedefs, emits models from the same
+AST as metadata, and invokes the official compiler for JS. Public client interfaces
+are generated, but their runtime implementation is a later phase.
 
 Keep generation, metadata contracts, runtime, and CLI orchestration as separate
 responsibilities within this repository. Introduce modules as they are implemented;
@@ -137,9 +142,10 @@ required changes, notably `Map` generation, `runtime_package`, and callback-name
 collision handling. Bring across necessary compiler dependencies selectively.
 Retain license and attribution notices when reusing upstream code.
 
-A local Thrift 0.24.0 smoke generation with `--gen js:node,bigint` produced calls to
+A real-compiler integration test with `--gen js:node,bigint` produces calls to
 `thrift.toBigInt(input.readI64())` and `output.writeI64(thrift.fromBigInt(value))`.
-This verifies generated source only, not execution or a completed fork port.
+It also checks generated JS syntax, type-checks public TS models, and verifies
+metadata and regeneration. It does not verify RPC execution or a completed fork port.
 
 Upstream output also expects symbol-based structure read/write methods and
 protocol recursion-depth helpers. Its bigint mode still bridges through `Int64`;
@@ -166,6 +172,10 @@ thrift-codegen --i ./proto --n domain_config_v2 domain payment_processing accoun
 This is the existing command, not an implemented `tsthrift` CLI invocation.
 Preserve its input/include/namespace selection capabilities in the replacement.
 Validate external includes and transitive typedefs on real protocol packages.
+The first full Damsel attempt is blocked by its struct-keyed map
+`accounter.InvalidPostingParams.wrong_postings`. The official object-backed map
+representation cannot preserve those keys. The standalone `base` module generates;
+this does not establish full Damsel compatibility.
 Regenerate affected packages before migrating application integration; replacing
 an application import cannot remove a runtime embedded in old generated bundles.
 

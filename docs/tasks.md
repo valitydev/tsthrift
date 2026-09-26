@@ -2,7 +2,12 @@
 
 The [architecture](architecture.md) records scope and compatibility decisions.
 Checked items represent completed decisions or verified work, not planned features.
-All implementation work below is pending. Update this file as work is completed.
+The initial generation pipeline is implemented. Update this file as work is completed.
+
+Current verification: real Apache Thrift 0.24.0 generation, JS syntax checks, public
+TS model type checking, metadata shape, CLI invocation, and output preservation.
+HTTP/runtime execution and browser consumers are not verified. Full Damsel remains
+blocked by the struct-keyed map in `accounter.InvalidPostingParams.wrong_postings`.
 
 ## 0. Agreed direction
 
@@ -30,10 +35,10 @@ supported by reproducible fixtures.
 ## 2. Establish official Apache Thrift 0.24 generation
 
 - [ ] Pin an official 0.24 compiler artifact and make its installation reproducible locally and in CI.
-- [ ] Generate representative fixtures with js:node,bigint and record the actual compiler version.
+- [x] Generate representative fixtures with js:node,bigint and record the actual compiler version.
 - [ ] Verify i64 literals, defaults, typedefs, map keys, nested containers, method arguments, results, and exceptions.
 - [ ] Audit symbol-based methods, recursion helpers, UUID imports, and runtime helper requirements.
-- [ ] Identify differences from the fork, including object-backed maps and callback-name collisions, using real protocol fixtures.
+- [x] Identify differences from the fork, including object-backed maps and callback-name collisions, using real protocol fixtures and a Damsel generation attempt.
 - [ ] Define lossless public Map conversion and diagnose unsupported key types or generated name collisions explicitly.
 - [ ] Resolve generated thrift imports to the compatible runtime without requiring the fork-only runtime_package option.
 
@@ -43,14 +48,15 @@ port is not required for subsequent implementation phases.
 
 ## 3. Generate TS models and metadata in tsthrift
 
-- [ ] Select and verify a parser against existing IDL before adding a dependency or writing a parser.
+- [x] Reuse and pin thrift-parser 0.4.2; verify reachable include parsing and existing metadata shape against representative IDL.
 - [ ] Resolve includes, namespaces, typedefs, constants, and inherited services deterministically.
-- [ ] Generate public TS models with number-based i64 and the agreed collection representations.
-- [ ] Generate metadata.json in the existing form-consumer format from the same resolved model.
-- [ ] Preserve optional presence, empty structures, enums, unions, and exception metadata.
+- [x] Generate public TS models with number-based i64 and the agreed collection representations.
+- [x] Generate metadata.json in the existing form-consumer format from the same parsed model.
+- [x] Preserve optional presence, empty structures, enums, unions, and exception metadata.
+- [ ] Support referenced and structured constants and finalize exact large-integer metadata handling; currently reject unsupported values.
 - [ ] Verify TS/metadata agreement with the separate C++ JS generator, including transitive type references.
-- [ ] Produce actionable diagnostics for unresolved references, unsupported constructs, and ambiguous outputs.
-- [ ] Verify deterministic output and ensure include roots do not indiscriminately parse unrelated dependency fixtures.
+- [x] Produce actionable diagnostics for unresolved references, unsupported map keys, unsafe literals, callback collisions, and ambiguous outputs.
+- [x] Verify deterministic metadata output and ensure include roots do not indiscriminately parse unrelated dependency fixtures.
 
 Acceptance: types and metadata match compatibility fixtures and correctly describe
 the values expected by generated JS.
@@ -73,13 +79,13 @@ compatible with the reference implementation; public values follow the agreed AP
 
 ## 5. Implement CLI and package output
 
-- [ ] Define CLI options for IDL inputs, include roots, namespace selection, compiler location, and output directory.
-- [ ] Run the pinned compiler and TS/metadata generation through one command with actionable failures.
-- [ ] Support an explicit compiler executable path so the later fork switch does not require redesigning the CLI.
+- [x] Define CLI options for IDL inputs, include roots, namespace selection, compiler location, and output directory.
+- [x] Run version-checked official 0.24.0 JS generation and TS/metadata generation through one command with actionable failures.
+- [x] Support an explicit compiler executable path so the later fork switch does not require redesigning the CLI.
 - [ ] Build ordinary JS/TS packages and export metadata.json independently.
 - [ ] Choose package export paths and ESM/CJS support using actual consumer requirements.
 - [ ] Validate generated references and fail before packaging unresolved imports.
-- [ ] Keep output cleanup scoped to generated files and preserve useful output when generation fails.
+- [x] Keep output cleanup scoped to generated files and preserve previous output when generation fails; reject unmanaged output and additional user files.
 - [ ] Verify installation of a packed generated package in an isolated consumer.
 - [ ] Replace starter package metadata and examples once the real API and CLI exist.
 
