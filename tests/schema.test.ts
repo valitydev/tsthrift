@@ -72,12 +72,16 @@ test.each([
 
 test.each([
   ["struct Key { 1: string value } struct X { 1: map<Key, string> values }", /Unsupported map key/],
-  ["service X { void call(1: i64 callback) }", /callback argument/],
 ])("keeps Apache restrictions out of metadata and models: %s", async (text, error) => {
   const schema = await source(text);
   expect(() => validateSchema(schema)).not.toThrow();
   expect(() => emitModels(schema.roots[0]!)).not.toThrow();
   expect(() => validateApache(schema)).toThrow(error);
+});
+
+test("allows callback arguments in the Apache ES6 target", async () => {
+  const schema = await source("service X { i64 call(1: i64 callback) }");
+  expect(() => validateApache(schema)).not.toThrow();
 });
 
 test("reports a missing include with its referring file", async () => {

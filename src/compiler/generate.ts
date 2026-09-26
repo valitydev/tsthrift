@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { loadSchema } from "./load-schema.ts";
 import { validateSchema } from "./validate-schema.ts";
-import { compilerVersion, generateJavaScript } from "./run-thrift.ts";
+import { apacheGenerator, compilerVersion, generateJavaScript } from "./run-thrift.ts";
 import { emitModels } from "./emit-models.ts";
 import { publishOutput } from "./publish-output.ts";
 import { emitMetadata } from "../metadata/emit-metadata.ts";
@@ -79,7 +79,7 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
           compilerVersion: version,
           target,
           i64,
-          ...(target === "apache" ? { generator: "js:node,bigint" } : {}),
+          ...(target === "apache" ? { generator: apacheGenerator } : {}),
           namespaces: schema.roots.map((root) => root.name),
         },
         null,

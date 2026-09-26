@@ -43,6 +43,7 @@
     "bumpp": "^11.1.0",
     "thrift": "0.24.0",
     "typescript": "^7.0.2",
+    "uuid": "14.0.0",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   },

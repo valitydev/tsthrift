@@ -21,7 +21,7 @@ function validateType(program: Program, type: ValueType, seen = new Set<ValueTyp
   validateType(resolved.program, resolved.type.valueType, seen);
 }
 
-/** Constraints of the optional Apache JS reference generator, not of Thrift IDL. */
+/** Constraints of Apache JS output, not of Thrift IDL. */
 export function validateApache(schema: Schema): void {
   const outputs = new Set<string>();
   for (const program of schema.programs) {
@@ -40,13 +40,8 @@ export function validateApache(schema: Schema): void {
         for (const field of fields) validateType(program, field.type);
       }
     }
-    for (const [name, service] of Object.entries(program.ast.service ?? {})) {
+    for (const service of Object.values(program.ast.service ?? {})) {
       for (const method of Object.values(service.functions)) {
-        if (method.args.some((arg) => arg.name === "callback")) {
-          throw new Error(
-            `Unsupported callback argument in ${program.name}.${name}.${method.name}: official JS name collision; use --target models or metadata`,
-          );
-        }
         validateType(program, method.type);
         for (const field of [...method.args, ...method.throws]) validateType(program, field.type);
       }

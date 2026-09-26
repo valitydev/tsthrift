@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { cp, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, expect, test } from "vite-plus/test";
@@ -35,6 +35,9 @@ integration.each(["number", "bigint"] as const)(
     const result = await generate({ ...options, i64 });
     expect(result.compilerVersion).toBe("Thrift version 0.24.0");
     expect(result.modules.sort()).toEqual(["common", "example"]);
+    expect(
+      JSON.parse(await readFile(path.join(options.output, "generation.json"), "utf8")),
+    ).toMatchObject({ generator: "js:node,es6,bigint" });
     const js = await readFile(path.join(options.output, "internal/example_types.js"), "utf8");
     expect(js).toContain("thrift.toBigInt(input.readI64())");
     expect(js).toContain("output.writeI64(thrift.fromBigInt(this.id))");
@@ -97,3 +100,34 @@ integration("invokes the CLI with paths containing spaces", async () => {
   expect(result.stdout).toContain("generated 2 module(s)");
   expect(await readdir(options.output)).toContain("metadata.json");
 });
+
+integration(
+  "executes callback-named IDL arguments and declared errors with official ES6 JS",
+  async () => {
+    const options = await setup();
+    await writeFile(
+      path.join(options.input, "callback.thrift"),
+      `
+    exception Failure { 1: string reason }
+    service Callback {
+      i64 invoke(1: i64 callback, 2: i64 callback1, 3: i64 _callback) throws (1: Failure failure)
+    }
+  `,
+    );
+    await generate({ ...options, namespaces: ["callback"] });
+    await symlink(
+      path.resolve("node_modules"),
+      path.join(path.dirname(options.output), "node_modules"),
+      "dir",
+    );
+    const { stdout } = await execute(process.execPath, [
+      path.join(import.meta.dirname, "reference/apache-callback.cjs"),
+      path.join(options.output, "internal/Callback.js"),
+      path.join(options.output, "internal/callback_types.js"),
+    ]);
+    expect(JSON.parse(stdout)).toEqual([
+      ["9007199254740993", "2", "3"],
+      ["-1", "0", "0"],
+    ]);
+  },
+);

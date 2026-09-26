@@ -5,6 +5,7 @@ import path from "node:path";
 import type { Schema } from "./load-schema.ts";
 
 const execute = promisify(execFile);
+export const apacheGenerator = "js:node,es6,bigint";
 
 async function run(compiler: string, args: string[]): Promise<string> {
   try {
@@ -39,7 +40,7 @@ export async function generateJavaScript(
     await run(compiler, [
       ...includes.flatMap((root) => ["-I", root]),
       "--gen",
-      "js:node,bigint",
+      apacheGenerator,
       "-out",
       output,
       program.filename,

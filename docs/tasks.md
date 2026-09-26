@@ -1,117 +1,90 @@
 # Implementation checklist
 
-The [architecture](architecture.md) defines the current scope. Checked items are
-completed decisions or verified work. Keep source generation, runtime execution,
-and consumer verification distinct.
+Checked entries represent implemented and verified project behavior. Architecture
+choices are described in [architecture](architecture.md); compatibility evidence
+and source revisions are in [compatibility](compatibility.md).
 
-## 0. Agreed direction
+## Metadata and models
 
-- [x] Port compatible metadata generation first, independently of an external compiler.
-- [x] Build the native JS/TS serialization and RPC generator on the same schema next.
-- [x] Keep Apache Thrift 0.24 as an optional reference; remove the C++ fork update from the critical path.
-- [x] Emit full exported enums with runtime values and reverse mappings.
-- [x] Default public i64 to bigint, provide --i64 number for existing consumers, and plan bigint internally in serialization.
-- [x] Leave Angular, RxJS integration, and form rendering to consumers.
+- [x] Resolve selected entries and reachable includes using the pinned legacy parser.
+- [x] Emit the legacy metadata artifact independently of JS generation.
+- [x] Keep one consumer-contract fixture from the old generator and test emitted metadata against it.
+- [x] Generate TS models, runtime enums, references, constants, struct defaults, and nested collections.
+- [x] Default public i64 to bigint and provide explicit --i64 number compatibility mode.
+- [x] Compile and execute both numeric modes; keep metadata unchanged between them.
+- [x] Verify 15 selected Damsel model modules in both modes and compare legacy metadata.
+- [x] Preserve staged output, ownership checks, and rollback behavior.
+- [ ] Support exact large-integer IDL constants without changing legacy metadata silently.
+- [ ] Resolve public binary conversion from existing consumers.
+- [ ] Validate metadata in actual form consumers.
 
-## 1. Standalone metadata generation
+Do not recreate thrift-parser's grammar test suite. Add cases when they expose a
+project integration defect or a consumer contract that needs protection.
 
-- [x] Pin thrift-parser 0.4.2 and reuse the legacy metadata representation.
-- [x] Resolve selected input files and reachable include roots without scanning unrelated dependency fixtures.
-- [x] Separate common schema validation from Apache JS restrictions.
-- [x] Add a metadata-only CLI target with no external compiler dependency.
-- [x] Preserve paths, namespaces, typedefs, defaults, optionality, empty structs, unions, enums, exceptions, and services.
-- [x] Commit a compatibility fixture produced by the old generator and compare it in tests.
-- [x] Generate metadata for all 15 reachable Damsel modules selected by the existing build and compare with the old generator.
-- [x] Preserve prior output on failure and refuse unmanaged or additional user files.
-- [ ] Finalize exact large-integer constant representation instead of relying on legacy parser numbers.
-- [ ] Add broader parser fixtures for annotations, duplicate declarations, recursive types, and constant expressions.
-- [ ] Verify metadata directly in existing ng-thrift forms.
+## Apache JS backend and compatibility
 
-Acceptance: metadata matches the existing format without requiring JS generation.
-The Damsel comparison passed; live Angular form verification remains pending.
+- [x] Generate internal JS with official Apache 0.24 and explicit executable selection.
+- [x] Use js:node,es6,bigint to avoid the extra callback parameter without a C++ patch.
+- [x] Execute callback-named arguments and declared errors through generated Promise clients/processors.
+- [x] Record generator flags and i64 mode in generation.json.
+- [x] Audit thrift-ts, frontend-thrift-codegen, woody_js, the Vality fork, and existing Angular consumers.
+- [x] Confirm stock ES6 JS still loses struct map keys; retain the generation guard.
+- [ ] Implement and validate a bounded map compatibility transformation and matching runtime helpers.
+- [ ] Cover map reads/writes, constructors, defaults, constants, scalar/structured keys, nested maps, and reserved property names.
+- [ ] Preserve recursive public Map/Set/plain-object conversion to and from generated classes.
+- [ ] Add declared-exception and i64 mode conversion at the public client boundary.
+- [ ] Cover transitive typedef imports and generated identifier collisions beyond callback.
+- [ ] Package generated JS with a compatible browser runtime, bigint helpers, and required polyfills.
+- [ ] Generate the full Damsel client set without losing map keys.
+- [ ] Make compiler acquisition reproducible in CI.
 
-## 2. Public models and runtime enums
+Acceptance: generated clients preserve existing wire and public value contracts;
+stock generation success alone is insufficient.
 
-- [x] Generate selectable number/bigint public i64, object-shaped structures, Map, Set, and arrays.
-- [x] Compile and execute both i64 modes, including included typedefs, constants, defaults, and nested collection keys/values; preserve metadata across modes.
-- [x] Emit ordinary exported enums with explicit/implicit numeric values, negative values, and aliases.
-- [x] Compile generated enums to JavaScript and execute forward/reverse lookup tests.
-- [x] Verify declaration output preserves the enum API.
-- [x] Support struct-keyed maps and callback-named arguments in public models.
-- [x] Avoid built-in collection type collisions, including Damsel's Array typedef.
-- [x] Type-check the 15 generated Damsel model modules in both i64 modes and verify identical metadata.
-- [x] Emit local/included constant and enum references, structured values with defaults, and nested collections while preserving original expressions in metadata.
-- [x] Execute compiled constant modules and verify struct-keyed maps, unions, defaults, and declaration-order independence.
-- [x] Reject cyclic references/defaults, invalid scalar ranges, missing or unknown fields, and invalid union constants before output replacement.
-- [ ] Resolve the public binary representation from actual consumer usage.
-- [ ] Define stable public factory names and package export paths for the native client API.
+## Woody-compatible transport and Promise clients
 
-Acceptance: models and enums are usable TS sources, and enums exist after JS
-compilation. This does not yet provide executable RPC clients.
+- [ ] Reuse Apache serialization/runtime contracts and replace HTTP I/O.
+- [ ] Provide a request transport seam for fetch or framework HTTP adapters.
+- [ ] Preserve endpoint settings, binary content type, per-call headers, auth, and tracing.
+- [ ] Implement AbortSignal cancellation, timeout, and pending-request cleanup.
+- [ ] Validate response method/type/sequence and distinguish HTTP, network, application, and declared errors.
+- [ ] Preserve compatibility error exports/context and logging hooks.
+- [ ] Preserve absent fields and present empty structs during conversion.
+- [ ] Cross-decode generated messages with the legacy Vality runtime.
+- [ ] Exercise one real HTTP service before claiming transport compatibility.
 
-## 3. Native serialization and RPC generation
+## React / TanStack Query output
 
-- [ ] Resolve internal field IDs, wire types, typedefs, defaults, recursive references, and inherited services without mutating legacy metadata.
-- [ ] Generate serialization and deserialization for primitives, enums, structs, unions, and exceptions.
-- [ ] Generate collection codecs using native Map and Set, including struct-keyed maps.
-- [ ] Serialize i64 with bigint internally; apply checked conversion in public number mode and retain bigint with signed i64 validation in bigint mode.
-- [ ] Generate method argument/result structures and declared exception handling.
-- [ ] Generate typed Promise-based client implementations without Angular or RxJS.
-- [ ] Validate names and imports, including transitive references and collisions with generated identifiers.
-- [ ] Complete one small end-to-end generated service before expanding coverage to Damsel.
+- [ ] Keep the Promise core independent of React and TanStack imports.
+- [ ] Generate typed query/mutation options with explicit method classification.
+- [ ] Forward query AbortSignal to the HTTP request.
+- [ ] Normalize bigint, Map, Set, binary, endpoint, and tenant scope into deterministic cache keys.
+- [ ] Verify cancellation, cache isolation, mutation behavior, and SSR value serialization.
+- [ ] Package the adapter as an optional entry with explicit peer dependencies.
 
-Acceptance: a native generated client encodes a request and decodes a compatible
-response without invoking Apache Thrift during generation.
+## Angular output and compatibility profile
 
-## 4. Runtime and wire compatibility
+- [ ] Add an optional Angular/service build profile over the same Promise core.
+- [ ] Preserve service exports, Observable methods, ConnectOptions$ construction, and metadata$.
+- [ ] Preserve namespace exports, errors, logging, createCallOptions, and tracing ID helpers where consumed.
+- [ ] Use explicit number-mode generation for the existing numeric consumer contract.
+- [ ] Support provider factories and HttpClient transport injection without Angular imports in core.
+- [ ] Verify configuration updates, subscription lifecycle, cancellation, and lazy loading.
+- [ ] Compile the Angular package format when emitting decorated services.
+- [ ] Build existing consumers and browser-test forms and requests.
 
-- [ ] Implement a browser-compatible Thrift Binary Protocol runtime, reusing suitable code with its license notices where useful.
-- [ ] Implement binary HTTP requests with dynamic headers, endpoint settings, timeout, and cancellation.
-- [ ] Preserve Woody authentication/tracing conventions and distinguish HTTP, application, and declared errors.
-- [ ] Preserve empty optional structs and absent fields without losing false, zero, or empty-string values.
-- [ ] Validate response correlation, unknown-field skipping, recursion limits, malformed messages, and cleanup.
-- [ ] Cross-decode native messages with a reference runtime and reference messages with the native runtime.
-- [ ] Cover signed i64 boundaries, binary values, exceptions, nested collections, and complex map keys.
-- [ ] Keep runtime dependencies independent of compiler/parser packages and form metadata loading.
+## Package output
 
-Acceptance: real HTTP exchange and cross-implementation wire tests pass. Matching
-source output or self-round-trip tests alone are insufficient.
+- [ ] Emit installable protocol packages with JS, declarations, metadata, and stable exports.
+- [ ] Keep compiler output selection separate from framework adapter selection.
+- [ ] Verify ESM/CJS and optional framework entries in isolated consumers.
+- [ ] Rebuild protocol artifacts before migrating applications that currently bundle woody_js.
 
-## 5. CLI and package output
+## Existing experimental binary runtime
 
-- [x] Implement input, include root, namespace, output directory, and target selection.
-- [x] Default to models plus metadata; make external compiler execution opt-in.
-- [x] Retain the version-checked Apache target with explicit executable selection for comparisons.
-- [x] Expose --i64 number|bigint and the API i64 option, rejecting invalid modes.
-- [x] Record target, i64 mode, and reference compiler details in generation.json.
-- [x] Remove stale owned output when switching generation targets.
-- [ ] Build installable protocol packages with JS, declarations, and an independent metadata export.
-- [ ] Choose ESM/CJS support from consumer requirements and verify a packed package in an isolated consumer.
-- [ ] Add native codec/client output to the CLI once implemented.
-- [ ] Document consumer migration from Observable service wrappers and metadata$.
+- [x] Implement primitive/envelope reading and writing, scalar i64 guards, and bounded skipping.
+- [x] Cross-decode with Apache 0.24 and test malformed inputs and limits.
+- [x] Export the experimental runtime independently of Node/compiler/parser imports.
 
-Acceptance: one command produces an installable native protocol package with
-working runtime imports, declarations, enums, and metadata.
-
-## 6. Reference compiler and real consumers
-
-- [x] Verify real Apache 0.24 bigint JS generation and generated JS syntax on supported fixtures.
-- [x] Isolate object-map, callback, and file-collision restrictions to the Apache target.
-- [ ] Make the optional reference compiler/runtime installation reproducible in CI.
-- [ ] Capture baseline binary messages and observable error behavior.
-- [ ] Generate native codecs and clients for Damsel using its existing namespace selection.
-- [ ] Validate another protocol package with external includes and transitive typedefs.
-- [ ] Integrate native Promise clients into control-center's consumer-owned service layer.
-- [ ] Browser-test forms, actual request decoding, timeout, cancellation, and authentication refresh.
-- [ ] Confirm rebuilt packages no longer embed woody_js or generated Angular/RxJS wrappers.
-
-Acceptance: real protocol package generation and consumer behavior are verified.
-Damsel metadata/models already pass; native RPC and browser verification are pending.
-
-## Deferred or outside the current scope
-
-- [ ] Select --i64 number for existing consumers or migrate their form values and JSON handling to bigint.
-
-Updating the Vality C++ JS generator is no longer a prerequisite or a planned
-production dependency. Full fork synchronization and framework-specific generators
-are outside the current implementation scope.
+This experiment is not the production client backend. Further native codec
+implementation is deferred while the Apache-backed compatibility path is evaluated.

@@ -23,7 +23,7 @@ async function setup() {
   };
 }
 
-test("generates the legacy metadata baseline without model or Apache generation", async () => {
+test("preserves the legacy form metadata contract without model or Apache generation", async () => {
   const options = await setup();
   const result = await generate({ ...options, target: "metadata" });
   const actual = JSON.parse(await readFile(path.join(options.output, "metadata.json"), "utf8"));

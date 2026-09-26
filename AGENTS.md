@@ -25,3 +25,19 @@ release. Add a tool name to select part of the graph. For example, run
 - [ ] If setup, runtime, or package-manager behavior looks wrong, run `vp env doctor` and include its output when asking for help.
 
 <!--VITE PLUS END-->
+
+## Continuing implementation
+
+Read `docs/tasks.md`, `docs/architecture.md`, and `docs/compatibility.md` before
+changing the generator or transport. Keep checked tasks tied to actual verification.
+Do not commit or push automatically. Document technical contracts and reproducible
+setup without personal preferences, conversation history, or machine-specific account paths.
+Consult the source revisions in `docs/compatibility.md` when changing compatibility behavior.
+
+### Change verification criteria
+
+- Inspect the relevant upstream/legacy implementation when touching compatibility.
+- Execute affected generated output, not just source-shape assertions.
+- Check module responsibilities, imports/exports, and `git diff --check`.
+- Keep task status and technical documentation strictly neutral, objective, and reproducible.
+- Distinguish verified artifacts from transport, browser, and consumer acceptance.

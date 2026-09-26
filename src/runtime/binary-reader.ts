@@ -74,7 +74,7 @@ export class BinaryReader {
   readBinary(): Uint8Array {
     const size = this.readI32();
     const start = this.take(size);
-    return this.bytes.slice(start, start + size);
+    return new Uint8Array(this.bytes.subarray(start, start + size));
   }
 
   readString(): string {
