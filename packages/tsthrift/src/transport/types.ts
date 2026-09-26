@@ -40,6 +40,20 @@ export interface ThriftClientConfig {
   converter?: ThriftConverter;
   /** Pre-built metadata index. */
   index?: MetadataIndex;
+  /** Optional logging callback invoked on RPC call lifecycle (call, success, error). */
+  loggingFn?: (params: ThriftLogParams) => void;
+}
+
+/** Parameters passed to the logging callback on RPC call lifecycle events. */
+export interface ThriftLogParams {
+  type: "call" | "success" | "error";
+  name: string;
+  serviceName: string;
+  namespace?: string;
+  args?: unknown[];
+  headers?: Record<string, string>;
+  response?: unknown;
+  error?: unknown;
 }
 
 /** Per-call request options passed by the caller. */

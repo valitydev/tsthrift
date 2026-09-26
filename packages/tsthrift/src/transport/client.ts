@@ -1,3 +1,4 @@
+import "./buffer-polyfill.ts";
 import thrift from "thrift";
 import { createClientProxy } from "./client-proxy.ts";
 import { ThriftProtocolError } from "./errors.ts";

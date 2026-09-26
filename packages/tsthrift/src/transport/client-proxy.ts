@@ -103,7 +103,55 @@ export function createClientProxy<T extends object>(context: ProxyContext<T>): T
           callArgs = args.slice(0, -1);
         }
 
+        const reqOptions =
+          lastArg &&
+          typeof lastArg === "object" &&
+          ("signal" in lastArg || "headers" in lastArg || "timeoutMs" in lastArg)
+            ? (lastArg as RequestOptions)
+            : undefined;
+
         const executeCall = () => {
+          if (config.loggingFn) {
+            config.loggingFn({
+              type: "call",
+              name: prop,
+              serviceName: serviceName ?? "UnknownService",
+              namespace,
+              args: callArgs,
+              headers: reqOptions?.headers,
+            });
+          }
+
+          const onResponseSuccess = (response: unknown) => {
+            if (config.loggingFn) {
+              config.loggingFn({
+                type: "success",
+                name: prop,
+                serviceName: serviceName ?? "UnknownService",
+                namespace,
+                args: callArgs,
+                headers: reqOptions?.headers,
+                response,
+              });
+            }
+            return response;
+          };
+
+          const onResponseError = (error: unknown) => {
+            if (config.loggingFn) {
+              config.loggingFn({
+                type: "error",
+                name: prop,
+                serviceName: serviceName ?? "UnknownService",
+                namespace,
+                args: callArgs,
+                headers: reqOptions?.headers,
+                error,
+              });
+            }
+            throw error;
+          };
+
           const activeConverter = converter;
           if (activeConverter && namespace && serviceName) {
             const methodInfo = activeConverter.getMethod(namespace, serviceName, prop);
@@ -116,26 +164,32 @@ export function createClientProxy<T extends object>(context: ProxyContext<T>): T
 
               const result = (original as Function).apply(rawTarget, convertedArgs);
               if (result && typeof (result as Promise<unknown>).then === "function") {
-                return (result as Promise<unknown>).then((rawResponse: unknown) => {
-                  if (
-                    methodInfo.method.type === "void" ||
-                    rawResponse === undefined ||
-                    rawResponse === null
-                  ) {
-                    return rawResponse;
-                  }
-                  return activeConverter.toPlainObject(
-                    rawResponse,
-                    methodInfo.method.type,
-                    methodInfo.namespace,
-                  );
-                });
+                return (result as Promise<unknown>)
+                  .then((rawResponse: unknown) => {
+                    if (
+                      methodInfo.method.type === "void" ||
+                      rawResponse === undefined ||
+                      rawResponse === null
+                    ) {
+                      return rawResponse;
+                    }
+                    return activeConverter.toPlainObject(
+                      rawResponse,
+                      methodInfo.method.type,
+                      methodInfo.namespace,
+                    );
+                  })
+                  .then(onResponseSuccess, onResponseError);
               }
-              return result;
+              return onResponseSuccess(result);
             }
           }
 
-          return (original as Function).apply(rawTarget, callArgs);
+          const rawResult = (original as Function).apply(rawTarget, callArgs);
+          if (rawResult && typeof (rawResult as Promise<unknown>).then === "function") {
+            return (rawResult as Promise<unknown>).then(onResponseSuccess, onResponseError);
+          }
+          return onResponseSuccess(rawResult);
         };
 
         const waitPromise = ensureReady();

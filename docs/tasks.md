@@ -36,7 +36,7 @@ project integration defect or a consumer contract that needs protection.
 - [x] Implement recursive public plain-object (typed JSON) to/from generated class instance conversion.
 - [x] Add declared-exception and i64 mode conversion at the public client boundary.
 - [ ] Cover transitive typedef imports and generated identifier collisions beyond callback.
-- [ ] Package generated JS with a compatible browser runtime, bigint helpers, and required Buffer polyfill for Apache Thrift 0.24.
+- [x] Package generated JS with a compatible browser runtime, bigint helpers, and required Buffer polyfill for Apache Thrift 0.24.
 - [ ] Generate full client sets for complex reference schemas without losing map keys.
 - [ ] Make compiler acquisition reproducible in CI.
 
@@ -52,7 +52,7 @@ stock generation success alone is insufficient.
 - [x] Implement AbortSignal cancellation, enforced timeout (AbortSignal.timeout/any), and pending-request socket teardown.
 - [x] Reject non-200 HTTP responses (4xx/5xx) and invalid Content-Types immediately before Thrift decoding (prevent hung 500/HTML requests).
 - [x] Validate response method/type/sequence and distinguish HTTP, network, timeout, and declared application errors.
-- [ ] Preserve compatibility error exports/context and logging hooks.
+- [x] Preserve compatibility error exports/context and logging hooks.
 - [x] Preserve absent fields and present empty structs during conversion.
 - [ ] Cross-decode generated messages with the legacy Vality runtime.
 - [x] Exercise one real HTTP service before claiming transport compatibility.

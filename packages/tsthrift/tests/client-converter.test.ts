@@ -233,4 +233,65 @@ describe("Client transparent conversion", () => {
     const res = await client.echo({ id: 3n, tags: new Set(["fast"]) });
     expect(res).toEqual({ id: 3n, tags: new Set(["fast"]) });
   });
+
+  test("invokes loggingFn on call, success, and error lifecycle events", async () => {
+    const logs: any[] = [];
+    const client = createThriftClient(
+      TestServiceClient as unknown as ThriftClientConstructor<any>,
+      {
+        endpoint: "http://example.com/thrift",
+        metadata,
+        loggingFn: (params) => logs.push(params),
+      },
+      dummyTransport,
+    );
+
+    const res = await client.echo(
+      { id: 10n, tags: new Set(["logged"]) },
+      { headers: { "x-trace-id": "trace-999" } },
+    );
+    expect(res).toEqual({ id: 10n, tags: new Set(["logged"]) });
+
+    expect(logs).toHaveLength(2);
+    expect(logs[0]).toMatchObject({
+      type: "call",
+      name: "echo",
+      serviceName: "TestService",
+      headers: { "x-trace-id": "trace-999" },
+    });
+    expect(logs[1]).toMatchObject({
+      type: "success",
+      name: "echo",
+      serviceName: "TestService",
+      headers: { "x-trace-id": "trace-999" },
+      response: { id: 10n, tags: new Set(["logged"]) },
+    });
+
+    // Test error lifecycle
+    logs.length = 0;
+    class FailingServiceClient extends TestServiceClient {
+      override async echo(): Promise<any> {
+        throw new Error("network failure");
+      }
+    }
+    const failingClient = createThriftClient(
+      FailingServiceClient as unknown as ThriftClientConstructor<any>,
+      {
+        endpoint: "http://example.com/thrift",
+        metadata,
+        loggingFn: (params) => logs.push(params),
+      },
+      dummyTransport,
+    );
+
+    await expect(failingClient.echo({ id: 1n })).rejects.toThrow("network failure");
+    expect(logs).toHaveLength(2);
+    expect(logs[0].type).toBe("call");
+    expect(logs[1]).toMatchObject({
+      type: "error",
+      name: "echo",
+      serviceName: "FailingService",
+      error: expect.any(Error),
+    });
+  });
 });

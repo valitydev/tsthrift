@@ -14,6 +14,7 @@ export type {
   MetadataSource,
   RequestOptions,
   ThriftClientConfig,
+  ThriftLogParams,
   ThriftServiceDescriptor,
   TransportFunction,
 } from "./transport/types.ts";

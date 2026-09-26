@@ -32,6 +32,7 @@
     "prepublishOnly": "vp run build"
   },
   "dependencies": {
+    "buffer": "catalog:",
     "thrift": "catalog:"
   },
   "devDependencies": {
