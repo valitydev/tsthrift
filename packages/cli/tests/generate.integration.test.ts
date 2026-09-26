@@ -23,6 +23,11 @@ afterEach(async () => {
 async function setup() {
   const directory = await mkdtemp(path.join(tmpdir(), "tsthrift integration "));
   directories.push(directory);
+  await symlink(
+    path.resolve(import.meta.dirname, "../node_modules"),
+    path.join(directory, "node_modules"),
+    "dir",
+  );
   await cp(path.join(import.meta.dirname, "fixtures"), directory, { recursive: true });
   return {
     input: path.join(directory, "proto"),
@@ -121,11 +126,6 @@ integration(
   `,
     );
     await generate({ ...options, namespaces: ["callback"] });
-    await symlink(
-      path.resolve(import.meta.dirname, "../node_modules"),
-      path.join(path.dirname(options.output), "node_modules"),
-      "dir",
-    );
     const { stdout } = await execute(process.execPath, [
       path.join(import.meta.dirname, "reference/apache-callback.cjs"),
       path.join(options.output, "internal/Callback.js"),

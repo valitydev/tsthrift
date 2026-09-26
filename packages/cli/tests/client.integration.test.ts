@@ -185,4 +185,19 @@ describe("Thrift RPC client integration", () => {
     expect(typeof result).toBe("number");
     expect(Object.keys(client._reqs)).toEqual([]);
   });
+
+  integration("uses generated client factory with automatic metadata and options", async () => {
+    const clientsModule = await import(path.join(directory, "generated/clients/RpcTestService.ts"));
+    const client = clientsModule.createRpcTestServiceClient({ endpoint });
+
+    const pingResult = await client.ping("from factory", { timeoutMs: 10_000 });
+    expect(pingResult).toBe("echo: from factory");
+
+    const multiplyResult = await client.multiply(100n, 20n);
+    expect(multiplyResult).toBe(2000n);
+
+    const rootIndex = await readFile(path.join(directory, "generated/index.ts"), "utf8");
+    expect(rootIndex).toContain('export * from "./clients/index.js";');
+    expect(rootIndex).toContain('export * as rpc_test from "./models/rpc_test.js";');
+  });
 });

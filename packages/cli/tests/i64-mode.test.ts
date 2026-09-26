@@ -68,7 +68,7 @@ test.each([undefined, "number", "bigint"] as const)(
     expect(source).toContain(`"id": ${mode};`);
     expect(source).toContain(`"id"?: ${mode};`);
     expect(source).toContain(`globalThis.Map<${mode}, ${mode}[]>`);
-    expect(source).toContain(`"next"(id: ${mode}): Promise<${mode}>;`);
+    expect(source).toContain(`"next"(id: ${mode}, options?: RequestOptions): Promise<${mode}>;`);
     expect(await readFile(path.join(models, "common.ts"), "utf8")).toContain(
       `export type Identifier = ${mode};`,
     );

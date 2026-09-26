@@ -35,6 +35,14 @@ export function emitModels(program: Program, i64: I64Mode = "bigint"): string {
     lines.push(`import * as ${alias} from ${JSON.stringify(`./${included.name}.js`)};`);
     lines.push(`export { ${alias} };`);
   }
+  const hasServices = Object.keys(program.ast.service ?? {}).length > 0;
+  if (hasServices) {
+    lines.push(`export interface RequestOptions {
+  signal?: AbortSignal;
+  headers?: Record<string, string>;
+  timeoutMs?: number;
+}`);
+  }
   for (const [name, alias] of Object.entries(program.ast.typedef ?? {})) {
     lines.push(`export type ${name} = ${tsType(alias.type, i64)};`);
   }
@@ -57,9 +65,10 @@ export function emitModels(program: Program, i64: I64Mode = "bigint"): string {
   for (const [name, service] of Object.entries(program.ast.service ?? {})) {
     const parent = service.extends ? ` extends ${service.extends}Client` : "";
     const methods = Object.values(service.functions).map((method) => {
-      const parameters = method.args
-        .map((field) => `${field.name}: ${tsType(field.type, i64)}`)
-        .join(", ");
+      const parameters = [
+        ...method.args.map((field) => `${field.name}: ${tsType(field.type, i64)}`),
+        "options?: RequestOptions",
+      ].join(", ");
       return `  ${JSON.stringify(method.name)}(${parameters}): Promise<${tsType(method.type, i64)}>;`;
     });
     lines.push(`export interface ${name}Client${parent} {\n${methods.join("\n")}\n}`);
