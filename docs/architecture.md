@@ -78,58 +78,89 @@ still require fixtures; resolving callback does not prove all names are safe.
 Reuse Apache Binary Protocol and buffered transport contracts when wiring its
 clients. Replace HTTP I/O based on the responsibilities in woody_js, preserving
 binary payloads, `application/x-thrift`, per-call headers, declared exceptions,
-HTTP/network errors, timeout, and response correlation. Tracing/authentication
-headers are provided above the old transport and must remain supported.
+HTTP/network errors, timeout, and response correlation.
 
-The core client must accept request-scoped cancellation and header overrides,
-forwarding AbortSignal through the actual HTTP request. Per-call settings must
-not change IDL argument order or become shared mutable state between requests.
-Transport injection should support fetch and an Angular HttpClient adapter
-without importing Angular into core code. Choose the concrete API while building
-the first working request; do not create unused factories/interfaces now.
+Client configuration is declarative rather than tied to woody_js internal global state:
 
-Preserve error identity and useful call context in compatibility wrappers. Test
-cleanup of pending requests and timers on success, declared error, HTTP error,
-timeout, cancellation, and decoding failure. Do not copy the old timer race or
-connection internals without verifying their behavior.
+```ts
+export interface ThriftClientConfig {
+  /** Target service endpoint URL */
+  endpoint: string;
+  /** Static headers or dynamic provider invoked per request (e.g. auth, tracing) */
+  headers?:
+    Record<string, string> | (() => Record<string, string> | Promise<Record<string, string>>);
+  /** Default request timeout in milliseconds (defaults to 60_000) */
+  timeoutMs?: number;
+  /** Custom fetch or transport adapter (e.g. Angular HttpClient) */
+  fetch?: typeof fetch;
+}
+
+export interface RequestOptions {
+  /** Request cancellation signal */
+  signal?: AbortSignal;
+  /** Per-call header overrides */
+  headers?: Record<string, string>;
+  /** Per-call timeout override in milliseconds */
+  timeoutMs?: number;
+}
+```
+
+The core client accepts request-scoped cancellation, timeout, and header overrides:
+`client.method(args, options?: RequestOptions)`, forwarding `AbortSignal` through
+the HTTP request. Per-call settings do not change IDL argument order or become
+shared mutable state between requests. Transport injection supports `fetch` and
+an Angular `HttpClient` adapter without importing Angular into core code.
+
+### Robust error handling and timeout guarantees
+
+To eliminate the unresolved pending-promise leaks and hanging requests observed
+in legacy clients during server errors (e.g. HTTP 500/502/504 returning HTML or
+holding sockets open):
+
+- **Strict HTTP status check**: Non-200 responses (e.g. 4xx/5xx) must never be
+  passed to the Thrift binary decoder. They must immediately reject with a structured
+  `ThriftHttpError(status, statusText, body)`.
+- **Content-Type validation**: The response `Content-Type` must match
+  `application/x-thrift`. HTML or malformed error pages are rejected immediately
+  as protocol errors rather than stalling inside binary parser loops.
+- **Enforced socket cancellation on timeout**: Timeouts are enforced using
+  `AbortSignal.timeout` composed with any user-provided signal (`AbortSignal.any`).
+  On expiration, the underlying fetch/socket connection is actively aborted by
+  the runtime, and the call rejects with `ThriftTimeoutError`. Detached `Promise.race`
+  patterns that leak background sockets are prohibited.
+- **Resource cleanup**: Timers, in-flight callbacks, and buffers must be cleaned
+  up deterministically on success, declared error, HTTP error, timeout, and
+  external abort.
 
 ## Framework output
 
-Build framework adapters as optional entry points over the same Promise client,
-models, and metadata. Framework output selection is independent of the current
-`--target` compiler/output selection. Adapter flags and entry paths are not yet
-implemented or finalized.
+The immediate target framework is **Angular**. React and TanStack Query adapters
+are deferred.
 
-### React and TanStack Query
+Metadata emission remains a static, build-time JSON artifact (`metadata.json`).
+Loading metadata uses direct JSON import or a plain Promise function (`getMetadata()`),
+eliminating the legacy runtime requirement for `Observable<metadata$>`.
 
-Generate typed query/mutation options rather than embedding React in the client.
-Query functions forward the provided AbortSignal. Classify queries versus
-mutations explicitly; Thrift IDL alone does not describe idempotence or safe
-retry behavior. Keep retry/invalidation policy with the application.
+### Angular integration
 
-Keys must include service/method, arguments, and the relevant endpoint/tenant
-scope. Normalize bigint, Map, Set, and binary arguments into a deterministic,
-JSON-serializable representation without losing types or conflating keys. Raw
-Thrift arguments cannot simply be inserted into a default JSON-hashed query key.
-SSR cache persistence/hydration needs the same explicit value handling.
-See [query keys](https://tanstack.com/query/latest/docs/framework/react/guides/query-keys)
-and [cancellation](https://tanstack.com/query/latest/docs/framework/react/guides/query-cancellation).
+Angular services are generated over the Promise core and leverage modern Angular
+dependency injection rather than the legacy `Observable<ConnectOptions>` constructor pattern:
 
-### Angular
+- Service configuration is supplied via `InjectionToken` and provider factories
+  (e.g., `provideThriftClient(Service, config)`).
+- Service methods expose native Promise return types (aligning with Angular signals,
+  `resource()`, and `rxResource()`), with straightforward `defer()` wrappers for
+  RxJS-centric callers.
+- Per-call options allow overriding tracing headers and passing `AbortSignal`.
+- Avoid bundling RxJS or Angular decorators into the core compiler or runtime; keep
+  the Angular profile in an optional adapter layer.
+- Preserve exported service names, namespace entry points, and error classes.
 
-Provide an optional service output/profile with Angular/RxJS peer dependencies.
-The compatibility profile must preserve exported service names, the constructor
-receiving `Observable<ConnectOptions>`, Observable methods, lazy `metadata$`,
-namespace entry points, error exports, and per-call header creation. It should
-build with `--i64 number` for existing consumers.
+### React and TanStack Query (deferred)
 
-Support provider factories or injectable service wrappers around the Promise
-core, with HttpClient usable as the HTTP adapter. Observable subscription and
-unsubscription must have deliberate request/cancellation behavior; converting
-an already-started Promise alone does not cancel its request. Verify configuration
-updates and lazy loading against the existing service implementation. If output
-contains Angular decorators, validate its Angular package compilation format.
-See [Angular providers](https://angular.dev/guide/di/defining-dependency-providers).
+TanStack Query integration remains planned for a later phase following Angular
+adoption. Key design criteria remain: typed query/mutation options, deterministic
+query key normalization (for `bigint`, `Map`, `Set`), and `AbortSignal` forwarding.
 
 ## Existing experimental runtime
 

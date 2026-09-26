@@ -44,16 +44,18 @@ stock generation success alone is insufficient.
 ## Woody-compatible transport and Promise clients
 
 - [ ] Reuse Apache serialization/runtime contracts and replace HTTP I/O.
+- [ ] Implement declarative client initialization (ThriftClientConfig) with endpoint, timeout, static/dynamic header providers, and fetch/custom transport adapter.
+- [ ] Support direct static metadata import and Promise loader (eliminating legacy Observable metadata$ requirement).
 - [ ] Provide a request transport seam for fetch or framework HTTP adapters.
-- [ ] Preserve endpoint settings, binary content type, per-call headers, auth, and tracing.
-- [ ] Implement AbortSignal cancellation, timeout, and pending-request cleanup.
-- [ ] Validate response method/type/sequence and distinguish HTTP, network, application, and declared errors.
+- [ ] Implement AbortSignal cancellation, enforced timeout (AbortSignal.timeout/any), and pending-request socket teardown.
+- [ ] Reject non-200 HTTP responses (4xx/5xx) and invalid Content-Types immediately before Thrift decoding (prevent hung 500/HTML requests).
+- [ ] Validate response method/type/sequence and distinguish HTTP, network, timeout, and declared application errors.
 - [ ] Preserve compatibility error exports/context and logging hooks.
 - [ ] Preserve absent fields and present empty structs during conversion.
 - [ ] Cross-decode generated messages with the legacy Vality runtime.
 - [ ] Exercise one real HTTP service before claiming transport compatibility.
 
-## React / TanStack Query output
+## React / TanStack Query output (deferred)
 
 - [ ] Keep the Promise core independent of React and TanStack imports.
 - [ ] Generate typed query/mutation options with explicit method classification.
@@ -62,16 +64,16 @@ stock generation success alone is insufficient.
 - [ ] Verify cancellation, cache isolation, mutation behavior, and SSR value serialization.
 - [ ] Package the adapter as an optional entry with explicit peer dependencies.
 
-## Angular output and compatibility profile
+## Angular output and integration
 
-- [ ] Add an optional Angular/service build profile over the same Promise core.
-- [ ] Preserve service exports, Observable methods, ConnectOptions$ construction, and metadata$.
-- [ ] Preserve namespace exports, errors, logging, createCallOptions, and tracing ID helpers where consumed.
-- [ ] Use explicit number-mode generation for the existing numeric consumer contract.
-- [ ] Support provider factories and HttpClient transport injection without Angular imports in core.
-- [ ] Verify configuration updates, subscription lifecycle, cancellation, and lazy loading.
-- [ ] Compile the Angular package format when emitting decorated services.
-- [ ] Build existing consumers and browser-test forms and requests.
+- [ ] Add an Angular service generator over the shared Promise core.
+- [ ] Use modern Angular DI (InjectionToken and provideThriftClient provider factories) instead of legacy Observable<ConnectOptions> constructor.
+- [ ] Provide Promise-based service methods (compatible with Angular Signals and Resource API) with optional defer() RxJS helpers for Observable consumers.
+- [ ] Support HttpClient transport injection without Angular imports in core.
+- [ ] Preserve service exports, namespace exports, error types, and logging/call-option helpers.
+- [ ] Support explicit number-mode generation for existing numeric consumer contracts.
+- [ ] Verify configuration updates, lifecycle, cancellation, and lazy loading.
+- [ ] Compile Angular package format when emitting decorated services.
 
 ## Package output
 
