@@ -1,10 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import {
-  type Metadata,
-  type ThriftClientConstructor,
-  createThriftClient,
-  loadMetadata,
-} from "../src/index.ts";
+import { type Metadata, type ThriftClientConstructor, createThriftClient } from "../src/index.ts";
 
 const metadata: Metadata[] = [
   {
@@ -196,34 +191,46 @@ describe("Client transparent conversion", () => {
     expect(typeof res).toBe("number");
   });
 
-  test("loadMetadata loads metadata from fetch endpoint", async () => {
-    const originalFetch = globalThis.fetch;
-    try {
-      globalThis.fetch = async () =>
-        new Response(JSON.stringify(metadata), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        });
+  test("supports lazy dynamic import factory with default export", async () => {
+    let loaderCallCount = 0;
+    const lazyLoader = async () => {
+      loaderCallCount++;
+      return { default: metadata };
+    };
 
-      const loaded = await loadMetadata("http://example.com/metadata.json");
-      expect(loaded).toEqual(metadata);
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    const client = createThriftClient(
+      TestServiceClient as unknown as ThriftClientConstructor<any>,
+      {
+        endpoint: "http://example.com/thrift",
+        metadata: lazyLoader,
+      },
+      dummyTransport,
+    );
+
+    // Loader should not have been called yet until first method invocation
+    expect(loaderCallCount).toBe(0);
+
+    const [res1, res2] = await Promise.all([
+      client.echo({ id: 1n, tags: new Set(["tag1"]) }),
+      client.echo({ id: 2n, tags: new Set(["tag2"]) }),
+    ]);
+
+    expect(loaderCallCount).toBe(1);
+    expect(res1).toEqual({ id: 1n, tags: new Set(["tag1"]) });
+    expect(res2).toEqual({ id: 2n, tags: new Set(["tag2"]) });
   });
 
-  test("loadMetadata rejects on non-200 HTTP response", async () => {
-    const originalFetch = globalThis.fetch;
-    try {
-      globalThis.fetch = async () =>
-        new Response("Not Found", {
-          status: 404,
-          statusText: "Not Found",
-        });
+  test("supports sync metadata loader function", async () => {
+    const client = createThriftClient(
+      TestServiceClient as unknown as ThriftClientConstructor<any>,
+      {
+        endpoint: "http://example.com/thrift",
+        metadata: () => metadata,
+      },
+      dummyTransport,
+    );
 
-      await expect(loadMetadata("http://example.com/404.json")).rejects.toThrow("404 Not Found");
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    const res = await client.echo({ id: 3n, tags: new Set(["fast"]) });
+    expect(res).toEqual({ id: 3n, tags: new Set(["fast"]) });
   });
 });

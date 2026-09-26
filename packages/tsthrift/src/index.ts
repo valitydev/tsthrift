@@ -10,6 +10,8 @@ export type { ThriftClientConstructor, ThriftClientInstance } from "./transport/
 export { createHttpTransport } from "./transport/http-transport.ts";
 export type {
   HeaderProvider,
+  MetadataModule,
+  MetadataSource,
   RequestOptions,
   ThriftClientConfig,
   TransportFunction,

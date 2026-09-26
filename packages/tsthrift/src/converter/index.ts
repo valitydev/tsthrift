@@ -5,7 +5,6 @@ export { toThriftInstance } from "./to-thrift-instance.ts";
 export type { ToThriftInstanceContext } from "./to-thrift-instance.ts";
 export { ThriftConverter } from "./converter.ts";
 export type { ThriftConverterOptions } from "./converter.ts";
-export { loadMetadata } from "./load-metadata.ts";
 export type {
   ClassRegistry,
   Field,

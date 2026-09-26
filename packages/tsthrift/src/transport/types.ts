@@ -7,6 +7,15 @@ export type HeaderProvider =
   | Record<string, string>
   | (() => Record<string, string> | Promise<Record<string, string>>);
 
+/** Metadata module or array type supporting ESM default export. */
+export type MetadataModule = Metadata[] | { default: Metadata[] };
+
+/** Metadata source supporting static array, Promise, or dynamic import factory. */
+export type MetadataSource =
+  | Metadata[]
+  | Promise<MetadataModule>
+  | (() => Promise<MetadataModule> | MetadataModule);
+
 /** Declarative client connection and transport configuration. */
 export interface ThriftClientConfig {
   /** Target service endpoint URL. */
@@ -17,8 +26,8 @@ export interface ThriftClientConfig {
   timeoutMs?: number;
   /** Custom fetch implementation or framework adapter (e.g. Angular HttpClient). */
   fetch?: typeof fetch;
-  /** Optional metadata schemas (or Promise resolving to metadata) for automatic plain-object <-> Thrift instance conversion. */
-  metadata?: Metadata[] | Promise<Metadata[]>;
+  /** Optional metadata schemas for automatic plain-object <-> Thrift instance conversion. */
+  metadata?: MetadataSource;
   /** Service namespace (optional if serviceName is unique or auto-inferred). */
   namespace?: string;
   /** Service name in IDL (e.g. "Example" or "UserService"). */

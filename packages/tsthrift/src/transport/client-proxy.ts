@@ -1,6 +1,7 @@
 import { ThriftConverter } from "../converter/index.ts";
+import type { Metadata } from "../converter/types.ts";
 import type { ThriftClientConstructor, ThriftClientInstance } from "./client.ts";
-import type { RequestOptions, ThriftClientConfig } from "./types.ts";
+import type { MetadataModule, RequestOptions, ThriftClientConfig } from "./types.ts";
 
 export interface ProxyContext<T extends object> {
   target: T;
@@ -8,6 +9,16 @@ export interface ProxyContext<T extends object> {
   pendingOptions: Map<number, RequestOptions | undefined>;
   config: ThriftClientConfig;
   ClientClass: ThriftClientConstructor<T>;
+}
+
+function unwrapMetadata(raw: MetadataModule): Metadata[] {
+  if (Array.isArray(raw)) {
+    return raw;
+  }
+  if (raw && typeof raw === "object" && "default" in raw && Array.isArray(raw.default)) {
+    return raw.default;
+  }
+  return raw as unknown as Metadata[];
 }
 
 export function createClientProxy<T extends object>(context: ProxyContext<T>): T {
@@ -28,26 +39,38 @@ export function createClientProxy<T extends object>(context: ProxyContext<T>): T
     }
   };
 
+  const initConverter = (metadata: MetadataModule) => {
+    converter = new ThriftConverter({
+      metadata: unwrapMetadata(metadata),
+      i64Mode: config.i64Mode,
+      classRegistry: config.classRegistry,
+      index: config.index,
+    });
+    resolveServiceAndNamespace();
+  };
+
   if (!converter && config.metadata) {
-    if (config.metadata instanceof Promise) {
-      initPromise = config.metadata.then((loaded) => {
-        converter = new ThriftConverter({
-          metadata: loaded,
-          i64Mode: config.i64Mode,
-          classRegistry: config.classRegistry,
-          index: config.index,
-        });
-        resolveServiceAndNamespace();
-      });
-    } else {
-      converter = new ThriftConverter({
-        metadata: config.metadata,
-        i64Mode: config.i64Mode,
-        classRegistry: config.classRegistry,
-        index: config.index,
-      });
+    if (Array.isArray(config.metadata)) {
+      initConverter(config.metadata);
+    } else if (config.metadata instanceof Promise) {
+      initPromise = config.metadata.then(initConverter);
     }
   }
+
+  const ensureReady = (): Promise<void> | undefined => {
+    if (converter) return undefined;
+    if (initPromise) return initPromise;
+    if (typeof config.metadata === "function") {
+      const result = config.metadata();
+      if (result instanceof Promise) {
+        initPromise = result.then(initConverter);
+        return initPromise;
+      }
+      initConverter(result);
+      return undefined;
+    }
+    return undefined;
+  };
 
   resolveServiceAndNamespace();
 
@@ -115,8 +138,9 @@ export function createClientProxy<T extends object>(context: ProxyContext<T>): T
           return (original as Function).apply(rawTarget, callArgs);
         };
 
-        if (initPromise) {
-          return initPromise.then(executeCall);
+        const waitPromise = ensureReady();
+        if (waitPromise) {
+          return waitPromise.then(executeCall);
         }
         return executeCall();
       };
