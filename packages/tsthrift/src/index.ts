@@ -14,3 +14,4 @@ export type {
   ThriftClientConfig,
   TransportFunction,
 } from "./transport/types.ts";
+export * from "./converter/index.ts";

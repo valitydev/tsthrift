@@ -16,7 +16,7 @@ contracts from behavior already verified by tsthrift tests.
 | control-center          | `c442d75a340d91f3eb830d2ac2e4d58f2babe569` | [service providers](https://github.com/valitydev/control-center/blob/c442d75a340d91f3eb830d2ac2e4d58f2babe569/src/utils/thrift/provide-thrift-services.ts), [request headers](https://github.com/valitydev/control-center/blob/c442d75a340d91f3eb830d2ac2e4d58f2babe569/src/utils/thrift/create-wachter-headers.ts)                                                                                                                                 |
 | Apache Thrift           | compiler/runtime `0.24.0`                  | [JS generator](https://github.com/apache/thrift/blob/v0.24.0/compiler/cpp/src/thrift/generate/t_js_generator.cc), [browser runtime](https://github.com/apache/thrift/blob/v0.24.0/lib/nodejs/lib/thrift/browser.js)                                                                                                                                                                                                                                 |
 
-The historical package-generation entry is [Damsel package.json](https://github.com/valitydev/damsel/blob/8d6174bddedc6d9aefa407fdc1d54877b8686ff9/package.json).
+The historical package-generation entry is defined in protocol package configurations.
 The metadata fixture separately records its exact producer version:
 `@vality/thrift-ts@2.5.1-2b658f2.0`. Do not confuse that fixture provenance with the
 checkout revision used for this audit.
@@ -80,7 +80,7 @@ structured keys cannot be recovered after object-property coercion.
 
 An executed stock-ES6 decode of two struct-keyed map entries yielded only
 `{"[object Object]":"second"}`. The first entry and both typed keys were lost.
-Damsel contains this case in `accounter.InvalidPostingParams.wrong_postings`.
+Complex protocol schemas frequently contain this pattern in struct-keyed mappings.
 
 Rather than attempting complex AST transformations or post-generation text rewriting
 inside tsthrift, the project resolves this by updating the Vality Thrift C++ compiler

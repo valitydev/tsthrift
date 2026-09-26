@@ -1,3 +1,6 @@
+import type { ThriftConverter } from "../converter/converter.ts";
+import type { ClassRegistry, I64Mode, Metadata } from "../converter/types.ts";
+
 /** Provider of request headers, either static record or sync/async factory. */
 export type HeaderProvider =
   | Record<string, string>
@@ -13,6 +16,18 @@ export interface ThriftClientConfig {
   timeoutMs?: number;
   /** Custom fetch implementation or framework adapter (e.g. Angular HttpClient). */
   fetch?: typeof fetch;
+  /** Optional metadata schemas (or Promise resolving to metadata) for automatic plain-object <-> Thrift instance conversion. */
+  metadata?: Metadata[] | Promise<Metadata[]>;
+  /** Service namespace (optional if serviceName is unique or auto-inferred). */
+  namespace?: string;
+  /** Service name in IDL (e.g. "Example" or "UserService"). */
+  serviceName?: string;
+  /** 64-bit integer conversion strategy (defaults to "bigint"). */
+  i64Mode?: I64Mode;
+  /** Registry of Thrift constructor classes. */
+  classRegistry?: ClassRegistry;
+  /** Pre-configured converter instance. */
+  converter?: ThriftConverter;
 }
 
 /** Per-call request options passed by the caller. */

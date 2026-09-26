@@ -1,4 +1,5 @@
 import thrift from "thrift";
+import { createClientProxy } from "./client-proxy.ts";
 import { ThriftProtocolError } from "./errors.ts";
 import { createHttpTransport } from "./http-transport.ts";
 import type { RequestOptions, ThriftClientConfig, TransportFunction } from "./types.ts";
@@ -76,39 +77,11 @@ export function createThriftClient<T extends object>(
   ) as unknown as ThriftClientInstance;
   clientInstance = rawClient;
 
-  // Wrap client with a Proxy to intercept calls and capture per-call RequestOptions
-  return new Proxy(rawClient as unknown as T, {
-    get(target, prop, receiver) {
-      const original = Reflect.get(target, prop, receiver);
-      if (typeof prop !== "string" || typeof original !== "function") {
-        return original;
-      }
-      if (
-        prop.startsWith("send_") ||
-        prop.startsWith("recv_") ||
-        prop.endsWith("_seqid") ||
-        prop === "seqid"
-      ) {
-        return original;
-      }
-
-      return function (...args: unknown[]) {
-        const lastArg = args[args.length - 1];
-        let callArgs = args;
-
-        // Check if the last argument is RequestOptions (has signal, headers, or timeoutMs)
-        if (
-          lastArg &&
-          typeof lastArg === "object" &&
-          ("signal" in lastArg || "headers" in lastArg || "timeoutMs" in lastArg)
-        ) {
-          const expectedSeqid = clientInstance._seqid + 1;
-          pendingOptions.set(expectedSeqid, lastArg as RequestOptions);
-          callArgs = args.slice(0, -1);
-        }
-
-        return (original as Function).apply(target, callArgs);
-      };
-    },
+  return createClientProxy({
+    target: rawClient as unknown as T,
+    clientInstance,
+    pendingOptions,
+    config,
+    ClientClass,
   });
 }

@@ -1,6 +1,6 @@
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import { cp, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -167,6 +167,22 @@ describe("Thrift RPC client integration", () => {
     controller.abort(new Error("abort call"));
 
     await expect(client.ping("test", { signal: controller.signal })).rejects.toThrow("abort call");
+    expect(Object.keys(client._reqs)).toEqual([]);
+  });
+
+  integration("transparently converts numbers to bigint and back with metadata", async () => {
+    const metadata = JSON.parse(
+      await readFile(path.join(directory, "generated/metadata.json"), "utf8"),
+    );
+    const client = createThriftClient(ClientClass, {
+      endpoint,
+      metadata,
+      i64Mode: "number",
+    });
+
+    const result = await (client as any).multiply(1000, 25);
+    expect(result).toBe(25000);
+    expect(typeof result).toBe("number");
     expect(Object.keys(client._reqs)).toEqual([]);
   });
 });

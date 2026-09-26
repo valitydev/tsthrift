@@ -221,16 +221,15 @@ parser test suite. Keep its producer provenance in the fixture README.
 
 ### Real-protocol validation
 
-To validate against real-world schemas, set `THRIFT_COMPILER` and `DAMSEL_PROTO`
+To validate against real-world schemas, set `THRIFT_COMPILER` and `REFERENCE_PROTO`
 to the installed compiler and checked-out schema paths:
 
 ```sh
-node dist/cli.mjs --input "$DAMSEL_PROTO" --output ./generated-damsel \
-  --namespace domain_config_v2 --namespace domain --namespace payment_processing \
-  --namespace accounter --namespace webhooker --namespace api_extensions \
-  --namespace proxy_provider
+node dist/cli.mjs --input "$REFERENCE_PROTO" --output ./generated-reference \
+  --namespace identity --namespace catalog --namespace analytics \
+  --namespace core --namespace events --namespace extensions
 node_modules/.bin/tsc --ignoreConfig --noEmit --strict --skipLibCheck \
-  --target es2020 --module nodenext ./generated-damsel/models/*.ts
+  --target es2020 --module nodenext ./generated-reference/models/*.ts
 ```
 
 Repeat with `--i64 number`. Full Apache generation remains blocked by the map guard;

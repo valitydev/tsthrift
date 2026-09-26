@@ -122,7 +122,7 @@ integration(
     );
     await generate({ ...options, namespaces: ["callback"] });
     await symlink(
-      path.resolve("node_modules"),
+      path.resolve(import.meta.dirname, "../node_modules"),
       path.join(path.dirname(options.output), "node_modules"),
       "dir",
     );

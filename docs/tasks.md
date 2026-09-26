@@ -12,7 +12,7 @@ and source revisions are in [compatibility](compatibility.md).
 - [x] Generate TS models, runtime enums, references, constants, struct defaults, and nested collections.
 - [x] Default public i64 to bigint and provide explicit --i64 number compatibility mode.
 - [x] Compile and execute both numeric modes; keep metadata unchanged between them.
-- [x] Verify 15 selected Damsel model modules in both modes and compare legacy metadata.
+- [x] Verify 15 complex reference IDL modules in both modes and compare legacy metadata.
 - [x] Preserve staged output, ownership checks, and rollback behavior.
 - [ ] Support exact large-integer IDL constants without changing legacy metadata silently.
 - [ ] Resolve public binary conversion from existing consumers.
@@ -30,12 +30,12 @@ project integration defect or a consumer contract that needs protection.
 - [x] Audit thrift-ts, frontend-thrift-codegen, woody_js, the Vality fork, and existing Angular consumers.
 - [x] Confirm stock ES6 JS still loses struct map keys; decided to update Vality C++ fork for native Map generation instead of AST transforms in tsthrift.
 - [ ] Integrate and verify updated Vality Thrift compiler fork (Apache 0.24 + native Map generation).
-- [ ] Verify struct-keyed maps (e.g. accounter.InvalidPostingParams.wrong_postings) using the updated compiler.
-- [ ] Implement recursive public plain-object (typed JSON) to/from generated class instance conversion.
-- [ ] Add declared-exception and i64 mode conversion at the public client boundary.
+- [ ] Verify struct-keyed maps with composite keys using the updated compiler.
+- [x] Implement recursive public plain-object (typed JSON) to/from generated class instance conversion.
+- [x] Add declared-exception and i64 mode conversion at the public client boundary.
 - [ ] Cover transitive typedef imports and generated identifier collisions beyond callback.
 - [ ] Package generated JS with a compatible browser runtime, bigint helpers, and required polyfills.
-- [ ] Generate the full Damsel client set without losing map keys.
+- [ ] Generate full client sets for complex reference schemas without losing map keys.
 - [ ] Make compiler acquisition reproducible in CI.
 
 Acceptance: generated clients preserve existing wire and public value contracts;
@@ -45,13 +45,13 @@ stock generation success alone is insufficient.
 
 - [x] Reuse Apache serialization/runtime contracts and replace HTTP I/O.
 - [x] Implement declarative client initialization (ThriftClientConfig) with endpoint, timeout, static/dynamic header providers, and fetch/custom transport adapter.
-- [ ] Support direct static metadata import and Promise loader (eliminating legacy Observable metadata$ requirement).
+- [x] Support direct static metadata import and Promise loader (eliminating legacy Observable metadata$ requirement).
 - [x] Provide a request transport seam for fetch or framework HTTP adapters.
 - [x] Implement AbortSignal cancellation, enforced timeout (AbortSignal.timeout/any), and pending-request socket teardown.
 - [x] Reject non-200 HTTP responses (4xx/5xx) and invalid Content-Types immediately before Thrift decoding (prevent hung 500/HTML requests).
 - [x] Validate response method/type/sequence and distinguish HTTP, network, timeout, and declared application errors.
 - [ ] Preserve compatibility error exports/context and logging hooks.
-- [ ] Preserve absent fields and present empty structs during conversion.
+- [x] Preserve absent fields and present empty structs during conversion.
 - [ ] Cross-decode generated messages with the legacy Vality runtime.
 - [x] Exercise one real HTTP service before claiming transport compatibility.
 

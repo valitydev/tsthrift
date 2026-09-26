@@ -82,7 +82,7 @@ outside the safe range are rejected in both modes; exact constant parsing is
 pending. Public binary still has the legacy string declaration; its conversion
 to runtime bytes needs a consumer compatibility decision.
 
-The existing metadata baseline and 15 selected Damsel model modules have been
+The existing metadata baseline and 15 complex reference IDL modules have been
 verified. Angular services, forms, HTTP behavior, and package exports still need
 consumer validation. Use `--i64 number` for compatibility builds; matching types
 alone does not preserve the old Observable service API.
