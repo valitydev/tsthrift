@@ -1,4 +1,4 @@
-import type { ValueType } from "../metadata/schema.ts";
+import type { ValueType } from "@vality/tsthrift";
 import type { Program } from "./load-schema.ts";
 
 export const primitives = new Set([

@@ -1,4 +1,4 @@
-import type { ValueType } from "../metadata/schema.ts";
+import type { ValueType } from "@vality/tsthrift";
 import type { Program } from "./load-schema.ts";
 import { resolveType } from "./resolve-type.ts";
 import { constantReference, referenceName } from "./constant-reference.ts";

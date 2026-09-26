@@ -1,4 +1,4 @@
-import type { Field, ValueType } from "../metadata/schema.ts";
+import type { Field, ValueType } from "@vality/tsthrift";
 import type { Program } from "./load-schema.ts";
 import { emitConstant } from "./emit-constant.ts";
 import { enumMembers } from "./enum-members.ts";

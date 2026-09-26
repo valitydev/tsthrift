@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { createConverter, type Metadata } from "../src/index.ts";
+import { ThriftConverter, type Metadata } from "../src/index.ts";
 
 const sampleMetadata: Metadata[] = [
   {
@@ -97,7 +97,7 @@ const classRegistry = {
 describe("ThriftConverter", () => {
   describe("toThriftInstance", () => {
     test("converts plain objects to Thrift class instances recursively", () => {
-      const converter = createConverter({
+      const converter = new ThriftConverter({
         metadata: sampleMetadata,
         classRegistry,
         i64Mode: "bigint",
@@ -126,7 +126,7 @@ describe("ThriftConverter", () => {
     });
 
     test("converts numbers to bigint in number mode and enforces safe integer bounds", () => {
-      const converter = createConverter({
+      const converter = new ThriftConverter({
         metadata: sampleMetadata,
         classRegistry,
         i64Mode: "number",
@@ -150,13 +150,13 @@ describe("ThriftConverter", () => {
     });
 
     test("converts union to single-property instance", () => {
-      const converter = createConverter({ metadata: sampleMetadata });
+      const converter = new ThriftConverter({ metadata: sampleMetadata });
       const union = converter.toThriftInstance({ first: "choice-a" }, "Selection", "example");
       expect(union).toEqual({ first: "choice-a" });
     });
 
     test("preserves empty struct when present", () => {
-      const converter = createConverter({
+      const converter = new ThriftConverter({
         metadata: sampleMetadata,
         classRegistry,
       });
@@ -178,7 +178,7 @@ describe("ThriftConverter", () => {
 
   describe("toPlainObject", () => {
     test("converts Thrift instance to clean plain object without methods", () => {
-      const converter = createConverter({
+      const converter = new ThriftConverter({
         metadata: sampleMetadata,
         i64Mode: "bigint",
       });
@@ -206,7 +206,7 @@ describe("ThriftConverter", () => {
     });
 
     test("converts bigint to number in number mode and checks bounds", () => {
-      const converter = createConverter({
+      const converter = new ThriftConverter({
         metadata: sampleMetadata,
         i64Mode: "number",
       });
@@ -238,7 +238,7 @@ describe("ThriftConverter", () => {
     });
 
     test("converts union instance to single variant plain object", () => {
-      const converter = createConverter({ metadata: sampleMetadata });
+      const converter = new ThriftConverter({ metadata: sampleMetadata });
       const plain = converter.toPlainObject(
         { first: "choice-a", second: null },
         "Selection",

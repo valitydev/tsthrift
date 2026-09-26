@@ -1,4 +1,4 @@
-import type { Field, ValueType } from "../metadata/schema.ts";
+import type { Field, ValueType } from "@vality/tsthrift";
 import type { Program, Schema } from "./load-schema.ts";
 import { resolveReference, resolveType } from "./resolve-type.ts";
 import { enumMembers } from "./enum-members.ts";

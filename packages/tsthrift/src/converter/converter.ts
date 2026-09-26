@@ -1,15 +1,22 @@
 import { MetadataIndex } from "./metadata-index.ts";
 import { toPlainObject } from "./to-plain-object.ts";
 import { toThriftInstance } from "./to-thrift-instance.ts";
-import type { ConversionOptions, I64Mode, ValueType } from "./types.ts";
+import type { ClassRegistry, I64Mode, Metadata, ValueType } from "./types.ts";
+
+export interface ThriftConverterOptions {
+  metadata?: Metadata[];
+  i64Mode?: I64Mode;
+  classRegistry?: ClassRegistry;
+  index?: MetadataIndex;
+}
 
 export class ThriftConverter {
   readonly index: MetadataIndex;
   readonly i64Mode: I64Mode;
-  readonly classRegistry?: ConversionOptions["classRegistry"];
+  readonly classRegistry?: ClassRegistry;
 
-  constructor(options: ConversionOptions = {}) {
-    this.index = new MetadataIndex(options.metadata ?? []);
+  constructor(options: ThriftConverterOptions = {}) {
+    this.index = options.index ?? new MetadataIndex(options.metadata ?? []);
     this.i64Mode = options.i64Mode ?? "bigint";
     this.classRegistry = options.classRegistry;
   }
@@ -36,8 +43,4 @@ export class ThriftConverter {
   getMethod(namespace: string, serviceName: string, methodName: string) {
     return this.index.getMethod(namespace, serviceName, methodName);
   }
-}
-
-export function createConverter(options: ConversionOptions = {}): ThriftConverter {
-  return new ThriftConverter(options);
 }

@@ -1,4 +1,4 @@
-import { createConverter, type ThriftConverter } from "../converter/index.ts";
+import { ThriftConverter } from "../converter/index.ts";
 import type { ThriftClientConstructor, ThriftClientInstance } from "./client.ts";
 import type { RequestOptions, ThriftClientConfig } from "./types.ts";
 
@@ -31,18 +31,20 @@ export function createClientProxy<T extends object>(context: ProxyContext<T>): T
   if (!converter && config.metadata) {
     if (config.metadata instanceof Promise) {
       initPromise = config.metadata.then((loaded) => {
-        converter = createConverter({
+        converter = new ThriftConverter({
           metadata: loaded,
           i64Mode: config.i64Mode,
           classRegistry: config.classRegistry,
+          index: config.index,
         });
         resolveServiceAndNamespace();
       });
     } else {
-      converter = createConverter({
+      converter = new ThriftConverter({
         metadata: config.metadata,
         i64Mode: config.i64Mode,
         classRegistry: config.classRegistry,
+        index: config.index,
       });
     }
   }

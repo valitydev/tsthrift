@@ -16,7 +16,9 @@ and source revisions are in [compatibility](compatibility.md).
 - [x] Preserve staged output, ownership checks, and rollback behavior.
 - [ ] Support exact large-integer IDL constants without changing legacy metadata silently.
 - [ ] Resolve public binary conversion from existing consumers.
-- [ ] Validate metadata in actual form consumers.
+- [ ] Validate metadata in actual form consumers (@vality/ng-thrift and control-center).
+- [ ] Support minified metadata artifact output for production releases while keeping formatted fixtures for tests.
+- [ ] Design per-module/per-namespace metadata splitting for lazy on-demand loading in dynamic forms.
 
 Do not recreate thrift-parser's grammar test suite. Add cases when they expose a
 project integration defect or a consumer contract that needs protection.
@@ -34,7 +36,7 @@ project integration defect or a consumer contract that needs protection.
 - [x] Implement recursive public plain-object (typed JSON) to/from generated class instance conversion.
 - [x] Add declared-exception and i64 mode conversion at the public client boundary.
 - [ ] Cover transitive typedef imports and generated identifier collisions beyond callback.
-- [ ] Package generated JS with a compatible browser runtime, bigint helpers, and required polyfills.
+- [ ] Package generated JS with a compatible browser runtime, bigint helpers, and required Buffer polyfill for Apache Thrift 0.24.
 - [ ] Generate full client sets for complex reference schemas without losing map keys.
 - [ ] Make compiler acquisition reproducible in CI.
 

@@ -1,4 +1,5 @@
 import type { ThriftConverter } from "../converter/converter.ts";
+import type { MetadataIndex } from "../converter/metadata-index.ts";
 import type { ClassRegistry, I64Mode, Metadata } from "../converter/types.ts";
 
 /** Provider of request headers, either static record or sync/async factory. */
@@ -28,6 +29,8 @@ export interface ThriftClientConfig {
   classRegistry?: ClassRegistry;
   /** Pre-configured converter instance. */
   converter?: ThriftConverter;
+  /** Pre-built metadata index. */
+  index?: MetadataIndex;
 }
 
 /** Per-call request options passed by the caller. */

@@ -45,9 +45,3 @@ export interface Metadata {
 export type I64Mode = "bigint" | "number";
 
 export type ClassRegistry = Record<string, any> | ((namespace: string, typeName: string) => any);
-
-export interface ConversionOptions {
-  metadata?: Metadata[];
-  i64Mode?: I64Mode;
-  classRegistry?: ClassRegistry;
-}

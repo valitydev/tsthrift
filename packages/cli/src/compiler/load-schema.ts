@@ -1,7 +1,7 @@
 import { readFile, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
 import parse from "thrift-parser";
-import type { Metadata, ThriftAst } from "../metadata/schema.ts";
+import type { Metadata, ThriftAst } from "@vality/tsthrift";
 
 export interface Program extends Metadata {
   filename: string;

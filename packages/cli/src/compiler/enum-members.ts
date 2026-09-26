@@ -1,4 +1,4 @@
-import type { ThriftAst } from "../metadata/schema.ts";
+import type { ThriftAst } from "@vality/tsthrift";
 
 type Enumeration = NonNullable<ThriftAst["enum"]>[string];
 

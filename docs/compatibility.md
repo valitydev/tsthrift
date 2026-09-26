@@ -91,6 +91,19 @@ The runtime npm package remains official stock `thrift@0.24.0`: Thrift's `TBinar
 and `TBufferedTransport` operate on wire tokens (`writeMapBegin`/`readMapBegin`) and
 do not depend on whether JavaScript represents the map as an object or a `Map`.
 
+### Browser runtime and Buffer dependency
+
+Because official `thrift@0.24.0` remains the production serialization runtime,
+its binary protocol and buffered transport classes rely directly on Node.js `Buffer`
+APIs (`Buffer.from`, `Buffer.isBuffer`, `Buffer.allocUnsafe`, and `Buffer.prototype.readBigInt64BE`).
+Modern browsers do not provide `globalThis.Buffer`.
+
+To execute generated Apache clients in browser environments without runtime reference
+errors, package distribution must bundle or declare a `Buffer` polyfill (equivalent to
+the legacy `tools/buffer-polyfill.js` in `frontend-thrift-codegen`). The standalone
+binary runtime in `packages/tsthrift/src/runtime` (which uses pure `Uint8Array` and `DataView`)
+is a tested low-level experiment, not the active production backend for generated clients.
+
 ## Woody responsibilities
 
 woody_js wires a buffered Binary Protocol connection to generated clients. Its

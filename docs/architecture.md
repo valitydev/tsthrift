@@ -78,6 +78,21 @@ Preserve guards for conflicting JS filenames and unresolved transitive typedef
 imports. Callback arguments are now permitted. General generated-name collisions
 still require fixtures; resolving callback does not prove all names are safe.
 
+### Browser packaging and Buffer requirement
+
+The production runtime retains official stock `thrift@0.24.0` for wire serialization and
+transport buffering (`TBinaryProtocol`, `TBufferedTransport`). Because Apache Thrift's
+internals depend directly on Node.js `Buffer` APIs (`Buffer.from`, `Buffer.isBuffer`,
+`Buffer.allocUnsafe`, and `Buffer.prototype.readBigInt64BE`), executing generated Apache
+clients in browser environments requires a `Buffer` polyfill (mirroring the legacy
+`tools/buffer-polyfill.js` in `frontend-thrift-codegen`).
+
+Package packaging must provide or declare this polyfill shim for browser consumers so
+that `thrift@0.24.0` executes seamlessly in bundlers (Vite, Webpack, Angular CLI) without
+`ReferenceError: Buffer is not defined`. The standalone `Uint8Array`/`DataView` runtime in
+`packages/tsthrift/src/runtime` remains an isolated experimental testbed and is not the
+current production backend for generated clients.
+
 ## Transport and client contract
 
 Reuse Apache Binary Protocol and buffered transport contracts when wiring its
@@ -142,9 +157,20 @@ holding sockets open):
 The immediate target framework is **Angular**. React and TanStack Query adapters
 are deferred.
 
-Metadata emission remains a static, build-time JSON artifact (`metadata.json`).
-Loading metadata uses direct JSON import or a plain Promise function (`getMetadata()`),
-eliminating the legacy runtime requirement for `Observable<metadata$>`.
+Metadata emission produces a static JSON artifact (`metadata.json`) preserving the legacy
+AST (`{ path, name, ast }[]`) required by `@vality/ng-thrift` and dynamic forms in `control-center`.
+
+- **Dynamic forms requirement**: Forms and visualizers rely on full schema AST definitions
+  (structs, unions, enums, typedefs) to construct form controls and resolve nested types.
+- **Payload efficiency**: Release artifacts must emit minified JSON without indentation,
+  keeping pretty-printed JSON strictly for test fixtures to minimize package size.
+- **Client isolation**: Metadata is exposed via an isolated subpath export (`./metadata`) or
+  a lazy Promise function (`getMetadata()`), eliminating the legacy runtime requirement for
+  `Observable<metadata$>` and ensuring pure RPC clients do not bundle unused AST schemas.
+- **Future modular metadata**: The schema loader preserves program boundaries (`schema.programs`).
+  The architecture is designed to support per-module/per-namespace metadata output in the future
+  (`models/<module>.metadata.json`), enabling next-generation form consumers to lazily load
+  metadata chunks on demand rather than shipping a monolithic domain AST.
 
 ### Angular integration
 
