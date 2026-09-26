@@ -17,6 +17,7 @@
   "type": "module",
   "exports": {
     ".": "./dist/index.mjs",
+    "./angular": "./dist/angular/index.mjs",
     "./runtime": "./dist/runtime.mjs",
     "./package.json": "./package.json"
   },
@@ -34,11 +35,25 @@
     "thrift": "catalog:"
   },
   "devDependencies": {
+    "@angular/core": "catalog:",
     "@types/node": "catalog:",
     "bumpp": "catalog:",
+    "rxjs": "catalog:",
     "typescript": "catalog:",
     "uuid": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "@angular/core": ">=16.0.0",
+    "rxjs": ">=7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@angular/core": {
+      "optional": true
+    },
+    "rxjs": {
+      "optional": true
+    }
   }
 }

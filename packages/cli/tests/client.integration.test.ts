@@ -199,5 +199,21 @@ describe("Thrift RPC client integration", () => {
     const rootIndex = await readFile(path.join(directory, "generated/index.ts"), "utf8");
     expect(rootIndex).toContain('export * from "./clients/index.js";');
     expect(rootIndex).toContain('export * as rpc_test from "./models/rpc_test.js";');
+
+    const servicesModule = await import(path.join(directory, "generated/clients/services.ts"));
+    expect(servicesModule.SERVICES.RpcTestService).toBeDefined();
+    expect(servicesModule.SERVICES.RpcTestService.serviceName).toBe("RpcTestService");
+    expect(servicesModule.SERVICES.RpcTestService.namespace).toBe("rpc_test");
+    expect(servicesModule.SERVICES.RpcTestService.token).toBeDefined();
+    expect(typeof servicesModule.SERVICES.RpcTestService.createClient).toBe("function");
+
+    const descriptorClient = servicesModule.SERVICES.RpcTestService.createClient({ endpoint });
+    expect(await descriptorClient.ping("via descriptor")).toBe("echo: via descriptor");
+
+    const metadata = await servicesModule.SERVICES.RpcTestService.getMetadata();
+    expect(Array.isArray(metadata)).toBe(true);
+
+    expect(servicesModule.SERVICES_LIST).toHaveLength(1);
+    expect(servicesModule.SERVICES_LIST[0].serviceName).toBe("RpcTestService");
   });
 });

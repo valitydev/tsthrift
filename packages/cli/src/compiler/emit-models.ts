@@ -69,9 +69,9 @@ export function emitModels(program: Program, i64: I64Mode = "bigint"): string {
         ...method.args.map((field) => `${field.name}: ${tsType(field.type, i64)}`),
         "options?: RequestOptions",
       ].join(", ");
-      return `  ${JSON.stringify(method.name)}(${parameters}): Promise<${tsType(method.type, i64)}>;`;
+      return `  abstract ${JSON.stringify(method.name)}(${parameters}): Promise<${tsType(method.type, i64)}>;`;
     });
-    lines.push(`export interface ${name}Client${parent} {\n${methods.join("\n")}\n}`);
+    lines.push(`export abstract class ${name}Client${parent} {\n${methods.join("\n")}\n}`);
   }
   return `${lines.join("\n\n")}\n`;
 }

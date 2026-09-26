@@ -69,9 +69,9 @@ stock generation success alone is insufficient.
 ## Angular output and integration
 
 - [ ] Add an Angular service generator over the shared Promise core.
-- [ ] Use modern Angular DI (InjectionToken and provideThriftClient provider factories) instead of legacy Observable<ConnectOptions> constructor.
+- [x] Use modern Angular DI (InjectionToken and provideThriftClient provider factories) instead of legacy Observable<ConnectOptions> constructor.
 - [ ] Provide Promise-based service methods (compatible with Angular Signals and Resource API) with optional defer() RxJS helpers for Observable consumers.
-- [ ] Support HttpClient transport injection without Angular imports in core.
+- [x] Support HttpClient transport injection without Angular imports in core.
 - [ ] Preserve service exports, namespace exports, error types, and logging/call-option helpers.
 - [ ] Support explicit number-mode generation for existing numeric consumer contracts.
 - [ ] Verify configuration updates, lifecycle, cancellation, and lazy loading.

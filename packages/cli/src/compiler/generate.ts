@@ -4,7 +4,7 @@ import { loadSchema } from "./load-schema.ts";
 import { validateSchema } from "./validate-schema.ts";
 import { apacheGenerator, compilerVersion, generateJavaScript } from "./run-thrift.ts";
 import { emitModels } from "./emit-models.ts";
-import { emitClients, emitClientsIndex } from "./emit-clients.ts";
+import { emitClients, emitClientsIndex, emitServicesRegistry } from "./emit-clients.ts";
 import { publishOutput } from "./publish-output.ts";
 import { emitMetadata } from "../metadata/emit-metadata.ts";
 import { validateApache } from "./validate-apache.ts";
@@ -74,6 +74,13 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
         for (const client of clients) {
           await writeFile(path.join(clientsDir, `${client.name}.ts`), client.content);
         }
+        const serviceEntries = schema.programs.flatMap((program) =>
+          Object.keys(program.ast.service ?? {}).map((serviceName) => ({
+            serviceName,
+            programName: program.name,
+          })),
+        );
+        await writeFile(path.join(clientsDir, "services.ts"), emitServicesRegistry(serviceEntries));
         await writeFile(path.join(clientsDir, "index.ts"), emitClientsIndex(clients));
       }
     }
