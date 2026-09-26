@@ -56,7 +56,7 @@ test("CLI metadata generation works with no compiler on PATH", async () => {
   const result = await execute(
     process.execPath,
     [
-      path.resolve("src/cli.ts"),
+      path.resolve(import.meta.dirname, "../src/cli.ts"),
       "--target",
       "metadata",
       "--input",

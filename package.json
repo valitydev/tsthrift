@@ -1,50 +1,16 @@
 {
-  "name": "tsthrift",
+  "name": "tsthrift-monorepo",
   "version": "0.0.0",
-  "description": "Framework-independent Thrift JavaScript, TypeScript model, and metadata generation.",
-  "homepage": "https://github.com/valitydev/tsthrift#readme",
-  "bugs": {
-    "url": "https://github.com/valitydev/tsthrift/issues"
-  },
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/valitydev/tsthrift.git"
-  },
-  "bin": {
-    "tsthrift": "./dist/cli.mjs"
-  },
-  "files": [
-    "dist"
-  ],
+  "private": true,
   "type": "module",
-  "exports": {
-    ".": "./dist/index.mjs",
-    "./cli": "./dist/cli.mjs",
-    "./runtime": "./dist/runtime.mjs",
-    "./transport": "./dist/transport.mjs",
-    "./package.json": "./package.json"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
   "scripts": {
-    "build": "vp pack",
-    "dev": "vp pack --watch",
+    "ready": "vp check && vp run -r test && vp run -r build",
+    "build": "vp run -r build",
     "test": "vp test",
-    "check": "vp check",
-    "prepublishOnly": "vp run build",
-    "prepare": "vp config"
-  },
-  "dependencies": {
-    "thrift-parser": "0.4.2"
+    "check": "vp check"
   },
   "devDependencies": {
-    "@types/node": "^26.1.1",
-    "bumpp": "^11.1.0",
-    "thrift": "0.24.0",
-    "typescript": "^7.0.2",
-    "uuid": "14.0.0",
+    "@types/node": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   },
@@ -55,12 +21,7 @@
       "onFail": "download"
     }
   },
-  "inlinedDependencies": {
-    "browser-or-node": "1.3.0",
-    "isomorphic-ws": "4.0.1",
-    "node-int64": "0.4.0",
-    "thrift": "0.24.0",
-    "uuid": "14.0.2",
-    "ws": "8.21.3"
+  "engines": {
+    "node": ">=22.18.0"
   }
 }

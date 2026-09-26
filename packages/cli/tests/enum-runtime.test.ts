@@ -4,10 +4,15 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { createRequire } from "node:module";
 import { expect, test } from "vite-plus/test";
 import { generate } from "../src/index.ts";
 
 const execute = promisify(execFile);
+const tsc = path.resolve(
+  path.dirname(createRequire(import.meta.url).resolve("typescript")),
+  "../bin/tsc",
+);
 
 test("generated enums exist at runtime with numeric values and reverse mappings", async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "tsthrift-enums-"));
@@ -32,7 +37,8 @@ test("generated enums exist at runtime with numeric values and reverse mappings"
     expect(result.compilerVersion).toBeUndefined();
     const model = path.join(output, "models/example.ts");
     expect(await readFile(model, "utf8")).toContain("export enum Status");
-    await execute(path.resolve("node_modules/.bin/tsc"), [
+    await execute(process.execPath, [
+      tsc,
       "--ignoreConfig",
       "--strict",
       "--skipLibCheck",

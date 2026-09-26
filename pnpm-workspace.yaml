@@ -1,8 +1,21 @@
+packages:
+  - packages/*
+
+catalogMode: prefer
+
 catalog:
+  "@types/node": ^26.1.1
+  bumpp: ^11.1.0
+  thrift: 0.24.0
+  thrift-parser: 0.4.2
+  typescript: ^7.0.2
+  uuid: 14.0.0
   vite: npm:@voidzero-dev/vite-plus-core@0.3.0
   vite-plus: 0.3.0
+
 overrides:
   vite@*: "catalog:"
+
 peerDependencyRules:
   allowAny:
     - vite

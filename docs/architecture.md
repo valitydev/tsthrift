@@ -177,20 +177,21 @@ or remove it as part of unrelated compatibility changes.
 
 ## Source ownership
 
-| Path                                                          | Responsibility                                                |
-| ------------------------------------------------------------- | ------------------------------------------------------------- |
-| `src/compiler/load-schema.ts`                                 | Entry/include graph and legacy parser integration             |
-| `src/compiler/resolve-type.ts`                                | Named type and typedef resolution                             |
-| `src/compiler/validate-schema.ts`                             | Common validation without Apache restrictions                 |
-| `src/metadata/`                                               | Legacy metadata schema and artifact emission                  |
-| `src/compiler/emit-models.ts`                                 | Public model/enum/service-interface source                    |
-| `src/compiler/emit-constant.ts` and adjacent constant modules | Constant values, references, defaults                         |
-| `src/compiler/generate.ts`                                    | Target orchestration and manifest                             |
-| `src/compiler/publish-output.ts`                              | Output ownership, staging, replacement, rollback              |
-| `src/compiler/run-thrift.ts`                                  | Exact compiler version, shared flags, generated import checks |
-| `src/compiler/validate-apache.ts`                             | Map and generated filename restrictions                       |
-| `src/runtime/` and `src/runtime.ts`                           | Experimental independent binary runtime                       |
-| `tests/reference/`                                            | Test-only Apache runtime processes                            |
+| Path                                                                       | Responsibility                                                |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `packages/cli/src/compiler/load-schema.ts`                                 | Entry/include graph and legacy parser integration             |
+| `packages/cli/src/compiler/resolve-type.ts`                                | Named type and typedef resolution                             |
+| `packages/cli/src/compiler/validate-schema.ts`                             | Common validation without Apache restrictions                 |
+| `packages/cli/src/metadata/`                                               | Legacy metadata schema and artifact emission                  |
+| `packages/cli/src/compiler/emit-models.ts`                                 | Public model/enum/service-interface source                    |
+| `packages/cli/src/compiler/emit-constant.ts` and adjacent constant modules | Constant values, references, defaults                         |
+| `packages/cli/src/compiler/generate.ts`                                    | Target orchestration and manifest                             |
+| `packages/cli/src/compiler/publish-output.ts`                              | Output ownership, staging, replacement, rollback              |
+| `packages/cli/src/compiler/run-thrift.ts`                                  | Exact compiler version, shared flags, generated import checks |
+| `packages/cli/src/compiler/validate-apache.ts`                             | Map and generated filename restrictions                       |
+| `packages/tsthrift/src/transport/`                                         | HTTP transport and declarative client runtime                 |
+| `packages/tsthrift/src/runtime/`                                           | Experimental independent binary runtime                       |
+| `packages/*/tests/reference/`                                              | Test-only Apache runtime processes                            |
 
 ## Validation
 

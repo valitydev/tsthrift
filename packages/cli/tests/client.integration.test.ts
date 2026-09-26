@@ -12,7 +12,7 @@ import {
   type ThriftClientConstructor,
   ThriftHttpError,
   createThriftClient,
-} from "../src/transport/index.ts";
+} from "@vality/tsthrift";
 
 const { TBinaryProtocol, TBufferedTransport } = thrift;
 const compiler = process.env.THRIFT_COMPILER;
@@ -39,7 +39,11 @@ describe("Thrift RPC client integration", () => {
     const outputDir = path.join(directory, "generated");
     const dependencyDir = path.join(directory, "dep");
 
-    await symlink(path.resolve("node_modules"), path.join(directory, "node_modules"), "dir");
+    await symlink(
+      path.resolve(import.meta.dirname, "../node_modules"),
+      path.join(directory, "node_modules"),
+      "dir",
+    );
 
     await cp(path.join(import.meta.dirname, "fixtures/dependency"), dependencyDir, {
       recursive: true,

@@ -79,7 +79,7 @@ export function createHttpTransport(config: ThriftClientConfig): TransportFuncti
       const response = await fetchFn(config.endpoint, {
         method: "POST",
         headers,
-        body: payload,
+        body: payload as BodyInit,
         signal: controller.signal,
       });
 

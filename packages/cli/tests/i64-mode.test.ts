@@ -4,11 +4,16 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { createRequire } from "node:module";
 import { afterEach, expect, test } from "vite-plus/test";
 import { generate } from "../src/index.ts";
 import type { I64Mode } from "../src/index.ts";
 
 const execute = promisify(execFile);
+const tsc = path.resolve(
+  path.dirname(createRequire(import.meta.url).resolve("typescript")),
+  "../bin/tsc",
+);
 const directories: string[] = [];
 afterEach(async () => {
   await Promise.all(directories.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
@@ -68,7 +73,8 @@ test.each([undefined, "number", "bigint"] as const)(
       `export type Identifier = ${mode};`,
     );
     const compiled = path.join(options.directory, "compiled");
-    await execute(path.resolve("node_modules/.bin/tsc"), [
+    await execute(process.execPath, [
+      tsc,
       "--ignoreConfig",
       "--strict",
       "--skipLibCheck",
@@ -107,7 +113,13 @@ test.each([undefined, "number", "bigint"] as const)(
 
 test("CLI switches public i64 mode without changing metadata", async () => {
   const options = await setup();
-  const args = [path.resolve("src/cli.ts"), "--input", options.input, "--output", options.output];
+  const args = [
+    path.resolve(import.meta.dirname, "../src/cli.ts"),
+    "--input",
+    options.input,
+    "--output",
+    options.output,
+  ];
   const env = { ...process.env, PATH: "" };
   await execute(process.execPath, args, { env });
   expect(await readFile(path.join(options.output, "models/common.ts"), "utf8")).toContain(
@@ -130,7 +142,7 @@ test("rejects invalid i64 modes through API and CLI", async () => {
   );
   await expect(
     execute(process.execPath, [
-      path.resolve("src/cli.ts"),
+      path.resolve(import.meta.dirname, "../src/cli.ts"),
       "--input",
       options.input,
       "--output",

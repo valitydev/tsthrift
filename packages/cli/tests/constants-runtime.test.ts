@@ -4,10 +4,15 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { createRequire } from "node:module";
 import { afterEach, expect, test } from "vite-plus/test";
 import { generate } from "../src/index.ts";
 
 const execute = promisify(execFile);
+const tsc = path.resolve(
+  path.dirname(createRequire(import.meta.url).resolve("typescript")),
+  "../bin/tsc",
+);
 const directories: string[] = [];
 afterEach(async () => {
   await Promise.all(directories.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
@@ -54,7 +59,8 @@ test("emits executable referenced, structured, and nested collection constants",
   );
   await generate({ ...options, i64: "number" });
   const compiled = path.join(options.directory, "compiled");
-  await execute(path.resolve("node_modules/.bin/tsc"), [
+  await execute(process.execPath, [
+    tsc,
     "--ignoreConfig",
     "--strict",
     "--skipLibCheck",

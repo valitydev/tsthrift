@@ -3,11 +3,16 @@ import { promisify } from "node:util";
 import { cp, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { createRequire } from "node:module";
 import { afterEach, expect, test } from "vite-plus/test";
 import { generate } from "../src/index.ts";
 import type { Metadata } from "../src/index.ts";
 
 const execute = promisify(execFile);
+const tsc = path.resolve(
+  path.dirname(createRequire(import.meta.url).resolve("typescript")),
+  "../bin/tsc",
+);
 const compiler = process.env.THRIFT_COMPILER;
 const integration = test.skipIf(!compiler);
 const directories: string[] = [];
@@ -47,7 +52,8 @@ integration.each(["number", "bigint"] as const)(
         await execute(process.execPath, ["--check", path.join(options.output, "internal", file)]);
     }
     const models = path.join(options.output, "models");
-    await execute(path.resolve("node_modules/.bin/tsc"), [
+    await execute(process.execPath, [
+      tsc,
       "--ignoreConfig",
       "--noEmit",
       "--strict",
@@ -83,7 +89,7 @@ integration("preserves previous output when the actual compiler rejects IDL", as
 integration("invokes the CLI with paths containing spaces", async () => {
   const options = await setup();
   const result = await execute(process.execPath, [
-    path.resolve("src/cli.ts"),
+    path.resolve(import.meta.dirname, "../src/cli.ts"),
     "--input",
     options.input,
     "--output",
