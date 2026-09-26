@@ -43,17 +43,17 @@ stock generation success alone is insufficient.
 
 ## Woody-compatible transport and Promise clients
 
-- [ ] Reuse Apache serialization/runtime contracts and replace HTTP I/O.
-- [ ] Implement declarative client initialization (ThriftClientConfig) with endpoint, timeout, static/dynamic header providers, and fetch/custom transport adapter.
+- [x] Reuse Apache serialization/runtime contracts and replace HTTP I/O.
+- [x] Implement declarative client initialization (ThriftClientConfig) with endpoint, timeout, static/dynamic header providers, and fetch/custom transport adapter.
 - [ ] Support direct static metadata import and Promise loader (eliminating legacy Observable metadata$ requirement).
-- [ ] Provide a request transport seam for fetch or framework HTTP adapters.
-- [ ] Implement AbortSignal cancellation, enforced timeout (AbortSignal.timeout/any), and pending-request socket teardown.
-- [ ] Reject non-200 HTTP responses (4xx/5xx) and invalid Content-Types immediately before Thrift decoding (prevent hung 500/HTML requests).
-- [ ] Validate response method/type/sequence and distinguish HTTP, network, timeout, and declared application errors.
+- [x] Provide a request transport seam for fetch or framework HTTP adapters.
+- [x] Implement AbortSignal cancellation, enforced timeout (AbortSignal.timeout/any), and pending-request socket teardown.
+- [x] Reject non-200 HTTP responses (4xx/5xx) and invalid Content-Types immediately before Thrift decoding (prevent hung 500/HTML requests).
+- [x] Validate response method/type/sequence and distinguish HTTP, network, timeout, and declared application errors.
 - [ ] Preserve compatibility error exports/context and logging hooks.
 - [ ] Preserve absent fields and present empty structs during conversion.
 - [ ] Cross-decode generated messages with the legacy Vality runtime.
-- [ ] Exercise one real HTTP service before claiming transport compatibility.
+- [x] Exercise one real HTTP service before claiming transport compatibility.
 
 ## React / TanStack Query output (deferred)
 
