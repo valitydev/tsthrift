@@ -1,5 +1,33 @@
 # Architecture
 
+## Runtime metadata clients
+
+`createMetadataClient` constructs a Promise client from a legacy Metadata[] schema,
+namespace, service name, and transport configuration. It accepts a static array,
+Promise, or lazy loader. Initialization snapshots metadata and resolves reachable
+service/type definitions once into in-memory codecs. Calls then reuse the common
+native Binary Protocol and request implementation. No generated source modules,
+parser, external compiler, or runtime code generation are required.
+
+The shared MetadataIndex retains a collection typedef's defining namespace and
+resolves relative include paths. MetadataCodecs handles recursive references and
+field IDs. Default evaluation interprets parser expressions as values, resolving
+constant/enum references without eval; collection defaults are cloned per value.
+Duplicate modules, invalid fields, unknown types/services, and inheritance cycles
+fail during initialization before transport execution. The factory requires an
+explicit namespace, so same-named services cannot select the wrong module.
+
+Clients keep an immutable schema snapshot. A new schema requires a new client.
+Types/default expansion is bounded, and wire limits match the generated backend.
+The default public type is a dynamic method map returning Promise<unknown>; callers
+may provide a matching existing TS client type. The asynchronous factory rejects
+an IDL method named `then`, which would otherwise trigger Promise assimilation.
+
+```text
+metadata.json -> runtime schema resolution -> cached codecs -> Promise methods
+                                                         -> Binary Protocol / HTTP
+```
+
 ## Native client pipeline
 
 `--target native` generates executable TypeScript clients and codecs without an
@@ -10,7 +38,7 @@ metadata compatibility; replacing its grammar is outside this backend change.
 ```text
 Thrift IDL
   -> pinned parser / include graph
-       -> unchanged metadata.json (loaded separately by forms)
+       -> unchanged metadata.json (runtime clients and forms)
        -> public TS models, enums, constants
        -> executable type and service codecs
             -> namespace-scoped Promise client factories
@@ -51,7 +79,7 @@ use arrays. Explicit `{}` remains present, and false/zero/empty strings survive.
 
 `--i64 bigint` preserves the signed 64-bit range. `--i64 number` rejects unsafe
 integers on write and read, including nested values and map keys. The mode is
-fixed in generated codecs and cannot drift from the generated public types.
+fixed in generated codecs or selected once using MetadataClientConfig.i64Mode.
 The legacy parser still rejects unsafe integral IDL literals because metadata
 cannot preserve them exactly.
 
@@ -94,7 +122,7 @@ owns its own I/O, cancellation, and timeout behavior.
 ## Runtime/package boundaries
 
 `@vality/tsthrift/native` has no runtime imports of Apache Thrift, Buffer, parser,
-Node, Angular, or RxJS. Generated RPC calls do not load metadata. Registry metadata
+Node, Angular, or RxJS. Generated RPC calls do not load metadata; metadata clients load it once at initialization. Registry metadata
 loaders use a separate JSON dynamic import only when invoked.
 
 Apache `thrift@0.24.0` and `buffer` are optional peer dependencies, installed as
@@ -128,3 +156,9 @@ Run `vp install`, `vp check`, `vp run build`, then `vp test`. Set
 Native tests require no compiler; HTTP tests require permission to bind loopback
 sockets. See [compatibility](compatibility.md) and [tasks](tasks.md) for remaining
 release work.
+
+Metadata-only integration runs use a directory containing no generated model,
+codec, or client modules. The same Apache request/reply checks, loopback HTTP,
+and browser bundle execution run in both i64 modes. The browser JS context disables
+string code generation. All 14 Damsel clients at the revision above also initialize
+from the 15-module metadata array alone in both numeric modes.

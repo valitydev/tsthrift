@@ -2,7 +2,7 @@ import type { Field, Metadata, Method, Service, ValueType } from "./types.ts";
 
 export type ResolvedEntity =
   | { kind: "primitive"; type: string }
-  | { kind: "complex"; type: ValueType }
+  | { kind: "complex"; type: Exclude<ValueType, string>; namespace: string }
   | { kind: "enum"; namespace: string; name: string }
   | { kind: "struct" | "union" | "exception"; namespace: string; name: string; fields: Field[] };
 
@@ -24,6 +24,8 @@ export class MetadataIndex {
 
   constructor(metadata: Metadata[] = []) {
     for (const item of metadata) {
+      if (this.byNamespace.has(item.name) || this.byPath.has(item.path))
+        throw new Error(`Duplicate metadata module: ${item.name} (${item.path})`);
       this.byNamespace.set(item.name, item);
       this.byPath.set(item.path, item);
     }
@@ -39,7 +41,7 @@ export class MetadataIndex {
     seen = new Set<string>(),
   ): ResolvedEntity {
     if (typeof rawType === "object") {
-      return { kind: "complex", type: rawType };
+      return { kind: "complex", type: rawType, namespace: currentNamespace };
     }
 
     if (PRIMITIVE_TYPES.has(rawType)) {
@@ -87,7 +89,14 @@ export class MetadataIndex {
     const currentMeta = this.byNamespace.get(currentNamespace);
     const include = currentMeta?.ast.include?.[prefix];
     if (include) {
-      const targetMeta = this.byPath.get(include.path) ?? this.byNamespace.get(prefix);
+      const relativePath = new URL(
+        include.path,
+        `https://thrift.invalid/${currentMeta!.path}`,
+      ).pathname.slice(1);
+      const targetMeta =
+        this.byPath.get(relativePath) ??
+        this.byPath.get(include.path) ??
+        this.byNamespace.get(prefix);
       if (targetMeta) {
         return { namespace: targetMeta.name, name: actualName };
       }

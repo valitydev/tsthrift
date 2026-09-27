@@ -116,6 +116,21 @@ known union alternatives are rejected. These checks are stricter than some legac
 paths. Declared exceptions are rejected as decoded public objects rather than
 Apache class instances. Consumers relying on instanceof need adaptation.
 
+## Runtime metadata verification
+
+The runtime client accepts the same legacy metadata array directly. The native
+wire/HTTP test scenarios also run from metadata-only output with no generated
+models, codecs, or clients. Both i64 modes cover inherited methods, transitive
+collection typedefs, structured Map keys, binary bytes, errors, and cancellation.
+An isolated browser-targeted bundle executes with string code generation disabled.
+All 14 Damsel services described above initialize directly from their 15 metadata
+modules in both modes. Live consumers and production servers remain unverified.
+
+Runtime metadata resolution preserves the defining module of collection typedefs
+and resolves relative includes. Enum references are accepted in the legacy parser's
+joined dotted representation as well as segmented reference arrays. Defaults are
+interpreted without executing source text; unsafe i64 defaults are rejected.
+
 ## Woody responsibilities
 
 woody_js wires a buffered Binary Protocol connection to generated clients. Its

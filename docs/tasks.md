@@ -23,6 +23,16 @@ and source revisions are in [compatibility](compatibility.md).
 Do not recreate thrift-parser's grammar test suite. Add cases when they expose a
 project integration defect or a consumer contract that needs protection.
 
+## Runtime metadata clients
+
+- [x] Create Promise clients from metadata alone with no generated source modules.
+- [x] Support static metadata, Promise/module loaders, and one-time schema initialization.
+- [x] Resolve includes, container typedef scope, recursive structs, defaults, and inheritance.
+- [x] Reuse native codecs, byte transport, response validation, and exception handling.
+- [x] Cross-decode metadata-only calls with Apache and execute HTTP in both i64 modes.
+- [x] Execute a metadata-only browser bundle with Node globals absent and string code generation disabled.
+- [x] Initialize all 14 reference clients directly from 15 metadata modules in both modes.
+
 ## Native TypeScript backend
 
 - [x] Emit executable codecs and Promise clients without an external compiler.

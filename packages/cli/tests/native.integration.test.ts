@@ -41,7 +41,8 @@ test.each(["bigint", "number"] as const)(
         `
       struct Key { 1: required i64 id 2: required string name }
       struct Empty {}
-      struct Node { 1: optional Node next 2: optional string text = "default" }
+      enum State { START = 3 READY }
+      struct Node { 1: optional Node next 2: optional string text = "default" 3: optional State state = State.READY }
       exception Failure { 1: string reason }
       service Example { void duplicateName() }
       service Parent { string inherited(1: string callback) }
@@ -104,6 +105,28 @@ test.each(["bigint", "number"] as const)(
       ]);
       expect(http.stdout.trim()).toBe("native HTTP checks passed");
       await verifyBrowserBundle(output);
+      const metadataOnly = path.join(directory, "metadata-only");
+      await generate({ input, output: metadataOnly, target: "metadata", namespaces: ["example"] });
+      for (const [script, kind] of [
+        ["native-client.mjs", "client"],
+        ["native-http.mjs", "HTTP"],
+      ]) {
+        const dynamic = await execute(process.execPath, [
+          path.join(import.meta.dirname, "reference", script),
+          metadataOnly,
+          i64,
+          "metadata",
+        ]);
+        expect(dynamic.stdout.trim()).toBe(`metadata ${kind} checks passed`);
+      }
+      const entry = path.join(directory, "metadata-entry.ts");
+      await writeFile(
+        entry,
+        `import { createMetadataClient } from "@vality/tsthrift/native";
+        import metadata from "./metadata-only/metadata.json";
+        export function createExampleClient(config) { return createMetadataClient({ ...config, metadata, namespace: "example", serviceName: "Example", i64Mode: "${i64}" }); }`,
+      );
+      await verifyBrowserBundle(metadataOnly, entry);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

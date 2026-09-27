@@ -1,6 +1,6 @@
 // Execute compiled output with Apache's independent Binary Protocol implementation.
 import assert from "node:assert/strict";
-import { pathToFileURL } from "node:url";
+import { loadClient } from "./load-client.mjs";
 import thrift from "thrift";
 import {
   BinaryReader,
@@ -8,13 +8,8 @@ import {
   MessageType,
   ThriftApplicationError,
 } from "@vality/tsthrift/native";
-const [directory, mode] = process.argv.slice(2);
-const {
-  example: { createExampleClient },
-  SERVICES,
-} = await import(pathToFileURL(`${directory}/clients/index.js`));
-const { types } = await import(pathToFileURL(`${directory}/codecs/example.js`));
-const model = await import(pathToFileURL(`${directory}/models/example.js`));
+const [directory, mode, backend = "native"] = process.argv.slice(2);
+const { createExampleClient, SERVICES, types, model } = await loadClient(directory, mode, backend);
 const integer = (value) => (mode === "number" ? Number(value) : BigInt(value));
 const { TBinaryProtocol, TBufferedTransport, fromBigInt, toBigInt } = thrift;
 const big = mode === "number" ? 123n : 9007199254740993n;
@@ -31,7 +26,7 @@ let observed;
 let variant = "success";
 const options = { headers: { "x-woody-trace-id": "trace" } };
 const lifecycle = [];
-const client = createExampleClient({
+const client = await createExampleClient({
   endpoint: "http://unused",
   loggingFn: (event) => lifecycle.push(event.type),
   transport: async (bytes, requestOptions) => {
@@ -124,7 +119,7 @@ assert.deepEqual(observed, [
   [big, "first", [big]],
   [2n, "second", []],
 ]);
-assert.deepEqual([...model.BYTES], [97, 98, 99]);
+if (model) assert.deepEqual([...model.BYTES], [97, 98, 99]);
 assert.deepEqual(lifecycle, ["call", "success"]);
 for (const failure of [
   "method",
@@ -145,8 +140,8 @@ for (const failure of [
     return true;
   });
 }
-assert.ok(Array.isArray(await SERVICES["example.Example"].getMetadata()));
-const other = createExampleClient({
+if (SERVICES) assert.ok(Array.isArray(await SERVICES["example.Example"].getMetadata()));
+const other = await createExampleClient({
   endpoint: "http://unused",
   transport: async (bytes) => {
     const r = new BinaryReader(bytes);
@@ -174,13 +169,19 @@ assert.equal(await other.notify("hello"), undefined);
 assert.equal(await other.fire("hello"), undefined);
 if (mode === "number") await assert.rejects(other.numeric(1), /safe number range/);
 else assert.equal(await other.numeric(1n), 9223372036854775807n);
-const w = new BinaryWriter();
-types.Payload.write(w, input);
-const roundtrip = types.Payload.read(new BinaryReader(w.finish()));
-assert.deepEqual(roundtrip.node, { text: "default", next: { text: "default" } });
-assert.throws(() => types.Payload.write(new BinaryWriter(), {}), /required/);
-assert.throws(
-  () => types.Choice.write(new BinaryWriter(), { text: "a", integer: integer(1) }),
-  /Multiple fields/,
-);
-console.log("native client checks passed");
+if (types) {
+  const w = new BinaryWriter();
+  types.Payload.write(w, input);
+  const roundtrip = types.Payload.read(new BinaryReader(w.finish()));
+  assert.deepEqual(roundtrip.node, {
+    text: "default",
+    state: 4,
+    next: { text: "default", state: 4 },
+  });
+  assert.throws(() => types.Payload.write(new BinaryWriter(), {}), /required/);
+  assert.throws(
+    () => types.Choice.write(new BinaryWriter(), { text: "a", integer: integer(1) }),
+    /Multiple fields/,
+  );
+}
+console.log(`${backend} client checks passed`);

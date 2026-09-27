@@ -5,7 +5,10 @@ import { expect } from "vite-plus/test";
 import { BinaryReader, BinaryWriter, MessageType } from "@vality/tsthrift/native";
 
 /** Executes a browser-targeted bundle without Node globals or dependencies. */
-export async function verifyBrowserBundle(output: string) {
+export async function verifyBrowserBundle(
+  output: string,
+  entry = path.join(output, "clients/example/Example.ts"),
+) {
   const result = await build({
     configFile: false,
     logLevel: "silent",
@@ -13,7 +16,7 @@ export async function verifyBrowserBundle(output: string) {
       write: false,
       minify: false,
       lib: {
-        entry: path.join(output, "clients/example/Example.ts"),
+        entry,
         name: "Generated",
         formats: ["iife"],
       },
@@ -26,11 +29,14 @@ export async function verifyBrowserBundle(output: string) {
   expect(
     Object.keys(chunk.modules).filter((id) => /node_modules\/(thrift|buffer)\//.test(id)),
   ).toEqual([]);
-  const context = vm.createContext({ Uint8Array, DataView, TextEncoder, TextDecoder, Map, Set });
+  const context = vm.createContext(
+    { Uint8Array, DataView, TextEncoder, TextDecoder, Map, Set, URL, structuredClone },
+    { codeGeneration: { strings: false, wasm: false } },
+  );
   vm.runInContext(chunk.code, context);
   expect(vm.runInContext("typeof Buffer", context)).toBe("undefined");
   expect(vm.runInContext("typeof process", context)).toBe("undefined");
-  const client = context.Generated.createExampleClient({
+  const client = await context.Generated.createExampleClient({
     endpoint: "unused",
     transport: async (bytes: Uint8Array) => {
       const reader = new BinaryReader(bytes);

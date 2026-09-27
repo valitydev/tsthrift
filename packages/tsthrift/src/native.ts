@@ -13,3 +13,6 @@ export type {
   TransportFunction,
 } from "./transport/types.ts";
 export type { Metadata } from "./converter/types.ts";
+export { createMetadataClient } from "./metadata/client.ts";
+export type { DynamicThriftClient, MetadataClientConfig } from "./metadata/client.ts";
+export type { MetadataSource } from "./transport/types.ts";

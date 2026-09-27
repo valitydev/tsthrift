@@ -60,12 +60,16 @@ export function toThriftInstance(
       if (!Array.isArray(value)) {
         throw new TypeError(`Expected array for list, got ${typeof value}`);
       }
-      return value.map((item) => toThriftInstance(item, complexType.valueType, namespace, context));
+      return value.map((item) =>
+        toThriftInstance(item, complexType.valueType, resolved.namespace, context),
+      );
     }
 
     if (complexType.name === "set") {
       const items = value instanceof Set ? Array.from(value) : Array.isArray(value) ? value : [];
-      return items.map((item) => toThriftInstance(item, complexType.valueType, namespace, context));
+      return items.map((item) =>
+        toThriftInstance(item, complexType.valueType, resolved.namespace, context),
+      );
     }
 
     if (complexType.name === "map") {
@@ -78,8 +82,8 @@ export function toThriftInstance(
 
       return new Map(
         entries.map(([k, v]) => [
-          toThriftInstance(k, complexType.keyType, namespace, context),
-          toThriftInstance(v, complexType.valueType, namespace, context),
+          toThriftInstance(k, complexType.keyType, resolved.namespace, context),
+          toThriftInstance(v, complexType.valueType, resolved.namespace, context),
         ]),
       );
     }

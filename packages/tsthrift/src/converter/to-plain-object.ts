@@ -51,13 +51,17 @@ export function toPlainObject(
       if (!Array.isArray(value)) {
         return value;
       }
-      return value.map((item) => toPlainObject(item, complexType.valueType, namespace, context));
+      return value.map((item) =>
+        toPlainObject(item, complexType.valueType, resolved.namespace, context),
+      );
     }
 
     if (complexType.name === "set") {
       const items = value instanceof Set ? Array.from(value) : Array.isArray(value) ? value : [];
       return new Set(
-        items.map((item) => toPlainObject(item, complexType.valueType, namespace, context)),
+        items.map((item) =>
+          toPlainObject(item, complexType.valueType, resolved.namespace, context),
+        ),
       );
     }
 
@@ -71,8 +75,8 @@ export function toPlainObject(
 
       return new Map(
         entries.map(([k, v]) => [
-          toPlainObject(k, complexType.keyType, namespace, context),
-          toPlainObject(v, complexType.valueType, namespace, context),
+          toPlainObject(k, complexType.keyType, resolved.namespace, context),
+          toPlainObject(v, complexType.valueType, resolved.namespace, context),
         ]),
       );
     }

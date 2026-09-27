@@ -1,12 +1,11 @@
 // Exercise the generated native client over a real HTTP socket using Apache wire decoding.
 import assert from "node:assert/strict";
 import http from "node:http";
-import { pathToFileURL } from "node:url";
+import { loadClient } from "./load-client.mjs";
 import thrift from "thrift";
 import { ThriftHttpError, ThriftProtocolError, ThriftTimeoutError } from "@vality/tsthrift/native";
-const { createExampleClient } = await import(
-  pathToFileURL(`${process.argv[2]}/clients/example/Example.js`)
-);
+const [directory, mode = "bigint", backend = "native"] = process.argv.slice(2);
+const { createExampleClient } = await loadClient(directory, mode, backend);
 const { TBinaryProtocol, TBufferedTransport } = thrift;
 const server = http.createServer(async (req, res) => {
   if (req.url === "/timeout") return;
@@ -53,7 +52,7 @@ await new Promise((resolve, reject) => {
 });
 const endpoint = `http://127.0.0.1:${server.address().port}`;
 try {
-  const client = createExampleClient({
+  const client = await createExampleClient({
     endpoint,
     headers: async () => ({ authorization: "token" }),
   });
@@ -63,15 +62,15 @@ try {
     ["echo:a", "echo:b"],
   );
   await assert.rejects(
-    createExampleClient({ endpoint: `${endpoint}/500` }).inherited("a"),
+    (await createExampleClient({ endpoint: `${endpoint}/500` })).inherited("a"),
     ThriftHttpError,
   );
   await assert.rejects(
-    createExampleClient({ endpoint: `${endpoint}/html` }).inherited("a"),
+    (await createExampleClient({ endpoint: `${endpoint}/html` })).inherited("a"),
     ThriftProtocolError,
   );
   await assert.rejects(
-    createExampleClient({ endpoint: `${endpoint}/timeout`, timeoutMs: 20 }).inherited("a"),
+    (await createExampleClient({ endpoint: `${endpoint}/timeout`, timeoutMs: 20 })).inherited("a"),
     ThriftTimeoutError,
   );
   await assert.rejects(
@@ -82,4 +81,4 @@ try {
   server.closeAllConnections();
   await new Promise((resolve) => server.close(resolve));
 }
-console.log("native HTTP checks passed");
+console.log(`${backend} HTTP checks passed`);

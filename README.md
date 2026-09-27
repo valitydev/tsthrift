@@ -5,6 +5,39 @@ Thrift Binary Protocol. The native backend generates clients without the Apache
 compiler, npm runtime, or Buffer polyfill. Existing Vality application APIs still
 require consumer migration and acceptance testing.
 
+## Clients from metadata
+
+A client can be created at runtime using only the existing legacy metadata array:
+
+```ts
+import { createMetadataClient } from "@vality/tsthrift/native";
+
+const client = await createMetadataClient({
+  metadata,
+  namespace: "example",
+  serviceName: "Example",
+  endpoint: "/rpc/example",
+  i64Mode: "bigint",
+});
+
+const value = await client.next(42n, { timeoutMs: 10_000 });
+```
+
+`metadata` accepts an array, a Promise, or a loader returning an array or a module
+with a default array export. The factory loads and snapshots it once, resolves
+includes/typedefs/defaults/inheritance, and caches executable codecs in memory.
+No generated codec/model/client modules, IDL parser, Apache runtime, or eval are
+needed at runtime. Reuse the client for subsequent calls; create another client
+when the schema changes.
+
+Without a type argument, methods return Promise<unknown>. An explicit
+`createMetadataClient<ExampleClient>(...)` can supply existing TS declarations;
+these must agree with the selected i64 mode and Uint8Array binary contract.
+The async factory reserves the method name `then` to avoid Promise assimilation.
+
+To produce only metadata from IDL, use `--target metadata` with the CLI below.
+The `native` target remains available for ahead-of-time codec source generation.
+
 ## Generate
 
 ```sh
@@ -59,7 +92,7 @@ values. Declared exceptions reject as decoded plain objects; server application
 exceptions use `ThriftApplicationError`. A byte transport or fetch implementation
 can be supplied for framework integration.
 
-RPC calls do not load metadata or convert values into Apache classes. The native
+Generated native RPC calls do not load metadata or convert values into Apache classes. The native
 entry has no Node or Buffer dependency. Apache and Buffer are optional peers used
 only by the older Apache/root client entry; install `thrift@0.24.0` and `buffer`
 when using that backend.
@@ -87,9 +120,9 @@ vp test
 THRIFT_COMPILER=/path/to/thrift-0.24.0 vp test
 ```
 
-Native tests compile and execute generated clients in both i64 modes, cross-decode
-with Apache, exercise real local HTTP, and run a browser-targeted bundle without
-Node globals. Only older external-compiler tests skip without `THRIFT_COMPILER`.
+Tests exercise generated clients and metadata-only clients in both i64 modes,
+cross-decode with Apache, use real local HTTP, and run browser-targeted bundles
+without Node globals or runtime code generation. Only older external-compiler tests skip without `THRIFT_COMPILER`.
 
 - [Compatibility audit](docs/compatibility.md)
 - [Architecture](docs/architecture.md)
