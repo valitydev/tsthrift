@@ -63,6 +63,7 @@ test.each(["number", "bigint"] as const)(
       "clients",
       "generation.json",
       "index.ts",
+      "metadata",
       "metadata.json",
       "models",
     ]);
@@ -137,11 +138,15 @@ test("splits metadata per module when splitMetadata: true", async () => {
 
   const metadataDir = path.join(options.output, "metadata");
   const files = await readdir(metadataDir);
-  expect(files.sort()).toEqual(["common.json", "example.json"]);
+  expect(files.sort()).toEqual(["common.ts", "example.ts", "index.ts"]);
 
-  const common = JSON.parse(await readFile(path.join(metadataDir, "common.json"), "utf8"));
-  expect(common).toHaveLength(1);
-  expect(common[0].name).toBe("common");
+  const common = await readFile(path.join(metadataDir, "common.ts"), "utf8");
+  expect(common).toContain('"name": "common"');
+  expect(common).toContain("export const metadata");
+
+  const loader = await readFile(path.join(metadataDir, "index.ts"), "utf8");
+  expect(loader).toContain("export function loadMetadata");
+  expect(loader).toContain('import("./common.js")');
 });
 
 test("emits package.json and tsconfig.json when package: true", async () => {

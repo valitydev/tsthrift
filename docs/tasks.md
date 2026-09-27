@@ -18,7 +18,7 @@ and source revisions are in [compatibility](compatibility.md).
 - [x] Resolve public binary conversion from existing consumers (toBinary, binaryToString, isBinary).
 - [ ] Validate metadata in actual form consumers (@vality/ng-thrift and control-center).
 - [x] Support minified metadata artifact output for production releases while keeping formatted fixtures for tests (--minify).
-- [x] Design per-module/per-namespace metadata splitting for lazy on-demand loading in dynamic forms (--split-metadata).
+- [x] Implement per-module metadata splitting and compile-time transitive dependency loader (loadMetadata) in TypeScript modules (--split-metadata).
 
 Do not recreate thrift-parser's grammar test suite. Add cases when they expose a
 project integration defect or a consumer contract that needs protection.
@@ -98,7 +98,11 @@ stock generation success alone is insufficient.
 
 - [x] Implement primitive/envelope reading and writing, scalar i64 guards, and bounded skipping.
 - [x] Cross-decode with Apache 0.24 and test malformed inputs and limits.
+- [x] Byte-for-byte exact comparison between our BinaryWriter and Apache 0.24 TBinaryProtocol on complex nested structs, struct-keyed maps, binary buffers, UTF-8, and i64 limits.
+- [x] Bidirectional cross-decoding across complex data structures (we write -> Apache decodes; Apache writes -> we decode).
+- [x] Full RPC method envelope verification (CALL, REPLY success, REPLY declared exception, Application Exception, and ONEWAY).
+- [x] End-to-end RPC client execution from metadata with complex data structures against Apache wire codecs.
 - [x] Export the binary runtime independently of Node/compiler/parser imports.
 
 The native backend uses this runtime. Apache remains available as a comparison
-backend; consumer acceptance is tracked separately above.
+reference in tests; consumer acceptance is tracked separately above.

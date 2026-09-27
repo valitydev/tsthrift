@@ -38,14 +38,13 @@ The Binary Protocol reader and writer provide the wire implementation. Static na
 ```text
 Thrift IDL
   -> pinned parser / include graph
-       -> metadata.json (runtime clients and dynamic forms)
+       -> metadata.json (monolithic schema) & modular metadata/ (loadMetadata per namespace)
        -> public TS models, enums, constants (emitted by default)
 ```
 
-The CLI generates both TypeScript interface definitions and `metadata.json` by default (with an optional
-`--no-models` flag to emit only `metadata.json`). Native RPC clients are constructed directly at runtime
-via `createMetadataClient` using the emitted `metadata.json`. The legacy Apache target (`--target apache`)
-and external Thrift compiler dependency have been removed in favor of this metadata-driven runtime.
+The CLI generates TypeScript models, monolithic `metadata.json`, and modular metadata modules (`metadata/`)
+with a `loadMetadata(namespace)` loader resolving full transitive include closures. Native RPC clients are
+constructed directly at runtime via `createMetadataClient` using either `loadMetadata` or `metadata.json`.
 
 ## Compiler responsibilities
 
