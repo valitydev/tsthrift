@@ -22,23 +22,24 @@ export function provideThriftConfig(config: HttpTransportConfig): Provider {
 }
 
 /**
- * Provides an individual Thrift service client in Angular DI by its descriptor.
+ * Provides an individual Thrift service proxy in Angular DI by its descriptor.
  */
-export function provideThriftClient<TClient>(
-  descriptor: ThriftServiceDescriptor<TClient>,
+export function provideThriftService<TService>(
+  descriptor: ThriftServiceDescriptor<TService>,
   config?: Partial<HttpTransportConfig>,
 ): Provider {
   return {
     provide: getServiceToken(descriptor),
     useFactory: () => {
       const baseConfig = inject(THRIFT_CONFIG, { optional: true });
+      const factory = descriptor.createService;
       if (!config) {
-        return descriptor.createClient(baseConfig);
+        return factory(baseConfig);
       }
       if (!baseConfig) {
-        return descriptor.createClient(config);
+        return factory(config);
       }
-      return descriptor.createClient({
+      return factory({
         ...baseConfig,
         ...config,
         headers: mergeHeaderProviders(baseConfig.headers, config.headers),
@@ -82,7 +83,8 @@ export function provideThriftServices(
       provide: token,
       useFactory: () => {
         const baseConfig = inject(THRIFT_CONFIG, { optional: true });
-        return service.createClient(baseConfig);
+        const factory = service.createService;
+        return factory(baseConfig);
       },
     });
   }

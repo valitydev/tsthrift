@@ -9,8 +9,8 @@ import {
   createServiceToken,
   deferThriftCall,
   getServiceToken,
-  provideThriftClient,
   provideThriftConfig,
+  provideThriftService,
   provideThriftServices,
   toObservableClient,
   type AngularHttpClientLike,
@@ -25,7 +25,7 @@ describe("Angular Thrift DI integration", () => {
   const dummyDescriptor: ThriftServiceDescriptor<TestServiceClient> = {
     serviceName: "TestService",
     namespace: "test",
-    createClient: (config?: any) => ({
+    createService: (config?: any) => ({
       echo: (msg: string) => `[${config?.endpoint ?? "default"}] ${msg}`,
       config,
     }),
@@ -73,7 +73,7 @@ describe("Angular Thrift DI integration", () => {
     });
   });
 
-  test("provideThriftServices registers service registry and client instances", () => {
+  test("provideThriftServices registers service registry and client instances using createService", () => {
     const envInjector = createEnvironmentInjector(
       [
         provideThriftConfig({ endpoint: "http://example.com/configured" }),
@@ -97,11 +97,11 @@ describe("Angular Thrift DI integration", () => {
     });
   });
 
-  test("provideThriftClient registers individual client with custom config override", () => {
+  test("provideThriftService registers individual service with custom config override", () => {
     const envInjector = createEnvironmentInjector(
       [
         provideThriftConfig({ endpoint: "http://example.com/base" }),
-        provideThriftClient(dummyDescriptor, { endpoint: "http://example.com/override" }),
+        provideThriftService(dummyDescriptor, { endpoint: "http://example.com/override" }),
       ],
       null as unknown as any,
     );
@@ -112,14 +112,14 @@ describe("Angular Thrift DI integration", () => {
     });
   });
 
-  test("provideThriftClient merges global and service headers cascading base headers", async () => {
+  test("provideThriftService merges global and service headers cascading base headers", async () => {
     const envInjector = createEnvironmentInjector(
       [
         provideThriftConfig({
           endpoint: "http://example.com/base",
           headers: () => ({ Authorization: "Bearer global-token" }),
         }),
-        provideThriftClient(dummyDescriptor, {
+        provideThriftService(dummyDescriptor, {
           headers: (baseHeaders: Record<string, string>) => ({
             "x-service": "test-service",
             "x-auth-copy": baseHeaders["Authorization"],

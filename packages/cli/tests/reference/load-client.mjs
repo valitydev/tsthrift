@@ -8,15 +8,17 @@ export async function loadClient(directory, mode, _backend = "metadata") {
   try {
     model = await import(pathToFileURL(`${directory}/models/example.js`));
   } catch {}
+  const createExample = (config) =>
+    createMetadataClient({
+      ...config,
+      metadata,
+      namespace: "example",
+      serviceName: "Example",
+      i64Mode: mode,
+    });
   return {
-    createExampleClient: (config) =>
-      createMetadataClient({
-        ...config,
-        metadata,
-        namespace: "example",
-        serviceName: "Example",
-        i64Mode: mode,
-      }),
+    createExample,
+    createExampleClient: createExample,
     model,
   };
 }

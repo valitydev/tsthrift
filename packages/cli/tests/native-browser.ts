@@ -7,7 +7,7 @@ import { BinaryReader, BinaryWriter, MessageType } from "@vality/tsthrift";
 /** Executes a browser-targeted bundle without Node globals or dependencies. */
 export async function verifyBrowserBundle(
   output: string,
-  entry = path.join(output, "clients/example/Example.ts"),
+  entry = path.join(output, "services/example/Example.ts"),
 ) {
   const result = await build({
     configFile: false,
@@ -36,7 +36,8 @@ export async function verifyBrowserBundle(
   vm.runInContext(chunk.code, context);
   expect(vm.runInContext("typeof Buffer", context)).toBe("undefined");
   expect(vm.runInContext("typeof process", context)).toBe("undefined");
-  const client = await context.Generated.createExampleClient({
+  const factory = context.Generated.createExample ?? context.Generated.createExampleClient;
+  const client = await factory({
     endpoint: "unused",
     transport: async (bytes: Uint8Array) => {
       const reader = new BinaryReader(bytes);

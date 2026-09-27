@@ -69,7 +69,7 @@ stock generation success alone is insufficient.
 - [x] Preserve compatibility error exports/context and logging hooks.
 - [x] Preserve absent fields and present empty structs during conversion.
 - [x] Cross-decode generated messages with the legacy Vality runtime (valitydev/thrift C++ fork).
-- [x] Provide browser-first Woody RPC tracing headers generator (`WOODY_HEADERS`, `createWoodyHeaders`, `createWoodyHeaderProvider`, `generateTraceId`) and automatic `woody` option in `HttpTransportConfig`.
+- [x] Provide browser-first Woody RPC tracing headers generator (`WOODY_HEADERS`, `createWoodyHeaders`, `createWoodyHeaderProvider`, `generateId`, `generateTraceId`, `FlakeId`, `bs64`) compatible with upstream `frontend-thrift-codegen/tools/static/utils/generate-id.ts` (64-bit Flake ID + base-x base64 encoding) and automatic `woody` option in `HttpTransportConfig`.
 - [x] Exercise one real HTTP service before claiming transport compatibility.
 
 ## React / TanStack Query output (deferred / YAGNI)
@@ -80,9 +80,10 @@ stock generation success alone is insufficient.
 ## Angular integration (@vality/tsthrift-angular)
 
 - [x] Extract Angular integration into a dedicated standalone workspace package (`@vality/tsthrift-angular`).
-- [x] Keep CLI output completely framework-agnostic (`clients/` and `services.ts` contain no Angular imports or tokens).
+- [x] Keep CLI output completely framework-agnostic (`services/` and `services.ts` contain no Angular imports or tokens).
+- [x] Exclude the word "Client" from generated service files, service factories (`create${ServiceName}`, `createAsync${ServiceName}`), configs (`${ServiceName}Config`), and model classes (`export abstract class ${ServiceName}`).
 - [x] Provide dynamic and cached DI tokens via `getServiceToken(descriptor)` and `createServiceToken(descriptor)`.
-- [x] Implement modern Angular environment providers (`provideThriftConfig`, `provideThriftServices`, `provideThriftClient`).
+- [x] Implement modern Angular environment providers (`provideThriftConfig`, `provideThriftServices`, `provideThriftService`).
 - [x] Provide Promise-based service methods (compatible with Angular Signals and Resource API) with `toObservableClient` and `deferThriftCall` RxJS helpers for Observable consumers.
 - [x] Support HttpClient transport injection (`createHttpClientFetch`) without Angular imports in core runtime.
 - [x] Support explicit number-mode generation for existing numeric consumer contracts.

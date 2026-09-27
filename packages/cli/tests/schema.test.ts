@@ -51,7 +51,7 @@ test("loads only selected inputs and reachable includes, preserving legacy metad
   expect(models).toContain('import * as common from "./common.js"');
   expect(models).toContain("globalThis.Map<string, Identifier[]>");
   expect(models).toContain('"labels"?: globalThis.Map<bigint, string>');
-  expect(models).toContain("extends common.BaseClient");
+  expect(models).toContain("extends common.Base");
   expect(models).toContain('"next"(id: bigint, options?: RequestOptions): Promise<bigint>');
   expect(models).toContain('"CLOSED" = 5');
   expect(models).toContain('new globalThis.Map([["first", 1]])');

@@ -97,12 +97,12 @@ async function verifyReplyEncoding(
 test.each(["bigint", "number"] as const)(
   "all supported types and composite keys match generated Java (%s)",
   async (mode) => {
-    const { createAsyncEchoClient } = await generated(mode, "clients/alpha/Echo.js");
+    const { createAsyncEcho } = await generated(mode, "services/alpha/Echo.js");
     const { loadMetadata } = await generated(mode, "metadata/index.js");
     for (const empty of [false, true]) {
       const scenario = `${empty ? "empty" : "all"}-${mode}`;
       // Explicit mode isolates wire conformance from the separately audited factory-mode defect.
-      const client = await createAsyncEchoClient({
+      const client = await createAsyncEcho({
         endpoint: "unused",
         i64Mode: mode,
         transport: await transport(scenario),
@@ -131,12 +131,12 @@ test.each(["bigint", "number"] as const)(
   "latest Damsel Repository.Commit round-trips CurrencyRef map keys (%s)",
   async (mode) => {
     const scenario = `damsel-${mode}`;
-    const { createRepositoryClient } = await generated(
+    const { createRepository } = await generated(
       mode,
-      "damsel/clients/domain_config_v2/Repository.js",
+      "damsel/services/domain_config_v2/Repository.js",
     );
     const { loadMetadata } = await generated(mode, "damsel/metadata/index.js");
-    const client = createRepositoryClient({
+    const client = createRepository({
       endpoint: "unused",
       i64Mode: mode,
       transport: await transport(scenario),
@@ -165,9 +165,9 @@ test.each(["bigint", "number"] as const)(
   "declared exception matches generated Java (%s)",
   async (mode) => {
     const scenario = `failure-${mode}`;
-    const { createEchoClient } = await generated(mode, "clients/alpha/Echo.js");
+    const { createEcho } = await generated(mode, "services/alpha/Echo.js");
     const { loadMetadata } = await generated(mode, "metadata/index.js");
-    const client = createEchoClient({
+    const client = createEcho({
       endpoint: "unused",
       i64Mode: mode,
       transport: await transport(scenario),
@@ -192,15 +192,15 @@ test("same service and IDL namespace names remain isolated by source module", as
   const metadata: Metadata[] = await loadMetadata("beta");
   const alphaMetadata: Metadata[] = await loadMetadata("alpha");
   expect(metadata[0]!.ast.namespace?.js).toEqual(alphaMetadata[0]!.ast.namespace?.js);
-  const alpha = SERVICES["alpha.Echo"].createClient({
+  const alpha = SERVICES["alpha.Echo"].createService({
     endpoint: "unused",
     transport: await transport("all-bigint"),
   });
-  const beta = SERVICES["beta.Echo"].createClient({
+  const beta = SERVICES["beta.Echo"].createService({
     endpoint: "unused",
     transport: await transport("beta"),
   });
-  const sameName = SERVICES["alpha.alpha"].createClient({
+  const sameName = SERVICES["alpha.alpha"].createService({
     endpoint: "unused",
     transport: await transport("alpha"),
   });
@@ -213,7 +213,7 @@ test("same service and IDL namespace names remain isolated by source module", as
 });
 
 test.each(["notify", "fire"])("void/oneway %s uses the official envelope", async (method) => {
-  const { createEchoClient } = await generated("bigint", "clients/alpha/Echo.js");
-  const client = createEchoClient({ endpoint: "unused", transport: await transport(method) });
+  const { createEcho } = await generated("bigint", "services/alpha/Echo.js");
+  const client = createEcho({ endpoint: "unused", transport: await transport(method) });
   await expect(client[method]("")).resolves.toBeUndefined();
 });

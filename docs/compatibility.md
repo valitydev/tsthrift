@@ -150,7 +150,14 @@ method and sequence ID. Its helper copyMap behavior is part of the Map delta,
 not merely HTTP I/O.
 
 Authentication and x-woody tracing/identity headers are supplied by surrounding
-client/application code. The replacement transport must accept those headers per
+client/application code. Tracing IDs in `control-center` and `frontend-thrift-codegen`
+are generated via `generateId()` (`tools/static/utils/generate-id.ts`), producing 64-bit
+Flake IDs encoded in base64 using `base-x` (`ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/`).
+`@vality/tsthrift` provides an identical `generateId` (and aliased `generateTraceId`, `FlakeId`, `bs64`)
+implementation operating directly on `Uint8Array` without requiring Node.js `Buffer` or globals,
+producing 100% byte-for-byte and string-for-string matching IDs across browser and Node runtimes.
+
+The replacement transport must accept those headers per
 call and preserve refresh behavior. Preserve error propagation and request
 correlation, but test cancellation/timeout cleanup rather than duplicating the
 old Promise.race timer behavior.

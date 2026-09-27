@@ -28,20 +28,10 @@ export interface WoodyHeadersConfig {
   meta?: Record<string, string | number | boolean | undefined | null>;
 }
 
-/**
- * Browser-first, runtime-agnostic UUID generator with Math.random fallback.
- * Operates without Node.js dependencies (no crypto module import).
- */
-export function generateTraceId(): string {
-  if (typeof globalThis.crypto?.randomUUID === "function") {
-    return globalThis.crypto.randomUUID();
-  }
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
+import { generateTraceId } from "./generate-id.ts";
+
+export { BASE64_ALPHABET, FlakeId, bs64, generateId, generateTraceId } from "./generate-id.ts";
+export type { FlakeIdOptions } from "./generate-id.ts";
 
 /**
  * Creates a record of Woody HTTP headers safe for browser fetch and Node.js.

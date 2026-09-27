@@ -30,9 +30,14 @@
     "check": "vp check",
     "prepublishOnly": "vp run build"
   },
+  "dependencies": {
+    "base-x": "catalog:"
+  },
   "devDependencies": {
+    "@types/flake-idgen": "catalog:",
     "@types/node": "catalog:",
     "bumpp": "catalog:",
+    "flake-idgen": "catalog:",
     "thrift": "catalog:",
     "typescript": "catalog:",
     "uuid": "catalog:",

@@ -24,10 +24,14 @@ export type {
   TransportFunction,
 } from "./transport/types.ts";
 export {
+  BASE64_ALPHABET,
+  FlakeId,
   WOODY_HEADERS,
+  bs64,
   createWoodyHeaders,
   createWoodyHeaderProvider,
+  generateId,
   generateTraceId,
 } from "./transport/woody.ts";
-export type { WoodyHeadersConfig } from "./transport/woody.ts";
+export type { FlakeIdOptions, WoodyHeadersConfig } from "./transport/woody.ts";
 export * from "./runtime.ts";

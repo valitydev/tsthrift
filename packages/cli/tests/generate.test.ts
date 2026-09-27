@@ -35,13 +35,13 @@ async function setup() {
 }
 
 test.each(["number", "bigint"] as const)(
-  "generates models, clients, and metadata.json by default (%s mode)",
+  "generates models, services, and metadata.json by default (%s mode)",
   async (i64) => {
     const options = await setup();
     const result = await generate({ ...options, i64 });
 
     expect(result.models).toBe(true);
-    expect(result.clients).toBe(true);
+    expect(result.services).toBe(true);
     expect(result.modules.sort()).toEqual(["common", "example"]);
 
     const generation = JSON.parse(
@@ -50,7 +50,7 @@ test.each(["number", "bigint"] as const)(
     expect(generation).toEqual({
       i64,
       models: true,
-      clients: true,
+      services: true,
       minify: false,
       splitMetadata: false,
       metadataJson: false,
@@ -60,24 +60,24 @@ test.each(["number", "bigint"] as const)(
     const files = await readdir(options.output);
     expect(files.sort()).toEqual([
       ".tsthrift.json",
-      "clients",
       "generation.json",
       "index.ts",
       "metadata",
       "models",
+      "services",
     ]);
 
     const modelsDir = path.join(options.output, "models");
     const modelFiles = await readdir(modelsDir);
     expect(modelFiles.sort()).toEqual(["common.ts", "example.ts"]);
 
-    const clientsDir = path.join(options.output, "clients");
-    const clientFiles = await readdir(clientsDir);
-    expect(clientFiles.sort()).toEqual(["common", "example", "index.ts", "services.ts"]);
-    const exampleClientFiles = await readdir(path.join(clientsDir, "example"));
-    expect(exampleClientFiles.sort()).toEqual(["Example.ts", "index.ts"]);
+    const servicesDir = path.join(options.output, "services");
+    const serviceFiles = await readdir(servicesDir);
+    expect(serviceFiles.sort()).toEqual(["common", "example", "index.ts", "services.ts"]);
+    const exampleServiceFiles = await readdir(path.join(servicesDir, "example"));
+    expect(exampleServiceFiles.sort()).toEqual(["Example.ts", "index.ts"]);
 
-    // Verify TypeScript type checking on generated models and clients
+    // Verify TypeScript type checking on generated models and services
     try {
       await execute(process.execPath, [
         tsc,
@@ -103,16 +103,16 @@ test.each(["number", "bigint"] as const)(
   },
 );
 
-test("generates models without client factories when clients: false is passed", async () => {
+test("generates models without service factories when services: false is passed", async () => {
   const options = await setup();
-  const result = await generate({ ...options, clients: false });
+  const result = await generate({ ...options, services: false });
 
   expect(result.models).toBe(true);
-  expect(result.clients).toBe(false);
+  expect(result.services).toBe(false);
 
   const files = await readdir(options.output);
   expect(files.sort()).toEqual([".tsthrift.json", "generation.json", "index.ts", "models"]);
-  expect(files).not.toContain("clients");
+  expect(files).not.toContain("services");
 });
 
 test("generates minified metadata when minify: true", async () => {
@@ -173,7 +173,7 @@ test("generates only metadata when models is disabled via models: false", async 
   const result = await generate({ ...options, models: false });
 
   expect(result.models).toBe(false);
-  expect(result.clients).toBe(false);
+  expect(result.services).toBe(false);
   expect(result.modules.sort()).toEqual(["common", "example"]);
 
   const files = await readdir(options.output);
@@ -191,7 +191,7 @@ test("preserves previous output when generation fails", async () => {
   expect(await readFile(path.join(options.output, "generation.json"), "utf8")).toBe(before);
 });
 
-test("CLI supports --no-clients, --minify, --split-metadata, and --package", async () => {
+test("CLI supports --no-services, --minify, --split-metadata, and --package", async () => {
   const options = await setup();
   const result = await execute(process.execPath, [
     path.resolve(import.meta.dirname, "../src/cli.ts"),
@@ -215,7 +215,7 @@ test("CLI supports --no-clients, --minify, --split-metadata, and --package", asy
   const files = await readdir(options.output);
   expect(files).toContain("metadata.json");
   expect(files).toContain("models");
-  expect(files).toContain("clients");
+  expect(files).toContain("services");
   expect(files).toContain("metadata");
   expect(files).toContain("package.json");
   expect(files).toContain("tsconfig.json");

@@ -5,14 +5,14 @@ import { parseI64Mode } from "./compiler/i64-mode.ts";
 
 const help = `Usage: tsthrift --input <directory> --output <directory> [options]
 
-Generate metadata, TypeScript models, and client factories.
+Generate metadata, TypeScript models, and service factories.
 
   -i, --input            Directory containing entry .thrift files
   -o, --output           Dedicated generated output directory
   -I, --include          Additional include root (repeatable)
   -n, --namespace        Entry filename without .thrift (repeatable; default: all)
-      --no-models        Generate only metadata.json without models or clients
-      --no-clients       Generate models and metadata without client factories
+      --no-models        Generate only metadata.json without models or services
+      --no-services      Generate models and metadata without service factories
       --minify           Minify emitted metadata JSON files
       --split-metadata   Emit per-module metadata files in metadata/
       --metadata-json    Emit monolithic metadata.json in output directory
@@ -32,7 +32,7 @@ try {
       include: { type: "string", short: "I", multiple: true },
       namespace: { type: "string", short: "n", multiple: true },
       "no-models": { type: "boolean" },
-      "no-clients": { type: "boolean" },
+      "no-services": { type: "boolean" },
       minify: { type: "boolean" },
       "split-metadata": { type: "boolean" },
       "metadata-json": { type: "boolean" },
@@ -47,14 +47,14 @@ try {
     if (!values.input || !values.output)
       throw new Error("--input and --output are required. Use --help for usage.");
     const models = values["no-models"] ? false : true;
-    const clients = values["no-clients"] ? false : undefined;
+    const services = values["no-services"] ? false : undefined;
     const result = await generate({
       input: values.input,
       output: values.output,
       includes: values.include,
       namespaces: values.namespace,
       models,
-      clients,
+      services,
       minify: values.minify,
       splitMetadata: values["split-metadata"],
       metadataJson: values["metadata-json"],

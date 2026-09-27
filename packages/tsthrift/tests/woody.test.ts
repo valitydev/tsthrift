@@ -3,14 +3,52 @@ import {
   WOODY_HEADERS,
   createWoodyHeaders,
   createWoodyHeaderProvider,
+  generateId,
   generateTraceId,
+  bs64,
+  FlakeId,
   createHttpTransport,
 } from "../src/index.ts";
 
 describe("Woody headers", () => {
-  test("generateTraceId produces a valid v4 UUID format", () => {
-    const id = generateTraceId();
-    expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+  test("generateId produces a valid base64-encoded 64-bit Flake ID", () => {
+    const id = generateId();
+    expect(generateTraceId).toBe(generateId);
+    expect(typeof id).toBe("string");
+    // 64-bit Big-Endian number encoded in base-64 has 11 chars
+    expect(id.length).toBe(11);
+    expect(id).toMatch(/^[A-Za-z0-9+/]{11}$/);
+
+    const decoded = bs64.decode(id);
+    expect(decoded.length).toBe(8);
+  });
+
+  test("generateId generates unique, monotonically increasing IDs", () => {
+    const ids = Array.from({ length: 100 }, () => generateId());
+    const unique = new Set(ids);
+    expect(unique.size).toBe(100);
+  });
+
+  test("matches upstream flake-idgen output byte-for-byte and string-for-string", async () => {
+    const { createRequire } = await import("node:module");
+    const require = createRequire(import.meta.url);
+    const FlakeIdOfficial = require("flake-idgen");
+    const flakeOfficial = new FlakeIdOfficial();
+    const flakeNative = new FlakeId();
+
+    const fixedTime = 1727465790000;
+    const origNow = Date.now;
+    Date.now = () => fixedTime;
+
+    try {
+      for (let i = 0; i < 50; i++) {
+        const buf1 = flakeOfficial.next();
+        const buf2 = flakeNative.next();
+        expect(bs64.encode(buf1)).toBe(bs64.encode(buf2));
+      }
+    } finally {
+      Date.now = origNow;
+    }
   });
 
   test("createWoodyHeaders creates default trace-id and span-id", () => {

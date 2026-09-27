@@ -63,14 +63,14 @@ export type TransportFunction = (
   options?: RequestOptions,
 ) => Promise<Uint8Array>;
 
-/** Descriptor of a generated Thrift service containing metadata and client factory. */
-export interface ThriftServiceDescriptor<TClient = unknown> {
+/** Descriptor of a generated Thrift service containing metadata and service factory. */
+export interface ThriftServiceDescriptor<TService = unknown> {
   /** Service name in IDL (e.g. "Repository" or "UserService"). */
   serviceName: string;
   /** IDL namespace or module name. */
   namespace: string;
-  /** Factory creating typed Thrift client instance. */
-  createClient: (config?: any) => TClient;
+  /** Factory creating typed Thrift service proxy instance. */
+  createService: (config?: any) => TService;
   /** Lazy loader returning parsed schema metadata. */
   getMetadata: () => Promise<Metadata[]>;
 }

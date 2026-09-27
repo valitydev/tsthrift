@@ -118,10 +118,10 @@ The official Apache `thrift` package is retained solely in test devDependencies 
 verify Binary Protocol wire compatibility.
 
 The standalone `@vality/tsthrift-angular` package provides Angular DI integration
-(`provideThriftConfig`, `provideThriftServices`, `provideThriftClient`, `getServiceToken`,
+(`provideThriftConfig`, `provideThriftServices`, `provideThriftService`, `getServiceToken`,
 `createServiceToken`), HttpClient-to-fetch adapter (`createHttpClientFetch`), and RxJS helpers
 (`toObservableClient`, `deferThriftCall`) for Observable-based consumers. The CLI generates
-pure framework-agnostic client modules and service registry descriptors (`services.ts`).
+pure framework-agnostic service modules and service registry descriptors (`services.ts`).
 
 ## Verification and acceptance
 

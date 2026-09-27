@@ -117,7 +117,8 @@ test.each(["bigint", "number"] as const)(
         entry,
         `import { createMetadataClient } from "@vality/tsthrift";
         import metadata from "./generated/metadata.json";
-        export function createExampleClient(config) { return createMetadataClient({ ...config, metadata, namespace: "example", serviceName: "Example", i64Mode: "${i64}" }); }`,
+        export function createExample(config) { return createMetadataClient({ ...config, metadata, namespace: "example", serviceName: "Example", i64Mode: "${i64}" }); }
+        export const createExampleClient = createExample;`,
       );
       await verifyBrowserBundle(output, entry);
     } finally {

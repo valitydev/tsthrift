@@ -38,8 +38,8 @@ The async factory reserves the method name `then` to avoid Promise assimilation.
 ## Monorepo packages
 
 - `@vality/tsthrift`: Zero-framework core runtime, Binary Protocol, metadata client, and HTTP transport.
-- `@vality/tsthrift-angular`: Angular dependency injection, providers (`provideThriftServices`, `provideThriftClient`), and RxJS adapters (`toObservableClient`, `deferThriftCall`).
-- `@vality/tsthrift-cli`: Pure TypeScript compiler generating models, modular metadata, and framework-agnostic client factories.
+- `@vality/tsthrift-angular`: Angular dependency injection, providers (`provideThriftServices`, `provideThriftService`), and RxJS adapters (`toObservableClient`, `deferThriftCall`).
+- `@vality/tsthrift-cli`: Pure TypeScript compiler generating models, modular metadata, and framework-agnostic service factories.
 
 ## Angular integration
 

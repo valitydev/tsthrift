@@ -1,11 +1,11 @@
 export { generate } from "./compiler/generate.ts";
 export {
-  emitProgramClients,
+  emitProgramServices,
   emitProgramIndex,
   emitServicesRegistry,
-  emitClientsRootIndex,
-} from "./compiler/emit-clients.ts";
-export type { EmittedClientFile } from "./compiler/emit-clients.ts";
+  emitServicesRootIndex,
+} from "./compiler/emit-services.ts";
+export type { EmittedServiceFile } from "./compiler/emit-services.ts";
 export type { GenerateOptions, GenerateResult } from "./compiler/generate.ts";
 export type { I64Mode } from "./compiler/i64-mode.ts";
 export type { Metadata, ThriftAst, ValueType } from "@vality/tsthrift";

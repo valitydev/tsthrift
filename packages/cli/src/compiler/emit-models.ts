@@ -74,7 +74,7 @@ export function emitModels(
     );
   }
   for (const [name, service] of Object.entries(program.ast.service ?? {})) {
-    const parent = service.extends ? ` extends ${service.extends}Client` : "";
+    const parent = service.extends ? ` extends ${service.extends}` : "";
     const methods = Object.values(service.functions).map((method) => {
       const names = new Set(method.args.map((field) => field.name));
       let optionsName = "options";
@@ -85,7 +85,7 @@ export function emitModels(
       ].join(", ");
       return `  abstract ${JSON.stringify(method.name)}(${parameters}): Promise<${tsType(method.type, i64, binary)}>;`;
     });
-    lines.push(`export abstract class ${name}Client${parent} {\n${methods.join("\n")}\n}`);
+    lines.push(`export abstract class ${name}${parent} {\n${methods.join("\n")}\n}`);
   }
   return `${lines.join("\n\n")}\n`;
 }
