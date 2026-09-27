@@ -12,6 +12,7 @@ export function emitConstant(
   i64: I64Mode,
   scope = program,
   seen = new Set<string>(),
+  binary: "string" | "Uint8Array" = "string",
 ): string {
   const reference = referenceName(value);
   if (reference !== undefined) {
@@ -25,11 +26,12 @@ export function emitConstant(
       i64,
       constant.scope,
       new Set([...seen, constant.identity]),
+      binary,
     );
   }
   const resolved = resolveType(program, type);
   const emit = (childType: ValueType, child: unknown) =>
-    emitConstant(resolved.program, childType, child, i64, scope, seen);
+    emitConstant(resolved.program, childType, child, i64, scope, seen, binary);
   if (typeof resolved.type === "object") {
     if (!Array.isArray(value)) throw new Error(`Unsupported constant value in ${program.path}`);
     const container = resolved.type;
@@ -74,7 +76,7 @@ export function emitConstant(
           const identity = `default ${resolved.program.filename}:${resolved.type}.${field.name}`;
           if (seen.has(identity)) throw new Error(`Circular constant default ${identity}`);
           entries.push(
-            `[${JSON.stringify(field.name)}]: ${emitConstant(resolved.program, field.type, field.defaultValue, i64, resolved.program, new Set([...seen, identity]))}`,
+            `[${JSON.stringify(field.name)}]: ${emitConstant(resolved.program, field.type, field.defaultValue, i64, resolved.program, new Set([...seen, identity]), binary)}`,
           );
         } else if (field.option !== "optional") {
           throw new Error(
@@ -84,6 +86,10 @@ export function emitConstant(
       }
     }
     return `{ ${entries.join(", ")} }`;
+  }
+  if (resolved.type === "binary" && binary === "Uint8Array") {
+    const literal = emitScalarConstant("binary", value, program.path, i64);
+    return `new TextEncoder().encode(${literal})`;
   }
   return emitScalarConstant(
     resolved.kind === "enum" ? "i32" : resolved.type,

@@ -1,105 +1,97 @@
 # TsThrift
 
-TypeScript models, form metadata, and a Thrift client toolchain with an Apache
-JavaScript backend. Compatibility with existing Vality protocol packages is a
-release requirement; current output is not yet a drop-in replacement.
-
-## Status
-
-Implemented:
-
-- Legacy-format `metadata.json` with selected entry files and reachable includes.
-- TS models, executable constants, full enums, and Promise client interfaces.
-- Public i64 as bigint by default, or number with `--i64 number`.
-- Apache 0.24 JS generation using `js:node,es6,bigint`.
-- Executed Apache Promise client/processor tests for callback-named IDL arguments,
-  bigint values, and declared exceptions, without compiler patches.
-- Staged output replacement and protection of unrelated files.
-- An experimental low-level Binary Protocol runtime with cross-implementation tests.
-
-The intended production path reuses Apache serialization and adds public data
-conversion and a Woody-compatible HTTP transport. Map compatibility, browser
-packaging, public clients, React Query helpers, and Angular service output remain
-pending. The experimental binary runtime is not connected to generated clients;
-expanding it into another full serializer is not the current implementation priority.
+TypeScript models, legacy-compatible form metadata, and Promise RPC clients for
+Thrift Binary Protocol. The native backend generates clients without the Apache
+compiler, npm runtime, or Buffer polyfill. Existing Vality application APIs still
+require consumer migration and acceptance testing.
 
 ## Generate
 
 ```sh
 vp install
 vp run build
-node dist/cli.mjs --input ./proto --output ./generated
+node packages/cli/dist/cli.mjs --input ./proto --output ./generated --target native
 ```
 
-| Target             | Output                                   | External compiler    |
-| ------------------ | ---------------------------------------- | -------------------- |
-| `models` (default) | TS models and metadata                   | None                 |
-| `metadata`         | Metadata only                            | None                 |
-| `apache`           | Models, metadata, and internal Apache JS | Apache Thrift 0.24.0 |
+| Target             | Output                                                 | External compiler |
+| ------------------ | ------------------------------------------------------ | ----------------- |
+| `models` (default) | TS models and metadata                                 | None              |
+| `metadata`         | Metadata only                                          | None              |
+| `native`           | Models, codecs, Promise clients, metadata              | None              |
+| `apache`           | Models, Promise wrappers, internal Apache JS, metadata | Apache 0.24.0     |
 
-```sh
-node dist/cli.mjs --input ./proto --output ./generated --target metadata
-node dist/cli.mjs --input ./proto --output ./generated --i64 number
-node dist/cli.mjs --input ./proto --output ./generated --target apache \
-  --compiler /path/to/thrift-0.24.0
+Repeat `--include` for include roots and `--namespace` for entry filenames without
+`.thrift`. Without `--namespace`, all top-level IDL files are entries. Only reachable
+includes are loaded. `--i64 number` selects safe numeric values instead of bigint.
+`--compiler` is accepted only with `--target apache`.
+
+Use a dedicated output directory. Generation stages output, preserves previous
+artifacts on failure, and rejects unrelated/unowned files. All targets record
+their settings in `generation.json` and retain the legacy `metadata.json` AST.
+Generated sources are intermediate artifacts, not installable protocol packages.
+
+## Native clients
+
+After compiling the generated TypeScript as ESM, or through a TS-aware bundler:
+
+```ts
+import { createExampleClient } from "./generated/clients/example/Example.js";
+
+const client = createExampleClient({
+  endpoint: "/rpc/example",
+  headers: () => ({ Authorization: "Bearer token" }),
+  timeoutMs: 10_000,
+});
+
+const controller = new AbortController();
+const value = await client.next(42n, { signal: controller.signal });
 ```
 
-Repeat `--include` and `--namespace` to select include roots and entry filenames
-without `.thrift`. Without `--namespace`, all top-level input files are entries.
-Only referenced files are loaded from include roots. `--compiler` requires the
-Apache target. ES6 output still uses CommonJS modules; it selects Promise clients,
-not ESM module packaging.
+The root also exports `clients.example.createExampleClient` and model namespace
+`example`. `clients.SERVICES["example.Example"]` and `clients.SERVICES_LIST` contain
+factory/DI descriptors and lazy metadata loaders. Duplicate service names in
+different IDL modules are supported.
 
-All targets emit `metadata.json`, `generation.json`, and `.tsthrift.json` ownership
-information. Models go into `models/`; Apache JS goes into `internal/` and imports
-`thrift` and `uuid`. These are intermediate artifacts, not a generated package.
-Use a dedicated output directory. Generation preserves prior output on failure
-and refuses unmanaged directories or additional unowned files.
+Native clients import `@vality/tsthrift/native`. Their values are plain objects,
+Map (including struct keys), Set, arrays, and Uint8Array for binary. Optional empty
+structs remain present. Bigint preserves signed i64; number mode rejects unsafe
+values. Declared exceptions reject as decoded plain objects; server application
+exceptions use `ThriftApplicationError`. A byte transport or fetch implementation
+can be supplied for framework integration.
 
-## Public values
-
-`--i64 bigint` is the default for fields, typedefs, method signatures, collection
-keys/values, and constants such as `42n`. `--i64 number` preserves numeric public
-representations for existing consumers. Enums and other numeric types remain
-number. Compile bigint sources with ES2020 or newer.
-
-The API accepts `generate({ input, output, i64: "number" })`. The mode is recorded
-in `generation.json` and does not change the legacy metadata AST. Apache internal
-JS always uses bigint. Recursive conversion between public and internal values
-is not implemented yet.
-
-Enums are ordinary exported TS enums: both `Status.ACTIVE` and `Status[4]` work
-at runtime after TypeScript compilation. Collections use Map, Set, and arrays.
+RPC calls do not load metadata or convert values into Apache classes. The native
+entry has no Node or Buffer dependency. Apache and Buffer are optional peers used
+only by the older Apache/root client entry; install `thrift@0.24.0` and `buffer`
+when using that backend.
 
 ## Compatibility limits
 
-Stock Apache JS uses object-backed maps even in ES6 mode. Struct-keyed maps can
-lose data and remain rejected by the Apache target. Metadata and models support
-them. A transport replacement alone cannot fix generated map serialization.
-
-The legacy parser stores numeric literals as JS numbers. Integral IDL literals
-outside the safe range are rejected in both modes; exact constant parsing is
-pending. Public binary still has the legacy string declaration; its conversion
-to runtime bytes needs a consumer compatibility decision.
-
-The existing metadata baseline and 15 complex reference IDL modules have been
-verified. Angular services, forms, HTTP behavior, and package exports still need
-consumer validation. Use `--i64 number` for compatibility builds; matching types
-alone does not preserve the old Observable service API.
+- Native binary uses Uint8Array. The models/apache targets retain their historical
+  string declaration; consumers using strings or Buffer methods need adaptation.
+- Unsafe integral IDL literals remain rejected because the legacy parser cannot
+  preserve their exact values in metadata.
+- Stock Apache generation still rejects struct-keyed maps. Native generation
+  preserves those keys directly.
+- Metadata fixtures and generated output have been verified; live form consumers,
+  decorated Angular services, Observable API compatibility, package publishing,
+  and production-service acceptance remain pending.
+- UUID model generation is not supported. Native output is ESM-oriented; isolated
+  CJS protocol-package acceptance is pending.
 
 ## Development
 
 ```sh
 vp check
-vp test
 vp run build
+vp test
 THRIFT_COMPILER=/path/to/thrift-0.24.0 vp test
 ```
 
-Without `THRIFT_COMPILER`, external-compiler integration tests skip. Binary runtime
-tests use pinned npm development dependencies and still run.
+Native tests compile and execute generated clients in both i64 modes, cross-decode
+with Apache, exercise real local HTTP, and run a browser-targeted bundle without
+Node globals. Only older external-compiler tests skip without `THRIFT_COMPILER`.
 
-- [Source audit and compatibility requirements](docs/compatibility.md)
-- [Architecture and framework adapter boundaries](docs/architecture.md)
+- [Compatibility audit](docs/compatibility.md)
+- [Architecture](docs/architecture.md)
 - [Implementation checklist](docs/tasks.md)
-- [Experimental binary runtime](docs/runtime.md)
+- [Binary runtime](docs/runtime.md)

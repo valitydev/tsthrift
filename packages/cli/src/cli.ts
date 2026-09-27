@@ -5,13 +5,13 @@ import { parseI64Mode } from "./compiler/i64-mode.ts";
 
 const help = `Usage: tsthrift --input <directory> --output <directory> [options]
 
-Generate metadata and public TS models without an external compiler.
+Generate metadata, public TS models, and native clients without an external compiler.
 
   -i, --input       Directory containing entry .thrift files
   -o, --output      Dedicated generated output directory
   -I, --include     Additional include root (repeatable)
   -n, --namespace   Entry filename without .thrift (repeatable; default: all)
-      --target     metadata | models (default) | apache
+      --target     metadata | models (default) | native | apache
       --i64        Public i64 representation: bigint (default) | number
       --compiler   Apache 0.24.0 executable (only with --target apache)
   -h, --help       Show this help
@@ -37,8 +37,13 @@ try {
     if (!values.input || !values.output)
       throw new Error("--input and --output are required. Use --help for usage.");
     const target = values.target;
-    if (target !== "metadata" && target !== "models" && target !== "apache") {
-      throw new Error(`Unknown target ${target}. Expected metadata, models, or apache.`);
+    if (
+      target !== "metadata" &&
+      target !== "models" &&
+      target !== "apache" &&
+      target !== "native"
+    ) {
+      throw new Error(`Unknown target ${target}. Expected metadata, models, native, or apache.`);
     }
     const result = await generate({
       input: values.input,

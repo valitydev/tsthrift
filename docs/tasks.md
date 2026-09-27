@@ -23,6 +23,22 @@ and source revisions are in [compatibility](compatibility.md).
 Do not recreate thrift-parser's grammar test suite. Add cases when they expose a
 project integration defect or a consumer contract that needs protection.
 
+## Native TypeScript backend
+
+- [x] Emit executable codecs and Promise clients without an external compiler.
+- [x] Preserve struct-keyed maps, Set, plain structs, empty optional values, and recursive types.
+- [x] Resolve transitive typedef imports and inherited service methods.
+- [x] Scope client files/exports by module and support duplicate service names.
+- [x] Select request options by argument position, including callback/options/params-named data.
+- [x] Enforce required fields, decode limits, response correlation, and declared/application errors.
+- [x] Compile and execute generated output in both i64 modes with independent Apache wire decoding.
+- [x] Execute native generated clients through real local HTTP, cancellation, and timeout.
+- [x] Execute a browser-targeted bundle without Node globals or Apache/Buffer imports.
+- [x] Make Apache/Buffer optional peers for the legacy backend.
+- [x] Generate/compile 15 reference modules in both modes; instantiate 14 clients and execute a composite-map codec.
+- [ ] Validate native clients in live browsers and existing Angular/form consumers.
+- [ ] Cross-decode complete native messages with the legacy Vality runtime.
+
 ## Apache JS backend and compatibility
 
 - [x] Generate internal JS with official Apache 0.24 and explicit executable selection.
@@ -30,15 +46,13 @@ project integration defect or a consumer contract that needs protection.
 - [x] Execute callback-named arguments and declared errors through generated Promise clients/processors.
 - [x] Record generator flags and i64 mode in generation.json.
 - [x] Audit thrift-ts, frontend-thrift-codegen, woody_js, the Vality fork, and existing Angular consumers.
-- [x] Confirm stock ES6 JS still loses struct map keys; decided to update Vality C++ fork for native Map generation instead of AST transforms in tsthrift.
-- [ ] Integrate and verify updated Vality Thrift compiler fork (Apache 0.24 + native Map generation).
-- [ ] Verify struct-keyed maps with composite keys using the updated compiler.
+- [x] Confirm stock ES6 JS loses struct map keys; native TS codecs provide the independent replacement.
 - [x] Implement recursive public plain-object (typed JSON) to/from generated class instance conversion.
 - [x] Add declared-exception and i64 mode conversion at the public client boundary.
 - [ ] Cover transitive typedef imports and generated identifier collisions beyond callback.
 - [x] Package generated JS with a compatible browser runtime, bigint helpers, and required Buffer polyfill for Apache Thrift 0.24.
-- [ ] Generate full client sets for complex reference schemas without losing map keys.
-- [ ] Make compiler acquisition reproducible in CI.
+- [x] Generate native client sets for complex reference schemas without losing map keys.
+- [ ] Make optional Apache reference-compiler acquisition reproducible in CI.
 
 Acceptance: generated clients preserve existing wire and public value contracts;
 stock generation success alone is insufficient.
@@ -49,7 +63,7 @@ stock generation success alone is insufficient.
 - [x] Implement declarative client initialization (ThriftClientConfig) with endpoint, timeout, static/dynamic header providers, and fetch/custom transport adapter.
 - [x] Support direct static metadata import and Promise loader (eliminating legacy Observable metadata$ requirement).
 - [x] Provide a request transport seam for fetch or framework HTTP adapters.
-- [x] Implement AbortSignal cancellation, enforced timeout (AbortSignal.timeout/any), and pending-request socket teardown.
+- [x] Implement AbortSignal cancellation, enforced timeout via an AbortController, and pending-request socket teardown.
 - [x] Reject non-200 HTTP responses (4xx/5xx) and invalid Content-Types immediately before Thrift decoding (prevent hung 500/HTML requests).
 - [x] Validate response method/type/sequence and distinguish HTTP, network, timeout, and declared application errors.
 - [x] Preserve compatibility error exports/context and logging hooks.
@@ -84,11 +98,11 @@ stock generation success alone is insufficient.
 - [ ] Verify ESM/CJS and optional framework entries in isolated consumers.
 - [ ] Rebuild protocol artifacts before migrating applications that currently bundle woody_js.
 
-## Existing experimental binary runtime
+## Binary runtime
 
 - [x] Implement primitive/envelope reading and writing, scalar i64 guards, and bounded skipping.
 - [x] Cross-decode with Apache 0.24 and test malformed inputs and limits.
-- [x] Export the experimental runtime independently of Node/compiler/parser imports.
+- [x] Export the binary runtime independently of Node/compiler/parser imports.
 
-This experiment is not the production client backend. Further native codec
-implementation is deferred while the Apache-backed compatibility path is evaluated.
+The native backend uses this runtime. Apache remains available as a comparison
+backend; consumer acceptance is tracked separately above.

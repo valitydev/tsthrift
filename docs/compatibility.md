@@ -37,22 +37,24 @@ are compatibility responsibilities owned by tsthrift, even when parsing is deleg
 
 ## Contract inventory
 
-| Surface          | Existing contract                                                              | Current tsthrift status                                             |
-| ---------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
-| Metadata         | Paths/names plus legacy AST, independently loadable                            | Artifact fixture passes; live forms pending                         |
-| i64              | Existing frontend models use number                                            | Explicit number mode; bigint default is a different public contract |
-| Collections      | Public Map, Set, arrays; generated map helpers use Map                         | Models supported; stock Apache object maps need adaptation          |
-| Structs/unions   | Plain public values converted to generated instances                           | Models/constants supported; client boundary conversion pending      |
-| Services         | Async factory plus Observable service wrapper constructed with ConnectOptions$ | Promise interfaces only; public clients/wrappers pending            |
-| Metadata loading | Lazy cached metadata$ export                                                   | JSON emitted; Observable compatibility export pending               |
-| Exports          | Namespace entries, service classes, errors, logging and ID helpers             | Generated package/export compatibility pending                      |
-| HTTP             | Binary body, application/x-thrift, endpoint and per-call headers               | No production transport yet                                         |
-| Errors           | Declared error, missing service, timeout, call context                         | Low-level checks and Apache loopback only                           |
-| Browser output   | Bundled runtime helpers and polyfills                                          | Package/browser integration pending                                 |
+| Surface          | Existing contract                       | Current tsthrift status                                                |
+| ---------------- | --------------------------------------- | ---------------------------------------------------------------------- |
+| Metadata         | Paths/names and legacy AST              | Baseline preserved; actual form consumers pending                      |
+| i64              | Numeric frontend values                 | Native bigint default or explicit safe-number mode                     |
+| Collections      | Map, Set, arrays                        | Native codecs preserve composite keys directly                         |
+| Structs/unions   | Public plain objects                    | Native read/write uses plain objects without class conversion          |
+| Services         | Observable wrappers and ConnectOptions$ | Native Promise factories; Observable migration pending                 |
+| Metadata loading | Cached metadata$                        | Lazy JSON import on service descriptors; RPC calls independent         |
+| Exports          | Namespace services, errors, logging     | Native module-scoped factories; no drop-in package claim               |
+| HTTP             | Binary body, endpoint, per-call headers | Shared HTTP adapter exercised by native generated clients              |
+| Errors           | Declared errors and transport failures  | Native plain declared values; application errors preserve numeric code |
+| Browser output   | Bundled helpers and Buffer              | Native browser bundle runs in isolated JS context without Node globals |
 
-Unsafe legacy i64 decoding can warn and return an imprecise number. The current
-experimental number conversion rejects unsafe values. That is a behavior change
-to document explicitly, not evidence of complete runtime compatibility.
+Native number mode rejects unsafe i64 values on write and read. Legacy decoding
+could return imprecise numbers; the stricter behavior is intentional and requires
+consumer acceptance. Native binary is Uint8Array, whereas legacy model generation
+declares string and the inspected Woody readBinary implementation returns Buffer.
+No implicit string/Buffer migration is claimed.
 
 ## Callback collision
 
@@ -71,38 +73,48 @@ exception through real generated client/processor serialization. It also verifie
 pending callbacks are cleaned up. This establishes the specific workaround;
 other generated identifier collisions need their own coverage.
 
-## Map resolution via updated compiler fork
+## Native map serialization and Apache comparison backend
 
-Stock Apache 0.24 emits `{}`, property indexing, and object-key iteration
-for maps in both node and node+es6 modes. The Vality generator and its helper
-runtime use Map. For simple keys a boundary conversion may be possible, but
-structured keys cannot be recovered after object-property coercion.
+Stock Apache 0.24 emits object properties for maps. An executed stock ES6 decode
+of two struct-keyed entries produced only `{"[object Object]":"second"}`. Typed
+keys and the first value were lost. The Vality generator/helper runtime uses Map.
 
-An executed stock-ES6 decode of two struct-keyed map entries yielded only
-`{"[object Object]":"second"}`. The first entry and both typed keys were lost.
-Complex protocol schemas frequently contain this pattern in struct-keyed mappings.
+The native backend emits codecs that write Map entries directly and read them
+back into Map with decoded keys. No generated Apache source rewriting, object-key
+conversion, or C++ fork is required. Apache's independent Binary Protocol reads
+native requests and writes native replies in integration tests containing two
+struct keys and nested sets in both i64 modes.
 
-Rather than attempting complex AST transformations or post-generation text rewriting
-inside tsthrift, the project resolves this by updating the Vality Thrift C++ compiler
-fork (rebased onto Apache 0.24) to emit native `Map` collections directly in
-`js:node,es6,bigint` mode.
+The earlier C++-fork strategy is no longer required by the native path. The
+optional Apache backend retains its map guard and requires matching 0.24.0 compiler
+and runtime. Apache and Buffer are optional peers for that backend and development
+references for tests. Native entrypoints have neither runtime import.
 
-The runtime npm package remains official stock `thrift@0.24.0`: Thrift's `TBinaryProtocol`
-and `TBufferedTransport` operate on wire tokens (`writeMapBegin`/`readMapBegin`) and
-do not depend on whether JavaScript represents the map as an object or a `Map`.
+## Executed native artifacts
 
-### Browser runtime and Buffer dependency
+Native integration tests compile emitted sources and execute Promise clients,
+transitive typedef imports, recursion/defaults, inherited services, duplicate
+service names across modules, argument-name collisions, binary bytes, and
+structured map keys. They cover declared exceptions, application exceptions,
+missing results, malformed correlation/type, trailing bytes, real loopback HTTP,
+concurrent calls, cancellation, and timeout.
 
-Because official `thrift@0.24.0` remains the production serialization runtime,
-its binary protocol and buffered transport classes rely directly on Node.js `Buffer`
-APIs (`Buffer.from`, `Buffer.isBuffer`, `Buffer.allocUnsafe`, and `Buffer.prototype.readBigInt64BE`).
-Modern browsers do not provide `globalThis.Buffer`.
+Vite browser output is executed in an isolated JS context without Buffer or
+process. This verifies bundling and execution without Node globals; live browser
+and framework acceptance remain pending.
 
-To execute generated Apache clients in browser environments without runtime reference
-errors, package distribution must bundle or declare a `Buffer` polyfill (equivalent to
-the legacy `tools/buffer-polyfill.js` in `frontend-thrift-codegen`). The standalone
-binary runtime in `packages/tsthrift/src/runtime` (which uses pure `Uint8Array` and `DataView`)
-is a tested low-level experiment, not the active production backend for generated clients.
+Damsel revision `8d6174bddedc6d9aefa407fdc1d54877b8686ff9` was generated from entries
+`domain_config_v2`, `domain`, `payment_processing`, `accounter`, `webhooker`,
+`api_extensions`, and `proxy_provider`. Both numeric modes compiled all 15 reachable
+modules and instantiated all 14 clients. The emitted SystemAccountSet codec
+round-tripped two CurrencyRef map keys. This does not establish compatibility with
+a deployed Damsel server or the full legacy application API.
+
+Native struct decoding validates explicit required fields and skips unknown
+fields. Duplicate known fields, mismatched container element types, and multiple
+known union alternatives are rejected. These checks are stricter than some legacy
+paths. Declared exceptions are rejected as decoded public objects rather than
+Apache class instances. Consumers relying on instanceof need adaptation.
 
 ## Woody responsibilities
 
@@ -117,10 +129,10 @@ call and preserve refresh behavior. Preserve error propagation and request
 correlation, but test cancellation/timeout cleanup rather than duplicating the
 old Promise.race timer behavior.
 
-Reuse compatible Apache runtime modules for serialization. Any borrowed Woody
-or Apache source must retain the required license notices. The first transport
-implementation needs actual browser bundling and HTTP tests; the callback loopback
-and binary reader tests do not establish those properties.
+Native clients reuse the HTTP adapter but serialize with the independent binary
+runtime. The Apache comparison backend keeps the official runtime. Any borrowed
+Woody or Apache source must retain its license notices. Existing loopback HTTP
+and isolated bundle tests do not replace actual application acceptance.
 
 ## Metadata test scope
 

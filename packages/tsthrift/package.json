@@ -18,6 +18,7 @@
   "exports": {
     ".": "./dist/index.mjs",
     "./angular": "./dist/angular/index.mjs",
+    "./native": "./dist/native.mjs",
     "./runtime": "./dist/runtime.mjs",
     "./package.json": "./package.json"
   },
@@ -31,15 +32,13 @@
     "check": "vp check",
     "prepublishOnly": "vp run build"
   },
-  "dependencies": {
-    "buffer": "catalog:",
-    "thrift": "catalog:"
-  },
   "devDependencies": {
     "@angular/core": "catalog:",
     "@types/node": "catalog:",
+    "buffer": "catalog:",
     "bumpp": "catalog:",
     "rxjs": "catalog:",
+    "thrift": "catalog:",
     "typescript": "catalog:",
     "uuid": "catalog:",
     "vite": "catalog:",
@@ -47,13 +46,21 @@
   },
   "peerDependencies": {
     "@angular/core": ">=16.0.0",
-    "rxjs": ">=7.0.0"
+    "buffer": "^6.0.3",
+    "rxjs": ">=7.0.0",
+    "thrift": "0.24.0"
   },
   "peerDependenciesMeta": {
     "@angular/core": {
       "optional": true
     },
     "rxjs": {
+      "optional": true
+    },
+    "buffer": {
+      "optional": true
+    },
+    "thrift": {
       "optional": true
     }
   }

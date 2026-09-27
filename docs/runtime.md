@@ -1,16 +1,15 @@
-# Experimental Binary Protocol runtime
+# Binary Protocol runtime
 
-This independent runtime is a tested experiment, not the production backend for
-generated clients. The current architecture reuses Apache-generated serialization
-with a compatibility layer and replaceable transport. This API is not a drop-in
-Apache protocol object; see [architecture](architecture.md).
+The native generator uses this runtime for serialization. The low-level entry is
+also available independently of generated codecs; it is not an Apache protocol
+object. See [architecture](architecture.md) for the generated client contract.
 
-Import from `tsthrift/runtime` after building the package. This entry has no Node,
+Import from `@vality/tsthrift/runtime` after building the package. This entry has no Node,
 parser, Apache, Angular, or RxJS imports. The implementation uses Uint8Array,
 DataView, TextEncoder, and TextDecoder. Use ES2020 or newer for bigint support.
 
 ```ts
-import { BinaryReader, BinaryWriter, MessageType, WireType } from "tsthrift/runtime";
+import { BinaryReader, BinaryWriter, MessageType, WireType } from "@vality/tsthrift/runtime";
 
 const writer = new BinaryWriter();
 writer.writeMessageBegin("next", MessageType.Call, 1);
@@ -28,7 +27,7 @@ reader.assertDone();
 
 This is a low-level API, not a generated client. Callers must validate expected
 message names/types/sequence IDs, field types, required fields, and exceptions.
-The production client/transport boundary still needs those checks.
+The native generated client performs these checks through emitted codecs.
 
 ## Values and structure
 
@@ -48,8 +47,8 @@ id)` and terminate each struct with `writeFieldStop()`. `readFieldBegin()` retur
 - `skip(type)` consumes unknown values recursively, including nested maps, lists,
   sets, structs, and fixed-width UUID values. UUID model generation is not supported.
 
-Public generated `binary` models still declare string for legacy compatibility.
-The raw-byte API here does not resolve that pending consumer conversion decision.
+Native generated `binary` models use Uint8Array. The models/apache targets retain
+their legacy string declaration; existing binary consumers require acceptance testing.
 Empty structs have a STOP byte; deciding whether an optional struct is absent
 belongs to the public conversion layer, which must preserve explicitly present `{}`.
 
@@ -86,6 +85,8 @@ not arbitrary callers that recursively read known fields.
 `tests/binary-compatibility.test.ts` compares bytes and cross-decodes with pinned
 Apache `thrift@0.24.0` through a test-only subprocess. No external compiler is
 required. `tests/binary-validation.test.ts` covers invalid data and numeric bounds.
-This does not yet establish generated-client, HTTP, or browser integration.
+Native integration tests additionally execute generated clients with Apache wire
+codecs, real local HTTP, and a browser-targeted bundle in an isolated JS context.
+Live browser and application acceptance remain separate.
 
 Wire reference: [Apache Binary Protocol specification](https://github.com/apache/thrift/blob/v0.24.0/doc/specs/thrift-binary-protocol.md).
