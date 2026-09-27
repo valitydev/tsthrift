@@ -9,7 +9,7 @@ import {
   provideThriftServices,
   type AngularHttpClientLike,
 } from "../src/angular/index.ts";
-import type { ThriftServiceDescriptor } from "../src/apache.ts";
+import type { ThriftServiceDescriptor } from "../src/index.ts";
 
 describe("Angular Thrift DI integration", () => {
   abstract class TestServiceClient {

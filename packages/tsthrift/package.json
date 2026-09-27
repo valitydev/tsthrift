@@ -18,7 +18,6 @@
   "exports": {
     ".": "./dist/index.mjs",
     "./angular": "./dist/angular/index.mjs",
-    "./apache": "./dist/apache.mjs",
     "./runtime": "./dist/runtime.mjs",
     "./package.json": "./package.json"
   },
@@ -35,7 +34,6 @@
   "devDependencies": {
     "@angular/core": "catalog:",
     "@types/node": "catalog:",
-    "buffer": "catalog:",
     "bumpp": "catalog:",
     "rxjs": "catalog:",
     "thrift": "catalog:",
@@ -46,21 +44,13 @@
   },
   "peerDependencies": {
     "@angular/core": ">=16.0.0",
-    "buffer": "^6.0.3",
-    "rxjs": ">=7.0.0",
-    "thrift": "0.24.0"
+    "rxjs": ">=7.0.0"
   },
   "peerDependenciesMeta": {
     "@angular/core": {
       "optional": true
     },
     "rxjs": {
-      "optional": true
-    },
-    "buffer": {
-      "optional": true
-    },
-    "thrift": {
       "optional": true
     }
   }

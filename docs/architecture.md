@@ -39,22 +39,19 @@ The Binary Protocol reader and writer provide the wire implementation. Static na
 Thrift IDL
   -> pinned parser / include graph
        -> metadata.json (runtime clients and dynamic forms)
-       -> public TS models, enums, constants (--target models)
-       -> Apache JS & clients via official Thrift 0.24 compiler (--target apache)
+       -> public TS models, enums, constants (emitted by default)
 ```
 
-The CLI defaults to `models` to generate TypeScript interface definitions and `metadata.json`.
-The optional `apache` target generates JavaScript through official Apache Thrift 0.24 and wraps
-classes into Promise clients. Native RPC clients are constructed directly at runtime via
-`createMetadataClient` using the emitted `metadata.json`.
+The CLI generates both TypeScript interface definitions and `metadata.json` by default (with an optional
+`--no-models` flag to emit only `metadata.json`). Native RPC clients are constructed directly at runtime
+via `createMetadataClient` using the emitted `metadata.json`. The legacy Apache target (`--target apache`)
+and external Thrift compiler dependency have been removed in favor of this metadata-driven runtime.
 
 ## Compiler responsibilities
 
 - Schema loading selects entry files and reachable includes.
 - Shared validation and constant evaluation preserve the metadata contract.
 - Model emission selects bigint/number i64 and generates TypeScript models.
-- Apache target invokes Apache Thrift 0.24 to generate CommonJS classes, then emits TypeScript
-  service wrappers and index registries.
 - Output publication stages files and preserves prior output on failure.
 
 These are source artifacts, not an automatically published protocol package.
@@ -74,7 +71,7 @@ The legacy parser still rejects unsafe integral IDL literals because metadata
 cannot preserve them exactly.
 
 Native `binary` is Uint8Array, including constants and nested defaults. IDL
-binary string constants are UTF-8 encoded. The models/apache targets retain the
+binary string constants are UTF-8 encoded. Model generation retains the
 legacy string declaration. This explicit native contract requires consumer
 migration where applications currently expect strings or Buffer APIs.
 
@@ -111,13 +108,13 @@ owns its own I/O, cancellation, and timeout behavior.
 
 ## Runtime/package boundaries
 
-The primary `@vality/tsthrift` entry and `@vality/tsthrift/runtime` have no runtime imports of
+The `@vality/tsthrift` package and `@vality/tsthrift/runtime` have no runtime imports of
 Apache Thrift, Buffer, parser, Node, Angular, or RxJS. `createMetadataClient` loads metadata once
 at initialization and reuses pure TypeScript codecs and binary protocol reader/writer.
 
-Apache `thrift@0.24.0` and `buffer` are optional peer dependencies used by `@vality/tsthrift/apache`.
-Users of `--target apache` and the Apache client entry must install them. This legacy backend requires
-the matching external compiler and retains its stock object-map limitation.
+The legacy Apache Thrift target and `@vality/tsthrift/apache` runtime have been removed.
+The official Apache `thrift` package is retained solely in test devDependencies to independently
+verify Binary Protocol wire compatibility.
 
 The Angular entry can consume generated service descriptors using the existing
 DI providers and fetch adapter. Decorated Angular service generation, legacy
@@ -140,11 +137,10 @@ modes; all 14 client descriptors instantiated and SystemAccountSet maps with two
 CurrencyRef keys round-tripped. This establishes generated-artifact behavior,
 not production server, Angular application, or dynamic-form acceptance.
 
-Run `vp install`, `vp check`, `vp run build`, then `vp test`. Set
-`THRIFT_COMPILER` to Apache 0.24.0 to enable the older external-compiler tests.
-Native tests require no compiler; HTTP tests require permission to bind loopback
-sockets. See [compatibility](compatibility.md) and [tasks](tasks.md) for remaining
-release work.
+Run `vp install`, `vp check`, `vp run build`, then `vp test`. No external Thrift
+compiler is required; tests execute directly against the native runtime and wire
+verifiers. Native HTTP tests require permission to bind loopback sockets. See
+[compatibility](compatibility.md) and [tasks](tasks.md) for remaining release work.
 
 Metadata-only integration runs use a directory containing no generated model,
 codec, or client modules. The same Apache request/reply checks, loopback HTTP,

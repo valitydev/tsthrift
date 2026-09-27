@@ -43,24 +43,16 @@ project integration defect or a consumer contract that needs protection.
 - [x] Execute native clients in both i64 modes with independent Apache wire decoding.
 - [x] Execute native metadata clients through real local HTTP, cancellation, and timeout.
 - [x] Execute a browser-targeted bundle without Node globals or Apache/Buffer imports.
-- [x] Make Apache/Buffer optional peers for the legacy backend.
+- [x] Remove Apache/Buffer runtime dependencies; retain Apache only as a test wire reference.
 - [ ] Validate native clients in live browsers and existing Angular/form consumers.
 - [ ] Cross-decode complete native messages with the legacy Vality runtime.
 
-## Apache JS backend and compatibility
+## Apache JS backend (removed in favor of metadata runtime)
 
-- [x] Generate internal JS with official Apache 0.24 and explicit executable selection.
-- [x] Use js:node,es6,bigint to avoid the extra callback parameter without a C++ patch.
-- [x] Execute callback-named arguments and declared errors through generated Promise clients/processors.
-- [x] Record generator flags and i64 mode in generation.json.
-- [x] Audit thrift-ts, frontend-thrift-codegen, woody_js, the Vality fork, and existing Angular consumers.
-- [x] Confirm stock ES6 JS loses struct map keys; native TS codecs provide the independent replacement.
-- [x] Implement recursive public plain-object (typed JSON) to/from generated class instance conversion.
-- [x] Add declared-exception and i64 mode conversion at the public client boundary.
-- [ ] Cover transitive typedef imports and generated identifier collisions beyond callback.
-- [x] Package generated JS with a compatible browser runtime, bigint helpers, and required Buffer polyfill for Apache Thrift 0.24.
-- [x] Generate native client sets for complex reference schemas without losing map keys.
-- [ ] Make optional Apache reference-compiler acquisition reproducible in CI.
+- [x] Removed Apache 0.24 JS compilation, wrapper generation, and `@vality/tsthrift/apache` runtime.
+- [x] Default CLI generation to TypeScript models and `metadata.json` (`--no-models` for metadata only).
+- [x] Streamline RPC execution to pure metadata client (`createMetadataClient`) and native Binary Protocol.
+- [x] Retain official Apache 0.24 wire protocol cross-decoding as a test-only reference for binary format verification.
 
 Acceptance: generated clients preserve existing wire and public value contracts;
 stock generation success alone is insufficient.

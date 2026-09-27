@@ -5,15 +5,14 @@ import { parseI64Mode } from "./compiler/i64-mode.ts";
 
 const help = `Usage: tsthrift --input <directory> --output <directory> [options]
 
-Generate metadata, public TS models, and Apache clients.
+Generate metadata and TypeScript models.
 
   -i, --input       Directory containing entry .thrift files
   -o, --output      Dedicated generated output directory
   -I, --include     Additional include root (repeatable)
   -n, --namespace   Entry filename without .thrift (repeatable; default: all)
-      --target     metadata | models (default) | apache
+      --no-models   Generate only metadata.json without TypeScript models
       --i64        Public i64 representation: bigint (default) | number
-      --compiler   Apache 0.24.0 executable (only with --target apache)
   -h, --help       Show this help
 
 Output is an intermediate generation artifact, not a bundled RPC package.
@@ -26,8 +25,8 @@ try {
       output: { type: "string", short: "o" },
       include: { type: "string", short: "I", multiple: true },
       namespace: { type: "string", short: "n", multiple: true },
-      compiler: { type: "string" },
-      target: { type: "string", default: "models" },
+      "no-models": { type: "boolean" },
+      target: { type: "string" },
       i64: { type: "string" },
       help: { type: "boolean", short: "h" },
     },
@@ -36,21 +35,17 @@ try {
   else {
     if (!values.input || !values.output)
       throw new Error("--input and --output are required. Use --help for usage.");
-    const target = values.target;
-    if (target !== "metadata" && target !== "models" && target !== "apache") {
-      throw new Error(`Unknown target ${target}. Expected metadata, models, or apache.`);
-    }
+    const models = values["no-models"] ? false : values.target === "metadata" ? false : true;
     const result = await generate({
       input: values.input,
       output: values.output,
       includes: values.include,
       namespaces: values.namespace,
-      compiler: values.compiler,
-      target,
+      models,
       i64: parseI64Mode(values.i64),
     });
     console.log(
-      `${result.compilerVersion ?? result.target}: generated ${result.modules.length} module(s) in ${result.output}`,
+      `${result.target}: generated ${result.modules.length} module(s) in ${result.output}`,
     );
   }
 } catch (error) {

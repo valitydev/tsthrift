@@ -85,10 +85,10 @@ conversion, or C++ fork is required. Apache's independent Binary Protocol reads
 native requests and writes native replies in integration tests containing two
 struct keys and nested sets in both i64 modes.
 
-The earlier C++-fork strategy is no longer required by the native path. The
-optional Apache backend retains its map guard and requires matching 0.24.0 compiler
-and runtime. Apache and Buffer are optional peers for that backend and development
-references for tests. Native entrypoints have neither runtime import.
+The earlier C++-fork strategy is no longer required by the native path. The legacy
+Apache backend and compiler wrappers have been removed. The official Apache runtime
+is kept solely as a test-time reference to independently cross-verify wire decoding
+and encoding. Native entrypoints have no runtime dependency on Apache or Buffer.
 
 ## Executed native artifacts
 
@@ -145,7 +145,7 @@ correlation, but test cancellation/timeout cleanup rather than duplicating the
 old Promise.race timer behavior.
 
 Native clients reuse the HTTP adapter but serialize with the independent binary
-runtime. The Apache comparison backend keeps the official runtime. Any borrowed
+runtime. The official Apache runtime is used as an independent test reference. Any borrowed
 Woody or Apache source must retain its license notices. Existing loopback HTTP
 and isolated bundle tests do not replace actual application acceptance.
 
