@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
-import { createHash } from "node:crypto";
-import { cp, mkdir, mkdtemp, readdir, symlink, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { cp, mkdir, mkdtemp, readFile, readdir, symlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -12,6 +12,9 @@ const fixtures = path.join(import.meta.dirname, "fixtures");
 const compiler = process.env.THRIFT_COMPILER ?? "thrift";
 const java = process.env.JAVA ?? "java";
 const javac = process.env.JAVAC ?? "javac";
+const mvn = process.env.MVN ?? "mvn";
+
+export type ConformanceVariant = "vality-0.20.1" | "apache-0.24.0";
 
 export async function run(command: string, args: string[]) {
   try {
@@ -22,17 +25,79 @@ export async function run(command: string, args: string[]) {
   }
 }
 
-async function downloadJar(directory: string, artifact: string, digest: string) {
-  const response = await fetch(`https://repo.maven.apache.org/maven2/${artifact}`, {
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!response.ok) throw new Error(`Cannot download ${artifact}: HTTP ${response.status}`);
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  if (createHash("sha256").update(bytes).digest("hex") !== digest)
-    throw new Error(`Artifact checksum mismatch: ${artifact}`);
-  const filename = path.join(directory, path.basename(artifact));
-  await writeFile(filename, bytes);
-  return filename;
+export function getExpectedLibthriftVersion(variant: ConformanceVariant): string {
+  return variant === "apache-0.24.0" ? "0.24.0" : "0.20.0";
+}
+
+function validateExplicitClasspath(paths: string[], variant: ConformanceVariant): string[] {
+  for (const entry of paths) {
+    if (!existsSync(entry)) {
+      throw new Error(`Explicit THRIFT_CLASSPATH entry does not exist: ${entry}`);
+    }
+  }
+
+  const expectedVersion = getExpectedLibthriftVersion(variant);
+  const libthriftPattern = `libthrift-${expectedVersion}`;
+  const hasLibthrift = paths.some((p) => path.basename(p).includes(libthriftPattern));
+  const hasSlf4j = paths.some((p) => path.basename(p).includes("slf4j-api"));
+  const hasAnnotation = paths.some((p) => path.basename(p).includes("annotation"));
+
+  if (!hasLibthrift) {
+    throw new Error(
+      `Explicit THRIFT_CLASSPATH missing required ${libthriftPattern} jar for ${variant} variant. Given: ${paths.join(path.delimiter)}`,
+    );
+  }
+  if (!hasSlf4j) {
+    throw new Error(
+      `Explicit THRIFT_CLASSPATH missing required slf4j-api jar. Given: ${paths.join(path.delimiter)}`,
+    );
+  }
+  if (variant === "vality-0.20.1" && !hasAnnotation) {
+    throw new Error(
+      `Explicit THRIFT_CLASSPATH missing required javax.annotation-api jar for vality-0.20.1 variant. Given: ${paths.join(path.delimiter)}`,
+    );
+  }
+
+  return paths;
+}
+
+async function resolveClasspath(variant: ConformanceVariant, directory: string): Promise<string[]> {
+  if (process.env.THRIFT_CLASSPATH) {
+    const paths = process.env.THRIFT_CLASSPATH.split(path.delimiter).filter(Boolean);
+    return validateExplicitClasspath(paths, variant);
+  }
+
+  const expectedVersion = getExpectedLibthriftVersion(variant);
+  const libthriftVersion = process.env.LIBTHRIFT_VERSION?.trim() || expectedVersion;
+  if (libthriftVersion !== expectedVersion) {
+    throw new Error(
+      `Configured LIBTHRIFT_VERSION "${libthriftVersion}" does not match expected version "${expectedVersion}" for variant "${variant}".`,
+    );
+  }
+
+  const pomPath = path.resolve(import.meta.dirname, "reference/pom.xml");
+  const classpathFile = path.join(directory, "mvn-classpath.txt");
+
+  await run(mvn, [
+    "-f",
+    pomPath,
+    "dependency:build-classpath",
+    `-Dlibthrift.version=${libthriftVersion}`,
+    `-Dmdep.outputFile=${classpathFile}`,
+    "-q",
+  ]);
+
+  if (!existsSync(classpathFile)) {
+    throw new Error(`Maven did not generate classpath file at ${classpathFile}`);
+  }
+
+  const rawClasspath = (await readFile(classpathFile, "utf-8")).trim();
+  const entries = rawClasspath.split(path.delimiter).filter(Boolean);
+  if (entries.length === 0) {
+    throw new Error(`Resolved classpath from Maven is empty for variant ${variant}`);
+  }
+
+  return entries;
 }
 
 async function javaSources(directory: string): Promise<string[]> {
@@ -48,21 +113,78 @@ async function javaSources(directory: string): Promise<string[]> {
   return files.flat();
 }
 
-/** Downloads current Damsel HEAD; the official compiler receives the original IDL unchanged. */
+/** Prepares Damsel conformance environment against an exact, verified Thrift compiler variant. */
 export async function prepareConformance(directory: string) {
   const version = (await run(compiler, ["-version"])).stdout.trim();
-  if (version !== "Thrift version 0.24.0")
-    throw new Error(`Expected Apache 0.24.0, got ${version}`);
-  await run(java, ["-version"]);
-  await run(javac, ["-version"]);
+  let variant: ConformanceVariant;
+  if (version === "Thrift version 0.24.0") {
+    variant = "apache-0.24.0";
+  } else if (version === "Thrift version 0.20.1") {
+    variant = "vality-0.20.1";
+  } else {
+    throw new Error(
+      `Unsupported Thrift compiler version "${version}". Only official Apache Thrift 0.24.0 and Vality Thrift 0.20.1 are supported.`,
+    );
+  }
+
+  const javaVersionRes = await run(java, ["-version"]);
+  const javaRuntime =
+    (javaVersionRes.stdout || javaVersionRes.stderr).split("\n")[0]?.trim() ?? "unknown";
+  const javacVersionRes = await run(javac, ["-version"]);
+  const javacVersion =
+    (javacVersionRes.stdout || javacVersionRes.stderr).split("\n")[0]?.trim() ?? "unknown";
+
   const checkout = path.join(directory, "damsel");
-  await run("git", ["clone", "--depth", "1", "https://github.com/valitydev/damsel.git", checkout]);
+  const targetRevision = process.env.DAMSEL_REVISION?.trim();
+  if (targetRevision) {
+    await run("git", ["init", checkout]);
+    await run("git", [
+      "-C",
+      checkout,
+      "remote",
+      "add",
+      "origin",
+      "https://github.com/valitydev/damsel.git",
+    ]);
+    await run("git", ["-C", checkout, "fetch", "--depth", "1", "origin", targetRevision]);
+    await run("git", ["-C", checkout, "checkout", "FETCH_HEAD"]);
+  } else {
+    await run("git", [
+      "clone",
+      "--depth",
+      "1",
+      "https://github.com/valitydev/damsel.git",
+      checkout,
+    ]);
+  }
   const revision = (await run("git", ["-C", checkout, "rev-parse", "HEAD"])).stdout.trim();
-  console.log(`Conformance: Damsel ${revision}; ${version}; artifacts ${directory}`);
+
+  console.log(
+    `Conformance: Damsel ${revision}; variant=${variant} (${version}); Java=${javaRuntime}; artifacts=${directory}`,
+  );
+
+  const jars = await resolveClasspath(variant, directory);
+
   await writeFile(
     path.join(directory, "provenance.json"),
-    JSON.stringify({ damsel: revision, compiler: version, backend: "java" }, null, 2),
+    JSON.stringify(
+      {
+        damsel: revision,
+        variant,
+        compiler: version,
+        compilerPath: compiler,
+        javaRuntime,
+        javac: javacVersion,
+        libthriftVersion:
+          process.env.LIBTHRIFT_VERSION?.trim() || getExpectedLibthriftVersion(variant),
+        classpath: jars,
+        backend: "java",
+      },
+      null,
+      2,
+    ),
   );
+
   const proto = path.join(checkout, "proto");
   const input = path.join(directory, "input");
   const generatedJava = path.join(directory, "java");
@@ -70,33 +192,14 @@ export async function prepareConformance(directory: string) {
   await cp(fixtures, input, { recursive: true });
   await mkdir(generatedJava);
   await mkdir(classes);
-  const jars = await Promise.all([
-    downloadJar(
-      directory,
-      "org/apache/thrift/libthrift/0.24.0/libthrift-0.24.0.jar",
-      "b72e321ff144e3e5211964764bd45794b96fdf250085f153c44416b35df89a07",
-    ),
-    downloadJar(
-      directory,
-      "org/slf4j/slf4j-api/2.0.17/slf4j-api-2.0.17.jar",
-      "7b751d952061954d5abfed7181c1f645d336091b679891591d63329c622eb832",
-    ),
-  ]);
+
+  const genOption = variant === "apache-0.24.0" ? "java:generated_annotations=suppress" : "java";
   for (const filename of [
     path.join(input, "alpha.thrift"),
     path.join(input, "beta.thrift"),
     path.join(proto, "domain_config_v2.thrift"),
   ]) {
-    await run(compiler, [
-      "-I",
-      proto,
-      "-r",
-      "--gen",
-      "java:generated_annotations=suppress",
-      "-out",
-      generatedJava,
-      filename,
-    ]);
+    await run(compiler, ["-I", proto, "-r", "--gen", genOption, "-out", generatedJava, filename]);
   }
   const sources = [
     ...(await javaSources(generatedJava)),
@@ -129,10 +232,19 @@ export async function prepareConformance(directory: string) {
   return {
     directory,
     revision,
+    variant,
+    compilerVersion: version,
+    javaRuntime,
+    javacVersion,
     oracle: (...args: string[]) => run(java, ["-cp", classpath, "Conformance", ...args]),
   };
 }
 
-export function createConformanceDirectory() {
+export async function createConformanceDirectory(): Promise<string> {
+  if (process.env.CONFORMANCE_OUTPUT_DIR) {
+    const dir = path.resolve(process.env.CONFORMANCE_OUTPUT_DIR);
+    await mkdir(dir, { recursive: true });
+    return dir;
+  }
   return mkdtemp(path.join(tmpdir(), "tsthrift-conformance-"));
 }

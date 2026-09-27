@@ -7,18 +7,21 @@ vp install
 vp run test:conformance
 ```
 
-Prerequisites are Git, Apache Thrift compiler **0.24.0**, and a JDK **17 or newer**
-with `java` and `javac` available on PATH. The task is deliberately uncached and
-clones the current default-branch HEAD of `https://github.com/valitydev/damsel.git`
-on every run. A network connection is needed for that clone and Maven downloads;
-RPC execution itself is entirely local, with no deployed service or credentials.
+Prerequisites are Git, a Thrift compiler (e.g. `thrift` on PATH or `THRIFT_COMPILER`),
+a JDK **17 or newer** with `java` and `javac` available on PATH, and Apache Maven (`mvn`).
+Thrift Java runtime libraries and transitive dependencies are resolved automatically via Maven
+(`packages/cli/tests/conformance/reference/pom.xml`) using `mvn dependency:build-classpath`
+with configurable `LIBTHRIFT_VERSION` (`0.20.0` for Vality Thrift 0.20.1, `0.24.0` for Apache Thrift 0.24.0).
+The task is deliberately uncached and clones the current default-branch HEAD of
+`https://github.com/valitydev/damsel.git` on every run.
 Normal `vp test` does not need Java, an external compiler, or these downloads.
+Conformance runs in a dedicated two-variant matrix on GitHub Actions CI.
 
 For explicit executable paths or retained artifacts, invoke the suite directly
 after `vp run build`:
 
 ```sh
-THRIFT_COMPILER=/path/to/thrift JAVA=/path/to/java JAVAC=/path/to/javac \
+THRIFT_COMPILER=/path/to/thrift JAVA=/path/to/java JAVAC=/path/to/javac MVN=/path/to/mvn \
   KEEP_CONFORMANCE_OUTPUT=1 \
   vp -C packages/cli test --config conformance.config.ts --reporter=verbose
 ```
@@ -31,27 +34,59 @@ and mismatches fail the suite rather than skipping it.
 
 ## Independent reference
 
-The official compiler generates Java from unmodified Damsel IDL and the committed
-test IDL. It runs against `org.apache.thrift:libthrift:0.24.0`; the pinned runtime
-and SLF4J API jars are downloaded from Maven Central and checked against committed
-SHA-256 digests. No production dependency is added.
+The suite compiles Java from unmodified Damsel IDL and the committed test IDL
+using either the Vality Thrift compiler (v0.20.1) or official Apache Thrift (v0.24.0).
+Classpath dependencies are resolved via a minimal Maven POM next to the Java reference runner
+(`packages/cli/tests/conformance/reference/pom.xml`):
+
+- `vality-0.20.1`: Vality compiler 0.20.1 with `libthrift` version `0.20.0` and `javax.annotation-api:1.3.2`
+  (required for `@Generated` annotations emitted by the Vality compiler).
+- `apache-0.24.0`: Official Apache compiler 0.24.0 with `libthrift` version `0.24.0` (invoked with
+  `-gen java:generated_annotations=suppress` to avoid external annotation dependencies).
+
+Maven resolves `libthrift`, `slf4j-api`, `javax.annotation-api`, and all transitive dependencies
+directly to the local repository, eliminating manual jar searching and downloading heuristics.
+Conformance reference runners (`Conformance.java`) dynamically bind to both Vality's `*Srv`
+generated services and standard Apache `*` service classes. Unknown compiler versions are
+rejected with fatal errors. No production dependency is added.
 
 Java is used because its generated clients preserve struct and union map keys.
 Stock Apache JavaScript generation uses object-backed maps and is unsuitable as
 the sole reference for this contract. Neither generated Java nor upstream IDL is
 patched. Test values are constructed independently in Java and TypeScript.
 
-Each scenario compares the complete native request byte-for-byte with an official
-generated Java client's request. An official generated `Processor` then decodes
-the native request and checks the method and all arguments against the Java
-values. It produces a reply which the native client decodes. Native metadata
-codecs also encode successful/declared-exception reply objects for byte-for-byte
-comparison with the official reply.
+Each scenario compares the complete native request byte-for-byte with a generated
+Java client's request. A generated `Processor` then decodes the native request and
+checks the method and all arguments against the Java values. It produces a reply
+which the native client decodes. Native metadata codecs also encode
+successful/declared-exception reply objects for byte-for-byte comparison with the
+generated Java reply.
 
 Map and set insertion order is intentionally the same on both writers. Binary
 Protocol has no canonical map/set ordering: equivalent values with different
 iteration orders need not have identical bytes. Cross-decoding and object/key
 counts are checked separately from byte equality.
+
+## Environment configuration and CI matrix
+
+The conformance runner honors the following environment variables:
+
+- `THRIFT_COMPILER`: Path to the Thrift compiler binary. Defaults to `thrift` on PATH.
+- `LIBTHRIFT_VERSION`: Exact `org.apache.thrift:libthrift` version (`0.20.0` or `0.24.0`).
+  Passed from CI matrix; defaults automatically based on the detected compiler variant.
+- `MVN`: Path to the Maven executable. Defaults to `mvn` on PATH.
+- `DAMSEL_REVISION`: Specific Git commit SHA or ref to checkout. When set, performs a shallow
+  fetch (`--depth 1`) of the exact commit. In CI, a dedicated `resolve-damsel` job resolves
+  the current HEAD once and passes the identical SHA to all matrix jobs.
+- `CONFORMANCE_OUTPUT_DIR`: Fixed directory for test output. When unset, a temporary directory
+  under `.tmp/conformance-*` is used.
+- `KEEP_CONFORMANCE_OUTPUT`: If set to `1`, prevents cleanup of the output directory on success.
+  If any test fails (`suiteFailed`), the output directory is always preserved regardless of this flag.
+- `THRIFT_CLASSPATH`: Optional explicit Java classpath. Must contain matching variant jars and validate before compilation.
+
+CI runs both variants in a matrix (`vality-0.20.1` and `apache-0.24.0`) on GitHub Actions
+with Maven caching (`actions/cache@v4` on `~/.m2/repository`) and automated artifact upload on
+failure or completion (`actions/upload-artifact@v4`).
 
 ## Coverage
 
@@ -78,7 +113,7 @@ The nine conformance cases include both numeric modes and populated/empty value
 variants. UUID is outside current generator support; the normal schema suite
 explicitly verifies rejection rather than claiming full Thrift type coverage.
 
-## Limits and release status
+## Limits and verification status
 
 The suite supplies `i64Mode` explicitly when invoking generated factories. This
 isolates wire conformance from the known factory-mode propagation defect. Binary
@@ -86,6 +121,15 @@ runtime values are Uint8Array; the existing generated string declarations are
 still a release blocker. These tests do not establish correct TypeScript public
 types, live-browser behavior, Angular integration, or production-server acceptance.
 
-On 2026-09-27 the current Damsel HEAD was
-`8d6174bddedc6d9aefa407fdc1d54877b8686ff9`. All nine cases passed against Apache
-0.24.0. See [release audit](release-audit.md) for remaining implementation defects.
+Both reference variants have been executed and verified:
+
+- **Damsel revision**: `8d6174bddedc6d9aefa407fdc1d54877b8686ff9` (pinned across both runs).
+- **Vality variant (`vality-0.20.1`)**: Tested with Vality compiler 0.20.1 + Java libthrift 0.20.0
+  and `javax.annotation-api-1.3.2.jar`. All 9 test suites passed with 100% byte-for-byte request/reply
+  equality and Java processor decoding.
+- **Apache variant (`apache-0.24.0`)**: Tested with official Apache compiler 0.24.0 + Java libthrift 0.24.0.
+  All 9 test suites passed with 100% byte-for-byte request/reply equality and Java processor decoding.
+
+Support in `setup.ts` alone is not treated as verification: each variant is verified by full
+test execution through `vp run test:conformance`. See [release audit](release-audit.md) for remaining
+implementation defects.

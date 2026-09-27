@@ -1,7 +1,7 @@
 import { readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { afterAll, beforeAll, expect, test } from "vite-plus/test";
+import { afterAll, afterEach, beforeAll, expect, test } from "vite-plus/test";
 import {
   BinaryWriter,
   MessageType,
@@ -15,15 +15,32 @@ import { commitValues, payload } from "./values.ts";
 
 let directory: string;
 let environment: Awaited<ReturnType<typeof prepareConformance>>;
+let suiteFailed = false;
+
+afterEach((context) => {
+  if (context.task.result?.state === "fail") {
+    suiteFailed = true;
+  }
+});
 
 beforeAll(async () => {
   directory = await createConformanceDirectory();
   environment = await prepareConformance(directory);
+  console.log(
+    `[Conformance Suite] Active reference: variant=${environment.variant}, compiler=${environment.compilerVersion}, Java=${environment.javaRuntime}, Damsel=${environment.revision}`,
+  );
 });
 
 afterAll(async () => {
-  if (directory && process.env.KEEP_CONFORMANCE_OUTPUT !== "1")
+  const preserve =
+    suiteFailed ||
+    process.env.KEEP_CONFORMANCE_OUTPUT === "1" ||
+    !!process.env.CONFORMANCE_OUTPUT_DIR;
+  if (preserve) {
+    console.log(`[Conformance Suite] Artifacts preserved for diagnostics at: ${directory}`);
+  } else if (directory) {
     await rm(directory, { recursive: true, force: true });
+  }
 });
 
 async function generated(mode: I64Mode, filename: string) {
@@ -78,7 +95,7 @@ async function verifyReplyEncoding(
 }
 
 test.each(["bigint", "number"] as const)(
-  "all supported types and composite keys match generated Apache Java (%s)",
+  "all supported types and composite keys match generated Java (%s)",
   async (mode) => {
     const { createAsyncEchoClient } = await generated(mode, "clients/alpha/Echo.js");
     const { loadMetadata } = await generated(mode, "metadata/index.js");
@@ -145,7 +162,7 @@ test.each(["bigint", "number"] as const)(
 );
 
 test.each(["bigint", "number"] as const)(
-  "declared exception matches generated Apache Java (%s)",
+  "declared exception matches generated Java (%s)",
   async (mode) => {
     const scenario = `failure-${mode}`;
     const { createEchoClient } = await generated(mode, "clients/alpha/Echo.js");

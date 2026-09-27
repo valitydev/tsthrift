@@ -45,7 +45,7 @@ project integration defect or a consumer contract that needs protection.
 - [x] Execute a browser-targeted bundle without Node globals or Apache/Buffer imports.
 - [x] Remove Apache/Buffer runtime dependencies; retain Apache only as a test wire reference.
 - [ ] Validate native clients in live browsers and existing Angular/form consumers.
-- [ ] Cross-decode complete native messages with the legacy Vality runtime.
+- [x] Cross-decode complete native messages with the legacy Vality runtime (valitydev/thrift C++ fork).
 
 ## Apache JS backend (removed in favor of metadata runtime)
 
@@ -68,7 +68,8 @@ stock generation success alone is insufficient.
 - [x] Validate response method/type/sequence and distinguish HTTP, network, timeout, and declared application errors.
 - [x] Preserve compatibility error exports/context and logging hooks.
 - [x] Preserve absent fields and present empty structs during conversion.
-- [ ] Cross-decode generated messages with the legacy Vality runtime.
+- [x] Cross-decode generated messages with the legacy Vality runtime (valitydev/thrift C++ fork).
+- [x] Provide browser-first Woody RPC tracing headers generator (`WOODY_HEADERS`, `createWoodyHeaders`, `createWoodyHeaderProvider`, `generateTraceId`) and automatic `woody` option in `HttpTransportConfig`.
 - [x] Exercise one real HTTP service before claiming transport compatibility.
 
 ## React / TanStack Query output (deferred / YAGNI)
@@ -102,8 +103,9 @@ stock generation success alone is insufficient.
 - [x] Bidirectional cross-decoding across complex data structures (we write -> Apache decodes; Apache writes -> we decode).
 - [x] Full RPC method envelope verification (CALL, REPLY success, REPLY declared exception, Application Exception, and ONEWAY).
 - [x] End-to-end RPC client execution from metadata with complex data structures against Apache wire codecs.
-- [x] Execute latest Damsel Repository.Commit against unmodified Apache-generated Java clients/processors, comparing complete binary messages and retaining composite map keys in both numeric modes (see conformance.md).
-- [x] Compare every supported value type, empty/absent values, exceptions, and colliding service/IDL namespace names against official generated Java execution.
+- [x] End-to-end wire parity, byte-for-byte serialization equality, and bidirectional RPC execution with Vality Thrift fork (`valitydev/thrift` v0.20.1) and Apache 0.24.0 Java clients/processors.
+- [x] Execute latest Damsel Repository.Commit against unmodified generated Java clients/processors, comparing complete binary messages and retaining composite map keys in both numeric modes (see conformance.md).
+- [x] Compare every supported value type, empty/absent values, exceptions, and colliding service/IDL namespace names against generated Java execution, isolated in a dedicated two-variant GitHub Actions CI conformance matrix (Vality 0.20.1 and Apache 0.24.0) with pinned Damsel SHA and artifact uploads on failure.
 - [x] Export the binary runtime independently of Node/compiler/parser imports.
 
 The native backend uses this runtime. Apache remains available as a comparison

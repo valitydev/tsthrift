@@ -86,9 +86,19 @@ native requests and writes native replies in integration tests containing two
 struct keys and nested sets in both i64 modes.
 
 The earlier C++-fork strategy is no longer required by the native path. The legacy
-Apache backend and compiler wrappers have been removed. The official Apache runtime
-is kept solely as a test-time reference to independently cross-verify wire decoding
-and encoding. Native entrypoints have no runtime dependency on Apache or Buffer.
+Apache backend and compiler wrappers have been removed. Both the official Apache runtime
+and the Vality Thrift fork (`valitydev/thrift` v0.20.1) are kept as test-time references
+to independently cross-verify wire decoding, encoding, and RPC client/processor execution.
+Wire conformance is verified separately against two exact compiler/runtime pairs:
+
+1. **Vality reference**: Vality compiler 0.20.1 (`valitydev/thrift` C++ fork) with Java `libthrift 0.20.0`
+   and `javax.annotation-api:1.3.2`. The Vality compiler emits `*Srv` service class names and JSR-250 annotations.
+2. **Apache reference**: Official Apache Thrift compiler 0.24.0 with Java `libthrift 0.24.0`
+   (using `-gen java:generated_annotations=suppress`). Apache emits unqualified service class names.
+
+The conformance runner dynamically loads both service naming schemes without modifying Damsel IDL.
+Byte-for-byte serialization equality, processor argument decoding, and reply roundtrips pass
+identically under both references. Native entrypoints have no runtime dependency on Apache or Buffer.
 
 ## Executed native artifacts
 
@@ -103,7 +113,8 @@ Vite browser output is executed in an isolated JS context without Buffer or
 process. This verifies bundling and execution without Node globals; live browser
 and framework acceptance remain pending.
 
-Damsel revision `8d6174bddedc6d9aefa407fdc1d54877b8686ff9` was generated from entries
+Damsel revision `8d6174bddedc6d9aefa407fdc1d54877b8686ff9` was verified in the conformance
+suite against both Vality 0.20.1 and Apache 0.24.0 references. It was also generated from entries
 `domain_config_v2`, `domain`, `payment_processing`, `accounter`, `webhooker`,
 `api_extensions`, and `proxy_provider`. Both numeric modes compiled all 15 reachable
 modules and instantiated all 14 clients. The runtime SystemAccountSet codec
