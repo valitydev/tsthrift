@@ -60,6 +60,7 @@ test("loads only selected inputs and reachable includes, preserving legacy metad
 test.each([
   ["const i64 LIMIT = 9223372036854775807", /Unsafe numeric literal/],
   ["typedef Missing ID", /Unresolved type Missing/],
+  ["struct X { 1: uuid id }", /Unresolved type uuid/],
   ["typedef B A typedef A B", /Circular typedef/],
   ["struct X { 1: i64 a 1: i64 b }", /Duplicate field ID/],
   ["enum X { A = 2147483647 B }", /outside i32 range/],

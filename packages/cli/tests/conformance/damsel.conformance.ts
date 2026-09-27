@@ -1,0 +1,202 @@
+import { readFile, rm, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+import { afterAll, beforeAll, expect, test } from "vite-plus/test";
+import {
+  BinaryWriter,
+  MessageType,
+  MetadataIndex,
+  type I64Mode,
+  type Metadata,
+  type TransportFunction,
+} from "@vality/tsthrift";
+import { createConformanceDirectory, prepareConformance } from "./setup.ts";
+import { commitValues, payload } from "./values.ts";
+
+let directory: string;
+let environment: Awaited<ReturnType<typeof prepareConformance>>;
+
+beforeAll(async () => {
+  directory = await createConformanceDirectory();
+  environment = await prepareConformance(directory);
+});
+
+afterAll(async () => {
+  if (directory && process.env.KEEP_CONFORMANCE_OUTPUT !== "1")
+    await rm(directory, { recursive: true, force: true });
+});
+
+async function generated(mode: I64Mode, filename: string) {
+  return import(pathToFileURL(path.join(directory, mode, filename)).href);
+}
+
+async function transport(scenario: string): Promise<TransportFunction> {
+  await environment.oracle("reference", scenario, directory);
+  const expected = await readFile(path.join(directory, `${scenario}.request.bin`));
+  return async (bytes) => {
+    expect(Buffer.from(bytes)).toEqual(expected);
+    const request = path.join(directory, `${scenario}.native.bin`);
+    const reply = path.join(directory, `${scenario}.processed.bin`);
+    await writeFile(request, bytes);
+    await environment.oracle("process", scenario, request, reply);
+    const result = await readFile(reply);
+    expect(result).toEqual(await readFile(path.join(directory, `${scenario}.reply.bin`)));
+    return new Uint8Array(result);
+  };
+}
+
+async function verifyReplyEncoding(
+  mode: I64Mode,
+  scenario: string,
+  metadata: Metadata[],
+  namespace: string,
+  service: string,
+  methodName: string,
+  result: unknown,
+  exception = false,
+) {
+  // Load non-public test subjects at runtime, outside the CLI declaration build graph.
+  const { MetadataCodecs } = await import(
+    new URL("../../../tsthrift/src/metadata/codecs.ts", import.meta.url).href
+  );
+  const { struct } = await import(
+    new URL("../../../tsthrift/src/codecs/struct.ts", import.meta.url).href
+  );
+  const index = new MetadataIndex(metadata);
+  const resolved = index.getMethod(namespace, service, methodName)!;
+  const fields = exception
+    ? resolved.method.throws
+    : [{ id: 0, name: "success", type: resolved.method.type }];
+  const codecs = new MetadataCodecs(index, mode);
+  const codec = struct("result", () => codecs.fields(fields, resolved.namespace));
+  const writer = new BinaryWriter();
+  writer.writeMessageBegin(methodName, MessageType.Reply, 1);
+  codec.write(writer, { [exception ? fields[0]!.name : "success"]: result });
+  expect(Buffer.from(writer.finish())).toEqual(
+    await readFile(path.join(directory, `${scenario}.reply.bin`)),
+  );
+}
+
+test.each(["bigint", "number"] as const)(
+  "all supported types and composite keys match generated Apache Java (%s)",
+  async (mode) => {
+    const { createAsyncEchoClient } = await generated(mode, "clients/alpha/Echo.js");
+    const { loadMetadata } = await generated(mode, "metadata/index.js");
+    for (const empty of [false, true]) {
+      const scenario = `${empty ? "empty" : "all"}-${mode}`;
+      // Explicit mode isolates wire conformance from the separately audited factory-mode defect.
+      const client = await createAsyncEchoClient({
+        endpoint: "unused",
+        i64Mode: mode,
+        transport: await transport(scenario),
+      });
+      const value = payload(mode, empty);
+      const result = await client.echo(value);
+      expect(result).toEqual(value);
+      expect(result.accounts.accounts.size).toBe(empty ? 0 : 2);
+      expect(result.values.size).toBe(empty ? 0 : 2);
+      expect(Object.hasOwn(result, "present")).toBe(true);
+      expect(Object.hasOwn(result, "absent")).toBe(false);
+      await verifyReplyEncoding(
+        mode,
+        scenario,
+        await loadMetadata("alpha"),
+        "alpha",
+        "Echo",
+        "echo",
+        result,
+      );
+    }
+  },
+);
+
+test.each(["bigint", "number"] as const)(
+  "latest Damsel Repository.Commit round-trips CurrencyRef map keys (%s)",
+  async (mode) => {
+    const scenario = `damsel-${mode}`;
+    const { createRepositoryClient } = await generated(
+      mode,
+      "damsel/clients/domain_config_v2/Repository.js",
+    );
+    const { loadMetadata } = await generated(mode, "damsel/metadata/index.js");
+    const client = createRepositoryClient({
+      endpoint: "unused",
+      i64Mode: mode,
+      transport: await transport(scenario),
+    });
+    const value = commitValues(mode);
+    const result = await client.Commit(...value.args);
+    expect(result).toEqual(value.result);
+    const [object] = result.new_objects;
+    expect([...object.system_account_set.data.accounts.keys()]).toEqual([
+      { symbolic_code: "EUR" },
+      { symbolic_code: "USD" },
+    ]);
+    await verifyReplyEncoding(
+      mode,
+      scenario,
+      await loadMetadata("domain_config_v2"),
+      "domain_config_v2",
+      "Repository",
+      "Commit",
+      result,
+    );
+  },
+);
+
+test.each(["bigint", "number"] as const)(
+  "declared exception matches generated Apache Java (%s)",
+  async (mode) => {
+    const scenario = `failure-${mode}`;
+    const { createEchoClient } = await generated(mode, "clients/alpha/Echo.js");
+    const { loadMetadata } = await generated(mode, "metadata/index.js");
+    const client = createEchoClient({
+      endpoint: "unused",
+      i64Mode: mode,
+      transport: await transport(scenario),
+    });
+    const failure = { code: 409, reason: "declared failure" };
+    await expect(client.echo(payload(mode))).rejects.toEqual(failure);
+    await verifyReplyEncoding(
+      mode,
+      scenario,
+      await loadMetadata("alpha"),
+      "alpha",
+      "Echo",
+      "echo",
+      failure,
+      true,
+    );
+  },
+);
+
+test("same service and IDL namespace names remain isolated by source module", async () => {
+  const { SERVICES, loadMetadata } = await generated("bigint", "index.js");
+  const metadata: Metadata[] = await loadMetadata("beta");
+  const alphaMetadata: Metadata[] = await loadMetadata("alpha");
+  expect(metadata[0]!.ast.namespace?.js).toEqual(alphaMetadata[0]!.ast.namespace?.js);
+  const alpha = SERVICES["alpha.Echo"].createClient({
+    endpoint: "unused",
+    transport: await transport("all-bigint"),
+  });
+  const beta = SERVICES["beta.Echo"].createClient({
+    endpoint: "unused",
+    transport: await transport("beta"),
+  });
+  const sameName = SERVICES["alpha.alpha"].createClient({
+    endpoint: "unused",
+    transport: await transport("alpha"),
+  });
+  const results = await Promise.all([
+    alpha.echo(payload("bigint")),
+    beta.echo({ value: 73 }),
+    sameName.echo("same-name"),
+  ]);
+  expect(results).toEqual([payload("bigint"), { value: 73 }, "same-name"]);
+});
+
+test.each(["notify", "fire"])("void/oneway %s uses the official envelope", async (method) => {
+  const { createEchoClient } = await generated("bigint", "clients/alpha/Echo.js");
+  const client = createEchoClient({ endpoint: "unused", transport: await transport(method) });
+  await expect(client[method]("")).resolves.toBeUndefined();
+});

@@ -14,7 +14,7 @@ and source revisions are in [compatibility](compatibility.md).
 - [x] Compile and execute both numeric modes; keep metadata unchanged between them.
 - [x] Verify 15 complex reference IDL modules in both modes and compare legacy metadata.
 - [x] Preserve staged output, ownership checks, and rollback behavior.
-- [x] Support exact large-integer IDL constants without changing legacy metadata silently.
+- [ ] Support exact large-integer IDL constants without changing legacy metadata silently.
 - [x] Resolve public binary conversion from existing consumers (toBinary, binaryToString, isBinary).
 - [ ] Validate metadata in actual form consumers (@vality/ng-thrift and control-center).
 - [x] Support minified metadata artifact output for production releases while keeping formatted fixtures for tests (--minify).
@@ -89,7 +89,7 @@ stock generation success alone is insufficient.
 
 ## Package output
 
-- [x] Emit installable protocol packages with JS, declarations, metadata, and stable exports (--package).
+- [ ] Emit installable protocol packages with JS, declarations, metadata, and stable exports (--package).
 - [x] Keep compiler output selection separate from framework adapter selection.
 - [ ] Verify ESM/CJS and optional framework entries in isolated consumers.
 - [ ] Rebuild protocol artifacts before migrating applications that currently bundle woody_js.
@@ -102,7 +102,21 @@ stock generation success alone is insufficient.
 - [x] Bidirectional cross-decoding across complex data structures (we write -> Apache decodes; Apache writes -> we decode).
 - [x] Full RPC method envelope verification (CALL, REPLY success, REPLY declared exception, Application Exception, and ONEWAY).
 - [x] End-to-end RPC client execution from metadata with complex data structures against Apache wire codecs.
+- [x] Execute latest Damsel Repository.Commit against unmodified Apache-generated Java clients/processors, comparing complete binary messages and retaining composite map keys in both numeric modes (see conformance.md).
+- [x] Compare every supported value type, empty/absent values, exceptions, and colliding service/IDL namespace names against official generated Java execution.
 - [x] Export the binary runtime independently of Node/compiler/parser imports.
 
 The native backend uses this runtime. Apache remains available as a comparison
 reference in tests; consumer acceptance is tracked separately above.
+
+## Release audit follow-up
+
+- [ ] Propagate generated i64 mode into client factories and prevent conflicting runtime overrides.
+- [ ] Align generated binary types and constants with the native Uint8Array contract.
+- [ ] Preserve cancellation, timeout, and HTTP error semantics in the Angular adapter.
+- [ ] Merge HTTP headers case-insensitively and bound asynchronous header resolution.
+- [ ] Resolve generated export/path collisions and validate defaults/effective field IDs before publication.
+- [ ] Verify generated-package build, installation, and regeneration as one supported workflow.
+- [ ] Reject malformed hex input without partial decoding.
+
+See [release audit](release-audit.md) for reproductions and verification gaps.

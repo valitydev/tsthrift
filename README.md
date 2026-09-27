@@ -121,3 +121,5 @@ without Node globals or runtime code generation.
 - [Architecture](docs/architecture.md)
 - [Implementation checklist](docs/tasks.md)
 - [Binary runtime](docs/runtime.md)
+- [Latest Damsel binary conformance](docs/conformance.md)
+- [Release readiness audit](docs/release-audit.md)

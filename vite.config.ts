@@ -7,5 +7,12 @@ export default defineConfig({
   },
   run: {
     cache: true,
+    tasks: {
+      "test:conformance": {
+        command: "vp -C packages/cli test --config conformance.config.ts",
+        dependsOn: ["build"],
+        cache: false,
+      },
+    },
   },
 });
