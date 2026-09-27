@@ -4,8 +4,8 @@ import {
   type EnvironmentProviders,
   type Provider,
 } from "@angular/core";
-import type { HttpTransportConfig, ThriftServiceDescriptor } from "../index.ts";
-import { THRIFT_CONFIG, THRIFT_SERVICES_REGISTRY } from "./tokens.ts";
+import type { HttpTransportConfig, ThriftServiceDescriptor } from "@vality/tsthrift";
+import { THRIFT_CONFIG, THRIFT_SERVICES_REGISTRY, getServiceToken } from "./tokens.ts";
 
 /**
  * Provides global Thrift client configuration in Angular DI.
@@ -14,6 +14,22 @@ export function provideThriftConfig(config: HttpTransportConfig): Provider {
   return {
     provide: THRIFT_CONFIG,
     useValue: config,
+  };
+}
+
+/**
+ * Provides an individual Thrift service client in Angular DI by its descriptor.
+ */
+export function provideThriftClient<TClient>(
+  descriptor: ThriftServiceDescriptor<TClient>,
+  config?: Partial<HttpTransportConfig>,
+): Provider {
+  return {
+    provide: getServiceToken(descriptor),
+    useFactory: () => {
+      const baseConfig = inject(THRIFT_CONFIG, { optional: true });
+      return descriptor.createClient({ ...baseConfig, ...config });
+    },
   };
 }
 
@@ -38,6 +54,7 @@ export function provideThriftServices(
       useFactory: () => {
         const registry = new Map<string, ThriftServiceDescriptor>();
         for (const service of flatServices) {
+          registry.set(`${service.namespace}.${service.serviceName}`, service);
           registry.set(service.serviceName, service);
         }
         return registry;
@@ -46,15 +63,14 @@ export function provideThriftServices(
   ];
 
   for (const service of flatServices) {
-    if (service.token) {
-      providers.push({
-        provide: service.token,
-        useFactory: () => {
-          const baseConfig = inject(THRIFT_CONFIG, { optional: true });
-          return service.createClient(baseConfig);
-        },
-      });
-    }
+    const token = getServiceToken(service);
+    providers.push({
+      provide: token,
+      useFactory: () => {
+        const baseConfig = inject(THRIFT_CONFIG, { optional: true });
+        return service.createClient(baseConfig);
+      },
+    });
   }
 
   return makeEnvironmentProviders(providers);

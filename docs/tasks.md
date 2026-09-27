@@ -71,25 +71,21 @@ stock generation success alone is insufficient.
 - [ ] Cross-decode generated messages with the legacy Vality runtime.
 - [x] Exercise one real HTTP service before claiming transport compatibility.
 
-## React / TanStack Query output
+## React / TanStack Query output (deferred / YAGNI)
 
-- [x] Keep the Promise core independent of React and TanStack imports.
-- [x] Generate typed query/mutation options with explicit method classification.
-- [x] Forward query AbortSignal to the HTTP request.
-- [x] Normalize bigint, Map, Set, binary, endpoint, and tenant scope into deterministic cache keys.
-- [x] Verify cancellation, cache isolation, mutation behavior, and SSR value serialization.
-- [x] Package the adapter as an optional entry (@vality/tsthrift/query) without mandatory external peers.
+- [x] Keep core runtime and CLI completely independent of React and TanStack imports.
+- [x] Omit unused React / TanStack Query packages until explicitly needed by consumers.
 
-## Angular output and integration
+## Angular integration (@vality/tsthrift-angular)
 
-- [x] Add an Angular service generator over the shared Promise core (emitProgramClients and emitServicesRegistry).
-- [x] Use modern Angular DI (InjectionToken and provideThriftClient provider factories) instead of legacy Observable<ConnectOptions> constructor.
-- [x] Provide Promise-based service methods (compatible with Angular Signals and Resource API) with optional defer() RxJS helpers for Observable consumers.
-- [x] Support HttpClient transport injection without Angular imports in core.
-- [x] Preserve service exports, namespace exports, error types, and logging/call-option helpers.
+- [x] Extract Angular integration into a dedicated standalone workspace package (`@vality/tsthrift-angular`).
+- [x] Keep CLI output completely framework-agnostic (`clients/` and `services.ts` contain no Angular imports or tokens).
+- [x] Provide dynamic and cached DI tokens via `getServiceToken(descriptor)` and `createServiceToken(descriptor)`.
+- [x] Implement modern Angular environment providers (`provideThriftConfig`, `provideThriftServices`, `provideThriftClient`).
+- [x] Provide Promise-based service methods (compatible with Angular Signals and Resource API) with `toObservableClient` and `deferThriftCall` RxJS helpers for Observable consumers.
+- [x] Support HttpClient transport injection (`createHttpClientFetch`) without Angular imports in core runtime.
 - [x] Support explicit number-mode generation for existing numeric consumer contracts.
 - [ ] Verify configuration updates, lifecycle, cancellation, and lazy loading in live consumers.
-- [ ] Compile Angular package format when emitting decorated services.
 
 ## Package output
 

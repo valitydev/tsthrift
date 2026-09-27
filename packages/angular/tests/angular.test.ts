@@ -1,32 +1,44 @@
 import { describe, expect, test } from "vite-plus/test";
 import { createEnvironmentInjector, inject, Injector, runInInjectionContext } from "@angular/core";
 import { firstValueFrom, of } from "rxjs";
+import type { ThriftServiceDescriptor } from "@vality/tsthrift";
 import {
   THRIFT_CONFIG,
   THRIFT_SERVICES_REGISTRY,
   createHttpClientFetch,
+  createServiceToken,
   deferThriftCall,
+  getServiceToken,
+  provideThriftClient,
   provideThriftConfig,
   provideThriftServices,
   toObservableClient,
   type AngularHttpClientLike,
-} from "../src/angular/index.ts";
-import type { ThriftServiceDescriptor } from "../src/index.ts";
+} from "../src/index.ts";
 
 describe("Angular Thrift DI integration", () => {
-  abstract class TestServiceClient {
-    abstract echo(msg: string): string;
+  interface TestServiceClient {
+    echo(msg: string): string;
   }
 
   const dummyDescriptor: ThriftServiceDescriptor<TestServiceClient> = {
     serviceName: "TestService",
     namespace: "test",
-    token: TestServiceClient,
     createClient: (config?: any) => ({
       echo: (msg: string) => `[${config?.endpoint ?? "default"}] ${msg}`,
     }),
     getMetadata: async () => [],
   };
+
+  test("getServiceToken returns stable InjectionToken", () => {
+    const token1 = getServiceToken(dummyDescriptor);
+    const token2 = getServiceToken(dummyDescriptor);
+    const token3 = createServiceToken(dummyDescriptor);
+
+    expect(token1).toBe(token2);
+    expect(token1).toBe(token3);
+    expect(token1.toString()).toContain("test.TestService");
+  });
 
   test("provideThriftConfig provides static configuration", () => {
     const injector = Injector.create({
@@ -74,18 +86,27 @@ describe("Angular Thrift DI integration", () => {
 
       const registry = envInjector.get(THRIFT_SERVICES_REGISTRY);
       expect(registry.has("TestService")).toBe(true);
+      expect(registry.has("test.TestService")).toBe(true);
 
-      // 1. Native Angular inject(TestServiceClient) using abstract class token
-      const clientByClass = inject(TestServiceClient);
-      expect(clientByClass.echo("native-class")).toBe(
-        "[http://example.com/configured] native-class",
-      );
-
-      // 2. Native Angular inject(dummyDescriptor.token)
-      const clientByToken = inject<TestServiceClient>(dummyDescriptor.token);
+      const clientByToken = inject(getServiceToken(dummyDescriptor));
       expect(clientByToken.echo("native-token")).toBe(
         "[http://example.com/configured] native-token",
       );
+    });
+  });
+
+  test("provideThriftClient registers individual client with custom config override", () => {
+    const envInjector = createEnvironmentInjector(
+      [
+        provideThriftConfig({ endpoint: "http://example.com/base" }),
+        provideThriftClient(dummyDescriptor, { endpoint: "http://example.com/override" }),
+      ],
+      null as unknown as any,
+    );
+
+    runInInjectionContext(envInjector, () => {
+      const client = inject(getServiceToken(dummyDescriptor));
+      expect(client.echo("hello")).toBe("[http://example.com/override] hello");
     });
   });
 

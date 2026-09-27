@@ -18,7 +18,6 @@ export function emitProgramClients(program: Program): EmittedClientFile[] {
       `import type { ${serviceName}Client } from "../../models/${program.name}.js";`,
       "",
       `export type { ${serviceName}Client };`,
-      `export abstract class ${serviceName}Token {}`,
       "",
       `export interface ${serviceName}ClientConfig extends Omit<MetadataClientConfig, "serviceName" | "namespace" | "metadata"> {`,
       '  metadata?: MetadataClientConfig["metadata"];',
@@ -88,7 +87,7 @@ export function emitServicesRegistry(schema: Schema): string {
 
   for (const s of serviceList) {
     lines.push(
-      `import { type ${s.serviceName}Client as ${s.programName}_${s.serviceName}Client, create${s.serviceName}Client as ${s.programName}_create${s.serviceName}Client, ${s.serviceName}Token as ${s.programName}_${s.serviceName}Token } from "./${s.programName}/${s.serviceName}.js";`,
+      `import { type ${s.serviceName}Client as ${s.programName}_${s.serviceName}Client, create${s.serviceName}Client as ${s.programName}_create${s.serviceName}Client } from "./${s.programName}/${s.serviceName}.js";`,
     );
   }
 
@@ -106,13 +105,13 @@ export function emitServicesRegistry(schema: Schema): string {
     lines.push(`  "${s.programName}.${s.serviceName}": {`);
     lines.push(`    serviceName: ${JSON.stringify(s.serviceName)},`);
     lines.push(`    namespace: ${JSON.stringify(s.programName)},`);
-    lines.push(`    token: ${s.programName}_${s.serviceName}Token,`);
     lines.push(`    createClient: ${s.programName}_create${s.serviceName}Client,`);
     lines.push(
       '    getMetadata: () => import("../metadata.json", { with: { type: "json" } }).then((m) => (m.default ?? m) as any),',
     );
     lines.push("  },");
   }
+
   lines.push("};");
   lines.push("");
   lines.push("export const SERVICES_LIST: ThriftServiceDescriptor[] = Object.values(SERVICES);");

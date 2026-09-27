@@ -34,6 +34,34 @@ Without a type argument, methods return `Promise<unknown>`. An explicit
 the CLI; these agree with the selected i64 mode and Uint8Array binary contract.
 The async factory reserves the method name `then` to avoid Promise assimilation.
 
+## Monorepo packages
+
+- `@vality/tsthrift`: Zero-framework core runtime, Binary Protocol, metadata client, and HTTP transport.
+- `@vality/tsthrift-angular`: Angular dependency injection, providers (`provideThriftServices`, `provideThriftClient`), and RxJS adapters (`toObservableClient`, `deferThriftCall`).
+- `@vality/tsthrift-cli`: Pure TypeScript compiler generating models, `metadata.json`, and framework-agnostic client factories.
+
+## Angular integration
+
+```ts
+import { Component, inject } from "@angular/core";
+import { getServiceToken, provideThriftConfig, provideThriftServices } from "@vality/tsthrift-angular";
+import { SERVICES, SERVICES_LIST } from "./generated/services.js";
+
+// Application configuration
+export const appConfig = {
+  providers: [
+    provideThriftConfig({ endpoint: "/api" }),
+    provideThriftServices(SERVICES_LIST),
+  ],
+};
+
+// Injection in component or service
+@Component({ ... })
+export class PaymentComponent {
+  private client = inject(getServiceToken(SERVICES["payment_processing.PaymentProcessing"]));
+}
+```
+
 ## Generate
 
 ```sh
@@ -42,8 +70,8 @@ vp run build
 node packages/cli/dist/cli.mjs --input ./proto --output ./generated
 ```
 
-By default, the CLI generates both TypeScript models/interfaces (`models/`) and `metadata.json`.
-Pass `--no-models` to generate only `metadata.json`.
+By default, the CLI generates TypeScript models/interfaces (`models/`), `metadata.json`, and universal clients (`clients/`).
+Pass `--no-models` to generate only `metadata.json`, or `--no-clients` to skip client factories.
 
 Repeat `--include` for include roots and `--namespace` for entry filenames without
 `.thrift`. Without `--namespace`, all top-level IDL files are entries. Only reachable

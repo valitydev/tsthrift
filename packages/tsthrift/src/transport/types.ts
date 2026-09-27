@@ -62,10 +62,8 @@ export interface ThriftServiceDescriptor<TClient = unknown> {
   serviceName: string;
   /** IDL namespace or module name. */
   namespace: string;
-  /** Optional dependency injection token or class. */
-  token?: any;
   /** Factory creating typed Thrift client instance. */
-  createClient: (config: any) => TClient;
+  createClient: (config?: any) => TClient;
   /** Lazy loader returning parsed schema metadata. */
   getMetadata: () => Promise<Metadata[]>;
 }

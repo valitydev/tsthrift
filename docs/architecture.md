@@ -116,14 +116,11 @@ The legacy Apache Thrift target and `@vality/tsthrift/apache` runtime have been 
 The official Apache `thrift` package is retained solely in test devDependencies to independently
 verify Binary Protocol wire compatibility.
 
-The Angular entry (`@vality/tsthrift/angular`) provides DI integration (`provideThriftClient`,
-`provideThriftServices`, `InjectionToken`), fetch HTTP adapters, and RxJS helpers
+The standalone `@vality/tsthrift-angular` package provides Angular DI integration
+(`provideThriftConfig`, `provideThriftServices`, `provideThriftClient`, `getServiceToken`,
+`createServiceToken`), HttpClient-to-fetch adapter (`createHttpClientFetch`), and RxJS helpers
 (`toObservableClient`, `deferThriftCall`) for Observable-based consumers. The CLI generates
-service client modules and service registry descriptors.
-
-The React and TanStack Query adapter (`@vality/tsthrift/query`) provides typed query/mutation
-options (`createThriftQueryOptions`, `createThriftMutationOptions`), deterministic cache key
-normalization, and AbortSignal propagation.
+pure framework-agnostic client modules and service registry descriptors (`services.ts`).
 
 ## Verification and acceptance
 
