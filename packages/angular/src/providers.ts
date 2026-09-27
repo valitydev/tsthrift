@@ -4,7 +4,11 @@ import {
   type EnvironmentProviders,
   type Provider,
 } from "@angular/core";
-import type { HttpTransportConfig, ThriftServiceDescriptor } from "@vality/tsthrift";
+import {
+  mergeHeaderProviders,
+  type HttpTransportConfig,
+  type ThriftServiceDescriptor,
+} from "@vality/tsthrift";
 import { THRIFT_CONFIG, THRIFT_SERVICES_REGISTRY, getServiceToken } from "./tokens.ts";
 
 /**
@@ -28,7 +32,17 @@ export function provideThriftClient<TClient>(
     provide: getServiceToken(descriptor),
     useFactory: () => {
       const baseConfig = inject(THRIFT_CONFIG, { optional: true });
-      return descriptor.createClient({ ...baseConfig, ...config });
+      if (!config) {
+        return descriptor.createClient(baseConfig);
+      }
+      if (!baseConfig) {
+        return descriptor.createClient(config);
+      }
+      return descriptor.createClient({
+        ...baseConfig,
+        ...config,
+        headers: mergeHeaderProviders(baseConfig.headers, config.headers),
+      });
     },
   };
 }

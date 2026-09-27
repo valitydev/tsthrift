@@ -19,6 +19,7 @@ import {
 describe("Angular Thrift DI integration", () => {
   interface TestServiceClient {
     echo(msg: string): string;
+    config?: any;
   }
 
   const dummyDescriptor: ThriftServiceDescriptor<TestServiceClient> = {
@@ -26,6 +27,7 @@ describe("Angular Thrift DI integration", () => {
     namespace: "test",
     createClient: (config?: any) => ({
       echo: (msg: string) => `[${config?.endpoint ?? "default"}] ${msg}`,
+      config,
     }),
     getMetadata: async () => [],
   };
@@ -107,6 +109,39 @@ describe("Angular Thrift DI integration", () => {
     runInInjectionContext(envInjector, () => {
       const client = inject(getServiceToken(dummyDescriptor));
       expect(client.echo("hello")).toBe("[http://example.com/override] hello");
+    });
+  });
+
+  test("provideThriftClient merges global and service headers cascading base headers", async () => {
+    const envInjector = createEnvironmentInjector(
+      [
+        provideThriftConfig({
+          endpoint: "http://example.com/base",
+          headers: () => ({ Authorization: "Bearer global-token" }),
+        }),
+        provideThriftClient(dummyDescriptor, {
+          headers: (baseHeaders: Record<string, string>) => ({
+            "x-service": "test-service",
+            "x-auth-copy": baseHeaders["Authorization"],
+          }),
+        }),
+      ],
+      null as unknown as any,
+    );
+
+    await runInInjectionContext(envInjector, async () => {
+      const client = inject(getServiceToken(dummyDescriptor));
+      const headersProvider = client.config?.headers;
+      expect(headersProvider).toBeDefined();
+
+      const resolved =
+        typeof headersProvider === "function" ? await headersProvider() : headersProvider;
+
+      expect(resolved).toEqual({
+        Authorization: "Bearer global-token",
+        "x-service": "test-service",
+        "x-auth-copy": "Bearer global-token",
+      });
     });
   });
 

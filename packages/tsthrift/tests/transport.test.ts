@@ -7,6 +7,7 @@ import {
   ThriftProtocolError,
   ThriftTimeoutError,
   createHttpTransport,
+  mergeHeaderProviders,
 } from "../src/index.ts";
 
 describe("HTTP transport", () => {
@@ -71,7 +72,7 @@ describe("HTTP transport", () => {
     expect(response).toEqual(payload);
   });
 
-  test("resolves static and dynamic headers, plus per-call overrides", async () => {
+  test("resolves dynamic headers on each request", async () => {
     let callCount = 0;
     const transport = createHttpTransport({
       endpoint,
@@ -83,11 +84,11 @@ describe("HTTP transport", () => {
 
     const res1 = await transport(new Uint8Array([1]));
     expect(res1).toEqual(new Uint8Array([1]));
+    expect(callCount).toBe(1);
 
-    const res2 = await transport(new Uint8Array([2]), {
-      headers: { "x-call-id": "custom-call-99" },
-    });
+    const res2 = await transport(new Uint8Array([2]));
     expect(res2).toEqual(new Uint8Array([2]));
+    expect(callCount).toBe(2);
   });
 
   test("rejects immediately on HTTP 500 with ThriftHttpError and body", async () => {
@@ -147,5 +148,58 @@ describe("HTTP transport", () => {
   test("wraps connection failures in ThriftConnectionError", async () => {
     const transport = createHttpTransport({ endpoint: "http://127.0.0.1:1" });
     await expect(transport(new Uint8Array([1]))).rejects.toThrow(ThriftConnectionError);
+  });
+
+  test("service-level header provider receives global headers and derives headers per request", async () => {
+    let globalCallCount = 0;
+    let serviceCallCount = 0;
+
+    const globalHeaders = () => ({
+      Authorization: `Bearer token-${++globalCallCount}`,
+      "x-root-trace": `trace-${globalCallCount}`,
+    });
+
+    const serviceHeaders = (baseHeaders: Record<string, string>) => ({
+      "x-service-call": `service-${++serviceCallCount}`,
+      "x-child-trace": `${baseHeaders["x-root-trace"]}-child`,
+    });
+
+    const transport = createHttpTransport({
+      endpoint,
+      headers: mergeHeaderProviders(globalHeaders, serviceHeaders),
+    });
+
+    const res1 = await transport(new Uint8Array([42]));
+    expect(res1).toEqual(new Uint8Array([42]));
+    expect(globalCallCount).toBe(1);
+    expect(serviceCallCount).toBe(1);
+
+    const res2 = await transport(new Uint8Array([43]));
+    expect(res2).toEqual(new Uint8Array([43]));
+    expect(globalCallCount).toBe(2);
+    expect(serviceCallCount).toBe(2);
+  });
+
+  test("mergeHeaderProviders correctly cascades base headers to extra header provider", async () => {
+    const baseProvider = async () => ({
+      Authorization: "Bearer global-jwt",
+      "x-root-trace": "trace-global",
+    });
+
+    const extraProvider = async (baseHeaders: Record<string, string>) => ({
+      "x-service-name": "payment",
+      "x-child-trace": `${baseHeaders["x-root-trace"]}-child`,
+    });
+
+    const merged = mergeHeaderProviders(baseProvider, extraProvider);
+    expect(merged).toBeDefined();
+
+    const result = typeof merged === "function" ? await merged({}) : merged;
+    expect(result).toEqual({
+      Authorization: "Bearer global-jwt",
+      "x-root-trace": "trace-global",
+      "x-service-name": "payment",
+      "x-child-trace": "trace-global-child",
+    });
   });
 });

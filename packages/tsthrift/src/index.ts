@@ -11,7 +11,7 @@ export type {
 } from "./metadata/types.ts";
 export { ThriftApplicationError } from "./transport/rpc-client.ts";
 export * from "./transport/errors.ts";
-export { createHttpTransport } from "./transport/http-transport.ts";
+export { createHttpTransport, mergeHeaderProviders } from "./transport/http-transport.ts";
 export type {
   HeaderProvider,
   MetadataModule,

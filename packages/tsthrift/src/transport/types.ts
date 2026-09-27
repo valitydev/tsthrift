@@ -1,8 +1,11 @@
 import type { Metadata } from "../metadata/types.ts";
 
-/** Provider of request headers, either static record or sync/async factory. */
+/** Provider of request headers, either static record or sync/async factory receiving higher-level base headers. */
 export type HeaderProvider =
   | Record<string, string>
+  | ((
+      baseHeaders: Record<string, string>,
+    ) => Record<string, string> | Promise<Record<string, string>>)
   | (() => Record<string, string> | Promise<Record<string, string>>);
 
 /** Metadata module or array type supporting ESM default export. */
@@ -44,10 +47,10 @@ export interface ThriftLogParams {
 export interface RequestOptions {
   /** Request cancellation signal. */
   signal?: AbortSignal;
-  /** Additional headers for this specific call. */
-  headers?: Record<string, string>;
   /** Timeout override in milliseconds for this specific call. */
   timeoutMs?: number;
+  /** Optional headers for this specific call. */
+  headers?: Record<string, string>;
 }
 
 /** Low-level transport function sending raw bytes and receiving response bytes. */

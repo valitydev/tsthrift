@@ -15,12 +15,41 @@ import type {
 const THRIFT_CONTENT_TYPE = "application/x-thrift";
 const DEFAULT_TIMEOUT_MS = 60_000;
 
-async function resolveHeaders(provider?: HeaderProvider): Promise<Record<string, string>> {
+async function resolveHeaders(
+  provider?: HeaderProvider,
+  baseHeaders: Record<string, string> = {},
+): Promise<Record<string, string>> {
   if (!provider) return {};
   if (typeof provider === "function") {
-    return (await provider()) ?? {};
+    return (await provider(baseHeaders)) ?? {};
   }
   return { ...provider };
+}
+
+/**
+ * Merges two HeaderProviders into a single HeaderProvider where the second provider
+ * receives the resolved base headers from the first provider.
+ */
+export function mergeHeaderProviders(
+  base?: HeaderProvider,
+  extra?: HeaderProvider,
+): HeaderProvider | undefined {
+  if (!base) return extra;
+  if (!extra) return base;
+
+  return async (initialHeaders: Record<string, string> = {}) => {
+    const resolvedBase =
+      typeof base === "function"
+        ? ((await base(initialHeaders)) ?? {})
+        : { ...initialHeaders, ...base };
+
+    const resolvedExtra =
+      typeof extra === "function"
+        ? ((await extra(resolvedBase)) ?? {})
+        : { ...resolvedBase, ...extra };
+
+    return { ...resolvedBase, ...resolvedExtra };
+  };
 }
 
 function isThriftContentType(contentType: string): boolean {
