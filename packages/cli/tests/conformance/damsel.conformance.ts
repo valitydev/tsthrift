@@ -11,7 +11,7 @@ import {
   type TransportFunction,
 } from "@vality/tsthrift";
 import { createConformanceDirectory, prepareConformance } from "./setup.ts";
-import { commitValues, payload } from "./values.ts";
+import { commitValues, largeCommitValues, payload } from "./values.ts";
 
 let directory: string;
 let environment: Awaited<ReturnType<typeof prepareConformance>>;
@@ -149,6 +149,36 @@ test.each(["bigint", "number"] as const)(
       { symbolic_code: "EUR" },
       { symbolic_code: "USD" },
     ]);
+    await verifyReplyEncoding(
+      mode,
+      scenario,
+      await loadMetadata("domain_config_v2"),
+      "domain_config_v2",
+      "Repository",
+      "Commit",
+      result,
+    );
+  },
+);
+
+test.each(["bigint", "number"] as const)(
+  "large Damsel Repository.Commit with 50 domain objects round-trips via Java Processor (%s)",
+  async (mode) => {
+    const scenario = `damsel-large-${mode}`;
+    const { createRepository } = await generated(
+      mode,
+      "damsel/services/domain_config_v2/Repository.js",
+    );
+    const { loadMetadata } = await generated(mode, "damsel/metadata/index.js");
+    const client = createRepository({
+      endpoint: "unused",
+      i64Mode: mode,
+      transport: await transport(scenario),
+    });
+    const value = largeCommitValues(mode);
+    const result = await client.Commit(...value.args);
+    expect(result).toEqual(value.result);
+    expect(result.new_objects.size).toBe(50);
     await verifyReplyEncoding(
       mode,
       scenario,

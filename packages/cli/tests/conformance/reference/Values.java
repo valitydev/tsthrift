@@ -68,4 +68,30 @@ final class Values {
   static CommitResponse commitResponse() {
     return new CommitResponse(42, new LinkedHashSet<>(List.of(object())));
   }
+
+  static DomainObject largeObject(int i) {
+    var accounts = new LinkedHashMap<CurrencyRef, SystemAccount>();
+    accounts.put(new CurrencyRef("EUR"), new SystemAccount(10000 + i * 10 + 1).setSubagent(i));
+    accounts.put(new CurrencyRef("USD"), new SystemAccount(10000 + i * 10 + 2));
+    accounts.put(new CurrencyRef("RUB"), new SystemAccount(10000 + i * 10 + 3));
+    accounts.put(new CurrencyRef("GBP"), new SystemAccount(10000 + i * 10 + 4));
+    var accountSet = new SystemAccountSet("System accounts batch #" + i, "Batch commit object with UTF-8: Привет 🚀 " + i, accounts);
+    return DomainObject.system_account_set(new SystemAccountSetObject(new SystemAccountSetRef(1000 + i), accountSet));
+  }
+
+  static List<Operation> largeOperations() {
+    var list = new ArrayList<Operation>();
+    for (int i = 0; i < 50; i++) {
+      list.add(Operation.update(new UpdateOp(largeObject(i))));
+    }
+    return list;
+  }
+
+  static CommitResponse largeCommitResponse() {
+    var objects = new LinkedHashSet<DomainObject>();
+    for (int i = 0; i < 50; i++) {
+      objects.add(largeObject(i));
+    }
+    return new CommitResponse(1000, objects);
+  }
 }

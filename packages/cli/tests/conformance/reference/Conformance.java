@@ -70,6 +70,10 @@ public final class Conformance {
   private static TProcessor processor(String scenario) {
     boolean number = scenario.endsWith("number");
     boolean empty = scenario.startsWith("empty");
+    if (scenario.startsWith("damsel-large")) {
+      return createProcessor("dev.vality.damsel.domain_config_v2.Repository", "Commit",
+          new Object[] {1000L, Values.largeOperations(), "local-conformance-author"}, Values::largeCommitResponse);
+    }
     if (scenario.startsWith("damsel")) {
       return createProcessor("dev.vality.damsel.domain_config_v2.Repository", "Commit",
           new Object[] {42L, Values.operations(), "local-conformance-author"}, Values::commitResponse);
@@ -94,7 +98,9 @@ public final class Conformance {
   private static byte[] request(String scenario) throws Exception {
     var output = new TMemoryBuffer(1024);
     var protocol = new TBinaryProtocol(output, true, true);
-    if (scenario.startsWith("damsel")) {
+    if (scenario.startsWith("damsel-large")) {
+      sendRequest("dev.vality.damsel.domain_config_v2.Repository", "Commit", protocol, 1000L, Values.largeOperations(), "local-conformance-author");
+    } else if (scenario.startsWith("damsel")) {
       sendRequest("dev.vality.damsel.domain_config_v2.Repository", "Commit", protocol, 42L, Values.operations(), "local-conformance-author");
     } else if (scenario.equals("beta")) {
       sendRequest("conformance.beta.Echo", "echo", protocol, new conformance.beta.Payload(73));
