@@ -7,7 +7,7 @@ import {
   ThriftProtocolError,
   ThriftTimeoutError,
   createHttpTransport,
-} from "../src/transport/index.ts";
+} from "../src/index.ts";
 
 describe("HTTP transport", () => {
   let server: http.Server;

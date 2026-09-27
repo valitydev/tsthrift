@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -23,7 +23,7 @@ const tsc = path.resolve(
 );
 
 test.each(["bigint", "number"] as const)(
-  "executes native %s output against Apache wire codecs",
+  "executes native %s client from metadata against Apache wire codecs",
   async (i64) => {
     const directory = await mkdtemp(path.join(tmpdir(), "tsthrift-native-"));
     try {
@@ -77,7 +77,7 @@ test.each(["bigint", "number"] as const)(
       }
     `,
       );
-      await generate({ input, output, target: "native", i64, namespaces: ["example"] });
+      await generate({ input, output, target: "models", i64, namespaces: ["example"] });
       const compiled = path.join(directory, "compiled");
       await execute(process.execPath, [
         tsc,
@@ -93,27 +93,14 @@ test.each(["bigint", "number"] as const)(
         compiled,
         path.join(output, "index.ts"),
       ]);
-      const result = await execute(process.execPath, [
-        path.join(import.meta.dirname, "reference/native-client.mjs"),
-        compiled,
-        i64,
-      ]);
-      expect(result.stdout.trim()).toBe("native client checks passed");
-      const http = await execute(process.execPath, [
-        path.join(import.meta.dirname, "reference/native-http.mjs"),
-        compiled,
-      ]);
-      expect(http.stdout.trim()).toBe("native HTTP checks passed");
-      await verifyBrowserBundle(output);
-      const metadataOnly = path.join(directory, "metadata-only");
-      await generate({ input, output: metadataOnly, target: "metadata", namespaces: ["example"] });
+      await copyFile(path.join(output, "metadata.json"), path.join(compiled, "metadata.json"));
       for (const [script, kind] of [
         ["native-client.mjs", "client"],
         ["native-http.mjs", "HTTP"],
       ]) {
         const dynamic = await execute(process.execPath, [
           path.join(import.meta.dirname, "reference", script),
-          metadataOnly,
+          compiled,
           i64,
           "metadata",
         ]);
@@ -122,11 +109,11 @@ test.each(["bigint", "number"] as const)(
       const entry = path.join(directory, "metadata-entry.ts");
       await writeFile(
         entry,
-        `import { createMetadataClient } from "@vality/tsthrift/native";
-        import metadata from "./metadata-only/metadata.json";
+        `import { createMetadataClient } from "@vality/tsthrift";
+        import metadata from "./generated/metadata.json";
         export function createExampleClient(config) { return createMetadataClient({ ...config, metadata, namespace: "example", serviceName: "Example", i64Mode: "${i64}" }); }`,
       );
-      await verifyBrowserBundle(metadataOnly, entry);
+      await verifyBrowserBundle(output, entry);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

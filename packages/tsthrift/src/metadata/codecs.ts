@@ -1,8 +1,8 @@
-import { MetadataIndex } from "../converter/metadata-index.ts";
-import type { Field, I64Mode, ValueType } from "../converter/types.ts";
-import * as scalar from "../native/codec.ts";
-import { list, map, set } from "../native/collections.ts";
-import { struct, type WireField } from "../native/struct.ts";
+import { MetadataIndex } from "./index.ts";
+import type { Field, I64Mode, ValueType } from "./types.ts";
+import * as scalar from "../codecs/scalar.ts";
+import { list, map, set } from "../codecs/collections.ts";
+import { struct, type WireField } from "../codecs/struct.ts";
 import { evaluateDefault } from "./defaults.ts";
 
 /** Resolves metadata once and retains recursive codec identities for this schema. */

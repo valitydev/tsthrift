@@ -1,4 +1,4 @@
-import type { MetadataIndex } from "./metadata-index.ts";
+import type { MetadataIndex } from "../../metadata/index.ts";
 import type { ClassRegistry, I64Mode, ValueType } from "./types.ts";
 
 export interface ToThriftInstanceContext {

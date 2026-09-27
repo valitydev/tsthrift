@@ -1,4 +1,4 @@
-export { MetadataIndex } from "./metadata-index.ts";
+export { MetadataIndex } from "../../metadata/index.ts";
 export { toPlainObject } from "./to-plain-object.ts";
 export type { ToPlainObjectContext } from "./to-plain-object.ts";
 export { toThriftInstance } from "./to-thrift-instance.ts";

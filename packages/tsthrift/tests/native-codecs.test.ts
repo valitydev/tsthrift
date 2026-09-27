@@ -1,8 +1,8 @@
 import { expect, test } from "vite-plus/test";
 import { BinaryReader, BinaryWriter } from "../src/runtime.ts";
-import { i32, string, type Codec } from "../src/native/codec.ts";
-import { list, map } from "../src/native/collections.ts";
-import { struct } from "../src/native/struct.ts";
+import { i32, string, type Codec } from "../src/codecs/scalar.ts";
+import { list, map } from "../src/codecs/collections.ts";
+import { struct } from "../src/codecs/struct.ts";
 
 const required = struct("Required", () => [{ id: 1, name: "id", codec: i32, required: true }]);
 

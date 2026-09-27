@@ -2,12 +2,7 @@
 import assert from "node:assert/strict";
 import { loadClient } from "./load-client.mjs";
 import thrift from "thrift";
-import {
-  BinaryReader,
-  BinaryWriter,
-  MessageType,
-  ThriftApplicationError,
-} from "@vality/tsthrift/native";
+import { BinaryReader, BinaryWriter, MessageType, ThriftApplicationError } from "@vality/tsthrift";
 const [directory, mode, backend = "native"] = process.argv.slice(2);
 const { createExampleClient, SERVICES, types, model } = await loadClient(directory, mode, backend);
 const integer = (value) => (mode === "number" ? Number(value) : BigInt(value));
@@ -119,7 +114,11 @@ assert.deepEqual(observed, [
   [big, "first", [big]],
   [2n, "second", []],
 ]);
-if (model) assert.deepEqual([...model.BYTES], [97, 98, 99]);
+if (model) {
+  const bytes =
+    typeof model.BYTES === "string" ? new TextEncoder().encode(model.BYTES) : model.BYTES;
+  assert.deepEqual([...bytes], [97, 98, 99]);
+}
 assert.deepEqual(lifecycle, ["call", "success"]);
 for (const failure of [
   "method",

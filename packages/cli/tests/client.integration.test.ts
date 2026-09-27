@@ -12,7 +12,7 @@ import {
   type ThriftClientConstructor,
   ThriftHttpError,
   createThriftClient,
-} from "@vality/tsthrift";
+} from "@vality/tsthrift/apache";
 
 const { TBinaryProtocol, TBufferedTransport } = thrift;
 const compiler = process.env.THRIFT_COMPILER;

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { type Metadata, type ThriftClientConstructor, createThriftClient } from "../src/index.ts";
+import { type Metadata, type ThriftClientConstructor, createThriftClient } from "../src/apache.ts";
 
 const metadata: Metadata[] = [
   {

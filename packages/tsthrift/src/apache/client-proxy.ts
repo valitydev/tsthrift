@@ -1,7 +1,8 @@
-import { ThriftConverter } from "../converter/index.ts";
-import type { Metadata } from "../converter/types.ts";
+import type { ThriftClientConfig } from "./types.ts";
+import { ThriftConverter } from "./converter/index.ts";
+import type { Metadata } from "../metadata/types.ts";
 import type { ThriftClientConstructor, ThriftClientInstance } from "./client.ts";
-import type { MetadataModule, RequestOptions, ThriftClientConfig } from "./types.ts";
+import type { MetadataModule, RequestOptions } from "../transport/types.ts";
 
 export interface ProxyContext<T extends object> {
   target: T;

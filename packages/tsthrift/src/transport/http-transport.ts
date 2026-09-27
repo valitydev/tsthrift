@@ -8,7 +8,7 @@ import {
 import type {
   HeaderProvider,
   RequestOptions,
-  ThriftClientConfig,
+  HttpTransportConfig,
   TransportFunction,
 } from "./types.ts";
 
@@ -35,10 +35,10 @@ function isThriftContentType(contentType: string): boolean {
 /**
  * Creates an HTTP transport function for Thrift Binary Protocol RPC over HTTP POST.
  */
-export function createHttpTransport(config: ThriftClientConfig): TransportFunction {
+export function createHttpTransport(config: HttpTransportConfig): TransportFunction {
   const fetchFn = config.fetch ?? globalThis.fetch;
   if (typeof fetchFn !== "function") {
-    throw new Error("No global fetch found and none provided in ThriftClientConfig");
+    throw new Error("No global fetch found and none provided in HttpTransportConfig");
   }
 
   return async function httpTransport(

@@ -1,9 +1,9 @@
 import { expect, test, vi } from "vite-plus/test";
 import { createMetadataClient } from "../src/metadata/client.ts";
-import { MetadataIndex } from "../src/converter/metadata-index.ts";
+import { MetadataIndex } from "../src/metadata/index.ts";
 import { MetadataCodecs } from "../src/metadata/codecs.ts";
 import { BinaryReader, BinaryWriter, MessageType } from "../src/runtime.ts";
-import type { Metadata } from "../src/converter/types.ts";
+import type { Metadata } from "../src/metadata/types.ts";
 
 const schema = (): Metadata[] => [
   {

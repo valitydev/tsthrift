@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { ThriftConverter, type Metadata } from "../src/index.ts";
+import { ThriftConverter, type Metadata } from "../src/apache.ts";
 
 const sampleMetadata: Metadata[] = [
   {

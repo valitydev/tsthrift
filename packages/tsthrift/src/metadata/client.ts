@@ -1,11 +1,15 @@
-import { MetadataIndex } from "../converter/metadata-index.ts";
-import type { Field, I64Mode } from "../converter/types.ts";
-import { createNativeClient, type MethodCodec, type NativeClientConfig } from "../native/client.ts";
-import { struct } from "../native/struct.ts";
+import { MetadataIndex } from "./index.ts";
+import type { Field, I64Mode } from "./types.ts";
+import {
+  createRpcClient,
+  type MethodCodec,
+  type RpcClientConfig,
+} from "../transport/rpc-client.ts";
+import { struct } from "../codecs/struct.ts";
 import type { MetadataSource } from "../transport/types.ts";
 import { MetadataCodecs } from "./codecs.ts";
 
-export interface MetadataClientConfig extends NativeClientConfig {
+export interface MetadataClientConfig extends RpcClientConfig {
   metadata: MetadataSource;
   namespace: string;
   serviceName: string;
@@ -68,5 +72,5 @@ export async function createMetadataClient<T extends object = DynamicThriftClien
     }
   };
   addService(config.namespace, config.serviceName);
-  return createNativeClient<T>(methods, config, config.serviceName, config.namespace);
+  return createRpcClient<T>(methods, config, config.serviceName, config.namespace);
 }

@@ -1,9 +1,10 @@
+import type { ThriftClientConfig } from "./types.ts";
 import "./buffer-polyfill.ts";
 import thrift from "thrift";
 import { createClientProxy } from "./client-proxy.ts";
-import { ThriftProtocolError } from "./errors.ts";
-import { createHttpTransport } from "./http-transport.ts";
-import type { RequestOptions, ThriftClientConfig, TransportFunction } from "./types.ts";
+import { ThriftProtocolError } from "../transport/errors.ts";
+import { createHttpTransport } from "../transport/http-transport.ts";
+import type { RequestOptions, TransportFunction } from "../transport/types.ts";
 
 const { TBinaryProtocol, TBufferedTransport } = thrift;
 

@@ -2,7 +2,7 @@ import { build } from "vite";
 import vm from "node:vm";
 import path from "node:path";
 import { expect } from "vite-plus/test";
-import { BinaryReader, BinaryWriter, MessageType } from "@vality/tsthrift/native";
+import { BinaryReader, BinaryWriter, MessageType } from "@vality/tsthrift";
 
 /** Executes a browser-targeted bundle without Node globals or dependencies. */
 export async function verifyBrowserBundle(

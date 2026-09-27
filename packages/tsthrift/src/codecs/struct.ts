@@ -1,5 +1,5 @@
 import { WireType } from "../runtime/wire.ts";
-import { type Codec, nextDepth } from "./codec.ts";
+import { type Codec, nextDepth } from "./scalar.ts";
 
 export interface WireField {
   id: number;

@@ -1,4 +1,4 @@
-import { MetadataIndex } from "./metadata-index.ts";
+import { MetadataIndex } from "../../metadata/index.ts";
 import { toPlainObject } from "./to-plain-object.ts";
 import { toThriftInstance } from "./to-thrift-instance.ts";
 import type { ClassRegistry, I64Mode, Metadata, ValueType } from "./types.ts";

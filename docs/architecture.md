@@ -28,44 +28,34 @@ metadata.json -> runtime schema resolution -> cached codecs -> Promise methods
                                                          -> Binary Protocol / HTTP
 ```
 
-## Native client pipeline
+## Native client runtime
 
-`--target native` generates executable TypeScript clients and codecs without an
-external Thrift compiler or Apache runtime. The existing Binary Protocol reader
-and writer are the wire implementation. The legacy parser remains pinned for
-metadata compatibility; replacing its grammar is outside this backend change.
+Native client execution operates dynamically via `createMetadataClient` directly from
+`metadata.json` without an external Thrift compiler or static code generation for codecs/clients.
+The Binary Protocol reader and writer provide the wire implementation. Static native codegen
+(`--target native`) has been removed in favor of this metadata-driven runtime.
 
 ```text
 Thrift IDL
   -> pinned parser / include graph
-       -> unchanged metadata.json (runtime clients and forms)
-       -> public TS models, enums, constants
-       -> executable type and service codecs
-            -> namespace-scoped Promise client factories
-                 -> Uint8Array Binary Protocol
-                      -> fetch / framework HTTP adapter / byte transport
+       -> metadata.json (runtime clients and dynamic forms)
+       -> public TS models, enums, constants (--target models)
+       -> Apache JS & clients via official Thrift 0.24 compiler (--target apache)
 ```
 
-The CLI defaults to `models` to preserve metadata/model-only workflows. Select
-`native` explicitly to generate clients. The optional `apache` target remains a
-comparison and migration backend; native generation does not call it.
+The CLI defaults to `models` to generate TypeScript interface definitions and `metadata.json`.
+The optional `apache` target generates JavaScript through official Apache Thrift 0.24 and wraps
+classes into Promise clients. Native RPC clients are constructed directly at runtime via
+`createMetadataClient` using the emitted `metadata.json`.
 
 ## Compiler responsibilities
 
 - Schema loading selects entry files and reachable includes.
 - Shared validation and constant evaluation preserve the metadata contract.
-- Model emission selects bigint/number i64 and the backend's binary type.
-- Native codec emission resolves typedefs before choosing imports. References to
-  types in transitive includes import their actual defining module.
-- Lazy struct field definitions support recursive and forward type references.
-- Client emission groups services by IDL filename, so identical service names in
-  different modules do not overwrite files or exports.
+- Model emission selects bigint/number i64 and generates TypeScript models.
+- Apache target invokes Apache Thrift 0.24 to generate CommonJS classes, then emits TypeScript
+  service wrappers and index registries.
 - Output publication stages files and preserves prior output on failure.
-
-Native output contains `models/<module>.ts`, `codecs/<module>.ts`, and
-`clients/<module>/<Service>.ts`. The root exports model namespaces plus `clients`.
-The client index exposes module namespaces, `SERVICES`, and `SERVICES_LIST`.
-Registry keys are `module.Service`; descriptor `serviceName` retains the IDL name.
 
 These are source artifacts, not an automatically published protocol package.
 Compile them as ESM with JSON module support, or use a TypeScript-aware bundler.
@@ -121,14 +111,13 @@ owns its own I/O, cancellation, and timeout behavior.
 
 ## Runtime/package boundaries
 
-`@vality/tsthrift/native` has no runtime imports of Apache Thrift, Buffer, parser,
-Node, Angular, or RxJS. Generated RPC calls do not load metadata; metadata clients load it once at initialization. Registry metadata
-loaders use a separate JSON dynamic import only when invoked.
+The primary `@vality/tsthrift` entry and `@vality/tsthrift/runtime` have no runtime imports of
+Apache Thrift, Buffer, parser, Node, Angular, or RxJS. `createMetadataClient` loads metadata once
+at initialization and reuses pure TypeScript codecs and binary protocol reader/writer.
 
-Apache `thrift@0.24.0` and `buffer` are optional peer dependencies, installed as
-development dependencies for comparison tests. Users of the legacy root client
-entry and `--target apache` must install them. This backend still requires the
-matching external compiler and retains its stock object-map limitation.
+Apache `thrift@0.24.0` and `buffer` are optional peer dependencies used by `@vality/tsthrift/apache`.
+Users of `--target apache` and the Apache client entry must install them. This legacy backend requires
+the matching external compiler and retains its stock object-map limitation.
 
 The Angular entry can consume generated service descriptors using the existing
 DI providers and fetch adapter. Decorated Angular service generation, legacy

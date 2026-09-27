@@ -4,13 +4,13 @@ import {
   type EnvironmentProviders,
   type Provider,
 } from "@angular/core";
-import type { ThriftClientConfig, ThriftServiceDescriptor } from "../index.ts";
+import type { HttpTransportConfig, ThriftServiceDescriptor } from "../index.ts";
 import { THRIFT_CONFIG, THRIFT_SERVICES_REGISTRY } from "./tokens.ts";
 
 /**
  * Provides global Thrift client configuration in Angular DI.
  */
-export function provideThriftConfig(config: ThriftClientConfig): Provider {
+export function provideThriftConfig(config: HttpTransportConfig): Provider {
   return {
     provide: THRIFT_CONFIG,
     useValue: config,

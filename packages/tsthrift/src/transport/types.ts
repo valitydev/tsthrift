@@ -1,6 +1,4 @@
-import type { ThriftConverter } from "../converter/converter.ts";
-import type { MetadataIndex } from "../converter/metadata-index.ts";
-import type { ClassRegistry, I64Mode, Metadata } from "../converter/types.ts";
+import type { Metadata } from "../metadata/types.ts";
 
 /** Provider of request headers, either static record or sync/async factory. */
 export type HeaderProvider =
@@ -17,7 +15,7 @@ export type MetadataSource =
   | (() => Promise<MetadataModule> | MetadataModule);
 
 /** Declarative client connection and transport configuration. */
-export interface ThriftClientConfig {
+export interface HttpTransportConfig {
   /** Target service endpoint URL. */
   endpoint: string;
   /** Static headers or dynamic provider invoked before each request. */
@@ -26,20 +24,6 @@ export interface ThriftClientConfig {
   timeoutMs?: number;
   /** Custom fetch implementation or framework adapter (e.g. Angular HttpClient). */
   fetch?: typeof fetch;
-  /** Optional metadata schemas for automatic plain-object <-> Thrift instance conversion. */
-  metadata?: MetadataSource;
-  /** Service namespace (optional if serviceName is unique or auto-inferred). */
-  namespace?: string;
-  /** Service name in IDL (e.g. "Example" or "UserService"). */
-  serviceName?: string;
-  /** 64-bit integer conversion strategy (defaults to "bigint"). */
-  i64Mode?: I64Mode;
-  /** Registry of Thrift constructor classes. */
-  classRegistry?: ClassRegistry;
-  /** Pre-configured converter instance. */
-  converter?: ThriftConverter;
-  /** Pre-built metadata index. */
-  index?: MetadataIndex;
   /** Optional logging callback invoked on RPC call lifecycle (call, success, error). */
   loggingFn?: (params: ThriftLogParams) => void;
 }

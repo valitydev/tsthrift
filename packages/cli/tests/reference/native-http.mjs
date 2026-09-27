@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import { loadClient } from "./load-client.mjs";
 import thrift from "thrift";
-import { ThriftHttpError, ThriftProtocolError, ThriftTimeoutError } from "@vality/tsthrift/native";
+import { ThriftHttpError, ThriftProtocolError, ThriftTimeoutError } from "@vality/tsthrift";
 const [directory, mode = "bigint", backend = "native"] = process.argv.slice(2);
 const { createExampleClient } = await loadClient(directory, mode, backend);
 const { TBinaryProtocol, TBufferedTransport } = thrift;

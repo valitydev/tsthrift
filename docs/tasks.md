@@ -33,19 +33,17 @@ project integration defect or a consumer contract that needs protection.
 - [x] Execute a metadata-only browser bundle with Node globals absent and string code generation disabled.
 - [x] Initialize all 14 reference clients directly from 15 metadata modules in both modes.
 
-## Native TypeScript backend
+## Native TypeScript backend (runtime via metadata.json)
 
-- [x] Emit executable codecs and Promise clients without an external compiler.
+- [x] Streamline native execution to runtime `metadata.json` via `createMetadataClient` (removed static native codegen).
 - [x] Preserve struct-keyed maps, Set, plain structs, empty optional values, and recursive types.
-- [x] Resolve transitive typedef imports and inherited service methods.
-- [x] Scope client files/exports by module and support duplicate service names.
+- [x] Resolve transitive typedef imports, container scopes, and inherited service methods in metadata.
 - [x] Select request options by argument position, including callback/options/params-named data.
 - [x] Enforce required fields, decode limits, response correlation, and declared/application errors.
-- [x] Compile and execute generated output in both i64 modes with independent Apache wire decoding.
-- [x] Execute native generated clients through real local HTTP, cancellation, and timeout.
+- [x] Execute native clients in both i64 modes with independent Apache wire decoding.
+- [x] Execute native metadata clients through real local HTTP, cancellation, and timeout.
 - [x] Execute a browser-targeted bundle without Node globals or Apache/Buffer imports.
 - [x] Make Apache/Buffer optional peers for the legacy backend.
-- [x] Generate/compile 15 reference modules in both modes; instantiate 14 clients and execute a composite-map codec.
 - [ ] Validate native clients in live browsers and existing Angular/form consumers.
 - [ ] Cross-decode complete native messages with the legacy Vality runtime.
 

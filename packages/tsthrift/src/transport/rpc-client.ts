@@ -1,14 +1,14 @@
 import { BinaryReader } from "../runtime/binary-reader.ts";
 import { BinaryWriter } from "../runtime/binary-writer.ts";
 import { MessageType } from "../runtime/wire.ts";
-import { ThriftError, ThriftProtocolError } from "../transport/errors.ts";
-import { createHttpTransport } from "../transport/http-transport.ts";
-import type { RequestOptions, ThriftClientConfig, TransportFunction } from "../transport/types.ts";
-import { type Codec, i32, string } from "./codec.ts";
-import { struct } from "./struct.ts";
+import { ThriftError, ThriftProtocolError } from "./errors.ts";
+import { createHttpTransport } from "./http-transport.ts";
+import type { RequestOptions, HttpTransportConfig, TransportFunction } from "./types.ts";
+import { type Codec, i32, string } from "../codecs/scalar.ts";
+import { struct } from "../codecs/struct.ts";
 
-export type NativeClientConfig = Pick<
-  ThriftClientConfig,
+export type RpcClientConfig = Pick<
+  HttpTransportConfig,
   "endpoint" | "headers" | "timeoutMs" | "fetch" | "loggingFn"
 > & { transport?: TransportFunction };
 
@@ -63,9 +63,9 @@ function decodeReply(bytes: Uint8Array, name: string, sequenceId: number, method
 }
 
 /** Creates independent request envelopes; no callback registry or shared request options. */
-export function createNativeClient<T extends object>(
+export function createRpcClient<T extends object>(
   methods: Record<string, MethodCodec>,
-  config: NativeClientConfig,
+  config: RpcClientConfig,
   serviceName: string,
   namespace: string,
 ): T {

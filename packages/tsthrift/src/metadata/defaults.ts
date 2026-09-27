@@ -1,5 +1,5 @@
-import type { MetadataIndex } from "../converter/metadata-index.ts";
-import type { I64Mode, ValueType } from "../converter/types.ts";
+import type { MetadataIndex } from "./index.ts";
+import type { I64Mode, ValueType } from "./types.ts";
 import { numberToI64 } from "../runtime/i64.ts";
 
 function reference(value: unknown): string[] | undefined {

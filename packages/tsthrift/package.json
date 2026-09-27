@@ -18,7 +18,7 @@
   "exports": {
     ".": "./dist/index.mjs",
     "./angular": "./dist/angular/index.mjs",
-    "./native": "./dist/native.mjs",
+    "./apache": "./dist/apache.mjs",
     "./runtime": "./dist/runtime.mjs",
     "./package.json": "./package.json"
   },
