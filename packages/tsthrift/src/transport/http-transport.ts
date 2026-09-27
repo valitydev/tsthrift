@@ -12,6 +12,8 @@ import type {
   TransportFunction,
 } from "./types.ts";
 
+import { createWoodyHeaders, WOODY_HEADERS } from "./woody.ts";
+
 const THRIFT_CONTENT_TYPE = "application/x-thrift";
 const DEFAULT_TIMEOUT_MS = 60_000;
 
@@ -76,9 +78,20 @@ export function createHttpTransport(config: HttpTransportConfig): TransportFunct
   ): Promise<Uint8Array> {
     const timeoutMs = options?.timeoutMs ?? config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const baseHeaders = await resolveHeaders(config.headers);
+
+    let woodyHeaders: Record<string, string> | undefined;
+    if (config.woody) {
+      const woodyConfig = typeof config.woody === "object" ? config.woody : undefined;
+      woodyHeaders = createWoodyHeaders(woodyConfig);
+      if (!woodyHeaders[WOODY_HEADERS.DEADLINE] && timeoutMs > 0) {
+        woodyHeaders[WOODY_HEADERS.DEADLINE] = new Date(Date.now() + timeoutMs).toISOString();
+      }
+    }
+
     const headers: Record<string, string> = {
       Accept: THRIFT_CONTENT_TYPE,
       "Content-Type": THRIFT_CONTENT_TYPE,
+      ...woodyHeaders,
       ...baseHeaders,
       ...options?.headers,
     };

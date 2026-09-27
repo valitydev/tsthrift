@@ -23,4 +23,11 @@ export type {
   ThriftServiceDescriptor,
   TransportFunction,
 } from "./transport/types.ts";
+export {
+  WOODY_HEADERS,
+  createWoodyHeaders,
+  createWoodyHeaderProvider,
+  generateTraceId,
+} from "./transport/woody.ts";
+export type { WoodyHeadersConfig } from "./transport/woody.ts";
 export * from "./runtime.ts";

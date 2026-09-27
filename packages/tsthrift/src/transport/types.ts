@@ -17,6 +17,8 @@ export type MetadataSource =
   | Promise<MetadataModule>
   | (() => Promise<MetadataModule> | MetadataModule);
 
+import type { WoodyHeadersConfig } from "./woody.ts";
+
 /** Declarative client connection and transport configuration. */
 export interface HttpTransportConfig {
   /** Target service endpoint URL. */
@@ -25,6 +27,8 @@ export interface HttpTransportConfig {
   headers?: HeaderProvider;
   /** Request timeout in milliseconds (defaults to 60_000). */
   timeoutMs?: number;
+  /** Enable automatic Woody tracing headers generation per request. */
+  woody?: boolean | WoodyHeadersConfig;
   /** Custom fetch implementation or framework adapter (e.g. Angular HttpClient). */
   fetch?: typeof fetch;
   /** Optional logging callback invoked on RPC call lifecycle (call, success, error). */
