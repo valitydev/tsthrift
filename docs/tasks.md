@@ -107,6 +107,8 @@ stock generation success alone is insufficient.
 - [x] End-to-end wire parity, byte-for-byte serialization equality, and bidirectional RPC execution with Vality Thrift fork (`valitydev/thrift` v0.20.1) and Apache 0.24.0 Java clients/processors.
 - [x] Execute latest Damsel Repository.Commit against unmodified generated Java clients/processors, comparing complete binary messages and retaining composite map keys in both numeric modes (see conformance.md).
 - [x] Compare every supported value type, empty/absent values, exceptions, and colliding service/IDL namespace names against generated Java execution, isolated in a dedicated two-variant GitHub Actions CI conformance matrix (Vality 0.20.1 and Apache 0.24.0) with pinned Damsel SHA and artifact uploads on failure.
+- [x] Verify binary protocol on large nested composite objects (360+ node tree with unions, composite map keys, binary payloads, and sets; exact byte-for-byte parity with Apache 0.24, bidirectional RPC roundtrip, and deep recursion bounds).
+- [x] Verify binary protocol on RPC methods with diverse argument types (14 simultaneous scalar and composite arguments: byte, i16, i32, i64, double, bool, string, binary, list, set, map, struct, union, optional; exact byte-for-byte wire parity with Apache 0.24, server decoding, and permuted field IDs).
 - [x] Export the binary runtime independently of Node/compiler/parser imports.
 
 The native backend uses this runtime. Apache remains available as a comparison
