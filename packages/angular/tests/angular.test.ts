@@ -1,7 +1,13 @@
 import { describe, expect, test } from "vite-plus/test";
 import { createEnvironmentInjector, inject, Injector, runInInjectionContext } from "@angular/core";
-import { firstValueFrom, of } from "rxjs";
-import type { ThriftServiceDescriptor } from "@vality/tsthrift";
+import { catchError, firstValueFrom, of } from "rxjs";
+import {
+  ThriftHttpError,
+  ThriftServiceError,
+  catchServiceError,
+  catchSystemError,
+  type ThriftServiceDescriptor,
+} from "@vality/tsthrift";
 import {
   THRIFT_CONFIG,
   THRIFT_SERVICES_REGISTRY,
@@ -18,7 +24,7 @@ import {
 
 describe("Angular Thrift DI integration", () => {
   interface TestServiceClient {
-    echo(msg: string): string;
+    echo(msg: string): Promise<string>;
     config?: any;
   }
 
@@ -26,7 +32,7 @@ describe("Angular Thrift DI integration", () => {
     serviceName: "TestService",
     namespace: "test",
     createService: (config?: any) => ({
-      echo: (msg: string) => `[${config?.endpoint ?? "default"}] ${msg}`,
+      echo: async (msg: string) => `[${config?.endpoint ?? "default"}] ${msg}`,
       config,
     }),
     getMetadata: async () => [],
@@ -73,7 +79,7 @@ describe("Angular Thrift DI integration", () => {
     });
   });
 
-  test("provideThriftServices registers service registry and client instances using createService", () => {
+  test("provideThriftServices registers service registry and client instances using createService", async () => {
     const envInjector = createEnvironmentInjector(
       [
         provideThriftConfig({ endpoint: "http://example.com/configured" }),
@@ -82,7 +88,7 @@ describe("Angular Thrift DI integration", () => {
       null as unknown as any,
     );
 
-    runInInjectionContext(envInjector, () => {
+    await runInInjectionContext(envInjector, async () => {
       const config = envInjector.get(THRIFT_CONFIG);
       expect(config).toEqual({ endpoint: "http://example.com/configured" });
 
@@ -91,13 +97,12 @@ describe("Angular Thrift DI integration", () => {
       expect(registry.has("test.TestService")).toBe(true);
 
       const clientByToken = inject(getServiceToken(dummyDescriptor));
-      expect(clientByToken.echo("native-token")).toBe(
-        "[http://example.com/configured] native-token",
-      );
+      const res = await firstValueFrom(clientByToken.echo("native-token"));
+      expect(res).toBe("[http://example.com/configured] native-token");
     });
   });
 
-  test("provideThriftService registers individual service with custom config override", () => {
+  test("provideThriftService registers individual service with custom config override", async () => {
     const envInjector = createEnvironmentInjector(
       [
         provideThriftConfig({ endpoint: "http://example.com/base" }),
@@ -106,9 +111,10 @@ describe("Angular Thrift DI integration", () => {
       null as unknown as any,
     );
 
-    runInInjectionContext(envInjector, () => {
+    await runInInjectionContext(envInjector, async () => {
       const client = inject(getServiceToken(dummyDescriptor));
-      expect(client.echo("hello")).toBe("[http://example.com/override] hello");
+      const res = await firstValueFrom(client.echo("hello"));
+      expect(res).toBe("[http://example.com/override] hello");
     });
   });
 
@@ -226,6 +232,88 @@ describe("Angular Thrift DI integration", () => {
     const obsClient = toObservableClient(mockClient);
     const res = await firstValueFrom(obsClient.safe.echo("safe-test"));
     expect(res).toEqual({ data: "echo:safe-test", error: undefined });
+  });
+
+  test("toObservableClient unwraps ThriftResult success and emits data", async () => {
+    const mockClient = {
+      compute: async (x: number) => ({ data: x * 2, error: undefined }),
+    };
+    const obsClient = toObservableClient(mockClient);
+    const result = await firstValueFrom(obsClient.compute(21));
+    expect(result).toBe(42);
+  });
+
+  test("toObservableClient unwraps ThriftResult error and throws ThriftServiceError", async () => {
+    const serviceError = new ThriftServiceError("PaymentFailed", "paymentFailed", {
+      code: "INSUFFICIENT_FUNDS",
+    });
+    const mockClient = {
+      pay: async () => ({ data: undefined, error: serviceError }),
+    };
+    const obsClient = toObservableClient(mockClient);
+
+    await expect(firstValueFrom(obsClient.pay())).rejects.toThrow(
+      "Thrift service error [PaymentFailed]",
+    );
+  });
+
+  test("catchServiceError and catchSystemError seamlessly integrate with RxJS catchError", async () => {
+    const serviceError = new ThriftServiceError("PaymentFailed", "paymentFailed", {
+      code: "LIMIT_EXCEEDED",
+    });
+    const mockClient = {
+      pay: async () => ({ data: undefined, error: serviceError }),
+    };
+    const obsClient = toObservableClient(mockClient);
+
+    let caughtDetail: string | undefined;
+    const handled$ = obsClient.pay().pipe(
+      catchError((err) => {
+        const handled = catchServiceError(err, "PaymentFailed", (e) => {
+          caughtDetail = (e.data as any).code;
+          return of("recovered-from-service-error");
+        });
+        if (handled !== undefined) return handled;
+        return of("unhandled");
+      }),
+    );
+
+    const val = await firstValueFrom(handled$);
+    expect(val).toBe("recovered-from-service-error");
+    expect(caughtDetail).toBe("LIMIT_EXCEEDED");
+
+    // Also verify catchSystemError in pipe
+    const httpError = new ThriftHttpError(502, "Bad Gateway");
+    const mockSysClient = {
+      pay: async () => ({ data: undefined, error: httpError }),
+    };
+    const obsSysClient = toObservableClient(mockSysClient);
+
+    let systemStatus: number | undefined;
+    const sysHandled$ = obsSysClient.pay().pipe(
+      catchError((err) => {
+        const handled = catchSystemError(err, (e) => {
+          if (e instanceof ThriftHttpError) systemStatus = e.status;
+          return of("system-fallback");
+        });
+        if (handled !== undefined) return handled;
+        return of("unhandled");
+      }),
+    );
+
+    const sysVal = await firstValueFrom(sysHandled$);
+    expect(sysVal).toBe("system-fallback");
+    expect(systemStatus).toBe(502);
+  });
+
+  test("deferThriftCall unwraps ThriftResult and emits error into error channel", async () => {
+    const error = new ThriftServiceError("DeferredError", "err", {});
+    const obs = deferThriftCall(async () => ({ data: undefined, error }));
+    await expect(firstValueFrom(obs)).rejects.toThrow("Thrift service error [DeferredError]");
+
+    const okObs = deferThriftCall(async () => ({ data: "deferred-ok", error: undefined }));
+    const okVal = await firstValueFrom(okObs);
+    expect(okVal).toBe("deferred-ok");
   });
 
   test("toObservableClient cancels underlying call via AbortSignal upon unsubscription", async () => {

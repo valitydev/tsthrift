@@ -2,7 +2,7 @@ import { BinaryReader } from "../runtime/binary-reader.ts";
 import { BinaryWriter } from "../runtime/binary-writer.ts";
 import { MessageType } from "../runtime/wire.ts";
 import {
-  ThriftError,
+  ThriftApplicationError,
   ThriftProtocolError,
   ThriftServiceError,
   THRIFT_EXCEPTION_INFO,
@@ -32,14 +32,7 @@ export interface MethodCodec {
   oneway: boolean;
 }
 
-export class ThriftApplicationError extends ThriftError {
-  constructor(
-    message: string,
-    public readonly code: number,
-  ) {
-    super(message);
-  }
-}
+export { ThriftApplicationError };
 
 const applicationException = struct("TApplicationException", () => [
   { id: 1, name: "message", codec: string },

@@ -1,5 +1,6 @@
 import { InjectionToken } from "@angular/core";
 import type { HttpTransportConfig, ThriftServiceDescriptor } from "@vality/tsthrift";
+import type { ObservableClient } from "./rxjs.ts";
 
 /** Injection token for global Thrift client configuration. */
 export const THRIFT_CONFIG = new InjectionToken<HttpTransportConfig>("THRIFT_CONFIG");
@@ -12,18 +13,19 @@ export const THRIFT_SERVICES_REGISTRY = new InjectionToken<Map<string, ThriftSer
 const serviceTokens = new WeakMap<ThriftServiceDescriptor<any>, InjectionToken<any>>();
 
 /**
- * Returns a stable InjectionToken for a given Thrift service descriptor.
+ * Returns a stable InjectionToken for a given Thrift service descriptor,
+ * typed as an ObservableClient in Angular DI.
  * Tokens are cached per descriptor instance.
  */
 export function getServiceToken<TClient = unknown>(
   descriptor: ThriftServiceDescriptor<TClient>,
-): InjectionToken<TClient> {
+): InjectionToken<TClient extends object ? ObservableClient<TClient> : TClient> {
   let token = serviceTokens.get(descriptor);
   if (!token) {
-    token = new InjectionToken<TClient>(`${descriptor.namespace}.${descriptor.serviceName}`);
+    token = new InjectionToken<any>(`${descriptor.namespace}.${descriptor.serviceName}`);
     serviceTokens.set(descriptor, token);
   }
-  return token as InjectionToken<TClient>;
+  return token as InjectionToken<TClient extends object ? ObservableClient<TClient> : TClient>;
 }
 
 /**
@@ -32,6 +34,6 @@ export function getServiceToken<TClient = unknown>(
  */
 export function createServiceToken<TClient = unknown>(
   descriptor: ThriftServiceDescriptor<TClient>,
-): InjectionToken<TClient> {
+): InjectionToken<TClient extends object ? ObservableClient<TClient> : TClient> {
   return getServiceToken(descriptor);
 }

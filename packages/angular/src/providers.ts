@@ -10,6 +10,7 @@ import {
   type ThriftServiceDescriptor,
 } from "@vality/tsthrift";
 import { THRIFT_CONFIG, THRIFT_SERVICES_REGISTRY, getServiceToken } from "./tokens.ts";
+import { toObservableClient } from "./rxjs.ts";
 
 /**
  * Provides global Thrift client configuration in Angular DI.
@@ -24,7 +25,7 @@ export function provideThriftConfig(config: HttpTransportConfig): Provider {
 /**
  * Provides an individual Thrift service proxy in Angular DI by its descriptor.
  */
-export function provideThriftService<TService>(
+export function provideThriftService<TService extends object>(
   descriptor: ThriftServiceDescriptor<TService>,
   config?: Partial<HttpTransportConfig>,
 ): Provider {
@@ -33,17 +34,16 @@ export function provideThriftService<TService>(
     useFactory: () => {
       const baseConfig = inject(THRIFT_CONFIG, { optional: true });
       const factory = descriptor.createService;
-      if (!config) {
-        return factory(baseConfig);
-      }
-      if (!baseConfig) {
-        return factory(config);
-      }
-      return factory({
-        ...baseConfig,
-        ...config,
-        headers: mergeHeaderProviders(baseConfig.headers, config.headers),
-      });
+      const rawClient = !config
+        ? factory(baseConfig)
+        : !baseConfig
+          ? factory(config)
+          : factory({
+              ...baseConfig,
+              ...config,
+              headers: mergeHeaderProviders(baseConfig.headers, config.headers),
+            });
+      return toObservableClient(rawClient);
     },
   };
 }
@@ -84,7 +84,7 @@ export function provideThriftServices(
       useFactory: () => {
         const baseConfig = inject(THRIFT_CONFIG, { optional: true });
         const factory = service.createService;
-        return factory(baseConfig);
+        return toObservableClient(factory(baseConfig) as object);
       },
     });
   }

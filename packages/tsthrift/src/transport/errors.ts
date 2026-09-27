@@ -60,6 +60,48 @@ export function getThriftExceptionInfo(error: unknown): ThriftExceptionMeta | un
   return undefined;
 }
 
+/** Error raised when the Thrift server returns a TApplicationException. */
+export class ThriftApplicationError extends ThriftError {
+  constructor(
+    message: string,
+    public readonly code: number,
+  ) {
+    super(message);
+  }
+}
+
+export type ThriftSystemError =
+  | ThriftHttpError
+  | ThriftTimeoutError
+  | ThriftConnectionError
+  | ThriftProtocolError
+  | ThriftApplicationError;
+
+/** Type guard checking if an error is a system/network/protocol Thrift failure. */
+export function isThriftSystemError(error: unknown): error is ThriftSystemError {
+  return (
+    error instanceof ThriftHttpError ||
+    error instanceof ThriftTimeoutError ||
+    error instanceof ThriftConnectionError ||
+    error instanceof ThriftProtocolError ||
+    error instanceof ThriftApplicationError
+  );
+}
+
+/**
+ * Catches and handles a ThriftSystemError (network, timeout, protocol, or application exception).
+ * Returns the handler result if handled, or undefined if the error does not match.
+ */
+export function catchSystemError<R = void>(
+  error: unknown,
+  handler: (error: ThriftSystemError) => R,
+): R | undefined {
+  if (isThriftSystemError(error)) {
+    return handler(error);
+  }
+  return undefined;
+}
+
 /** Error raised when a Thrift RPC returns a declared service exception. */
 export class ThriftServiceError<
   TType extends string = string,
@@ -99,4 +141,34 @@ export function isThriftServiceError<TType extends string = string, TData extend
     }
   }
   return false;
+}
+
+/**
+ * Catches and handles a ThriftServiceError (declared exception).
+ * Optionally matches against a specific error type name.
+ * Returns the handler result if handled, or undefined if the error does not match.
+ */
+export function catchServiceError<TError extends ThriftServiceError = ThriftServiceError, R = void>(
+  error: unknown,
+  handler: (error: TError) => R,
+): R | undefined;
+export function catchServiceError<TError extends ThriftServiceError = ThriftServiceError, R = void>(
+  error: unknown,
+  expectedType: string,
+  handler: (error: TError) => R,
+): R | undefined;
+export function catchServiceError<TError extends ThriftServiceError = ThriftServiceError, R = void>(
+  error: unknown,
+  expectedTypeOrHandler: string | ((error: TError) => R),
+  maybeHandler?: (error: TError) => R,
+): R | undefined {
+  const expectedType =
+    typeof expectedTypeOrHandler === "string" ? expectedTypeOrHandler : undefined;
+  const handler =
+    typeof expectedTypeOrHandler === "function" ? expectedTypeOrHandler : maybeHandler!;
+
+  if (isThriftServiceError<any, any>(error, expectedType)) {
+    return handler(error as TError);
+  }
+  return undefined;
 }

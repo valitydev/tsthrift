@@ -38,7 +38,11 @@ function combineSignals(a?: AbortSignal, b?: AbortSignal): AbortSignal | undefin
   return controller.signal;
 }
 
-function createObservableMethod(target: any, method: (...args: unknown[]) => Promise<unknown>) {
+function createObservableMethod(
+  target: any,
+  method: (...args: unknown[]) => Promise<unknown>,
+  unwrap: boolean,
+) {
   return (...args: unknown[]) =>
     new Observable((subscriber) => {
       const abortController = new AbortController();
@@ -57,9 +61,24 @@ function createObservableMethod(target: any, method: (...args: unknown[]) => Pro
         callArgs = [...args, { signal: abortController.signal }];
       }
 
-      method
-        .apply(target, callArgs)
-        .then((result) => {
+      Promise.resolve(method.apply(target, callArgs))
+        .then((result: any) => {
+          if (
+            unwrap &&
+            result !== null &&
+            typeof result === "object" &&
+            ("data" in result || "error" in result)
+          ) {
+            if (result.error !== undefined) {
+              if (!abortController.signal.aborted) {
+                subscriber.error(result.error);
+              }
+              return;
+            }
+            subscriber.next(result.data);
+            subscriber.complete();
+            return;
+          }
           subscriber.next(result);
           subscriber.complete();
         })
@@ -78,14 +97,30 @@ function createObservableMethod(target: any, method: (...args: unknown[]) => Pro
 /**
  * Wraps a Promise-returning Thrift client method call into a cold RxJS Observable.
  * Defers execution until subscribed and cleans up properly.
+ * Unwraps ThriftResult and emits errors into the error channel.
  */
 export function deferThriftCall<T>(
   callFactory: (options?: RequestOptions) => Promise<T>,
-): Observable<T> {
-  return new Observable<T>((subscriber) => {
+): Observable<T extends ThriftResult<infer TData, any> ? TData : T> {
+  return new Observable((subscriber) => {
     const abortController = new AbortController();
-    callFactory({ signal: abortController.signal })
-      .then((result) => {
+    Promise.resolve(callFactory({ signal: abortController.signal }))
+      .then((result: any) => {
+        if (
+          result !== null &&
+          typeof result === "object" &&
+          ("data" in result || "error" in result)
+        ) {
+          if (result.error !== undefined) {
+            if (!abortController.signal.aborted) {
+              subscriber.error(result.error);
+            }
+            return;
+          }
+          subscriber.next(result.data);
+          subscriber.complete();
+          return;
+        }
         subscriber.next(result);
         subscriber.complete();
       })
@@ -100,35 +135,50 @@ export function deferThriftCall<T>(
   });
 }
 
-/**
- * Type mapping Promise-based client methods to Observable-based client methods,
- * recursively wrapping sub-clients such as .safe.
- */
-export type ObservableClient<TClient extends object> = {
+export type ObservableSafeClient<TClient extends object> = {
   [K in keyof TClient]: TClient[K] extends (...args: infer Args) => Promise<infer R>
     ? (...args: Args) => Observable<R>
     : TClient[K] extends object
-      ? ObservableClient<TClient[K]>
+      ? ObservableSafeClient<TClient[K]>
       : TClient[K];
+};
+
+/**
+ * Type mapping Promise-based client methods to Observable-based client methods.
+ * Unwraps ThriftResult into plain data in Observables and emits declared exceptions
+ * or system errors into the error channel (real throw).
+ * Preserves nested .safe sub-clients returning ThriftResult without throwing.
+ */
+export type ObservableClient<TClient extends object> = {
+  [K in keyof TClient]: K extends "safe"
+    ? TClient[K] extends object
+      ? ObservableSafeClient<TClient[K]>
+      : TClient[K]
+    : TClient[K] extends (...args: infer Args) => Promise<ThriftResult<infer TData, any>>
+      ? (...args: Args) => Observable<TData>
+      : TClient[K] extends (...args: infer Args) => Promise<infer R>
+        ? (...args: Args) => Observable<R>
+        : TClient[K];
 };
 
 /**
  * Creates an Observable wrapper around a Promise-based Thrift client instance,
  * turning each method into a method returning a cold RxJS Observable with
- * automatic cancellation via AbortSignal upon unsubscription.
+ * real throw error propagation and automatic cancellation via AbortSignal upon unsubscription.
  */
 export function toObservableClient<TClient extends object>(
   client: TClient,
+  unwrap = true,
 ): ObservableClient<TClient> {
   return new Proxy(client as any, {
     get(target, prop: string | symbol) {
       if (typeof prop !== "string" || prop === "then") return undefined;
       const original = (target as any)[prop];
       if (typeof original === "function") {
-        return createObservableMethod(target, original);
+        return createObservableMethod(target, original, unwrap);
       }
-      if (original && typeof original === "object") {
-        return toObservableClient(original);
+      if (prop === "safe" && original && typeof original === "object") {
+        return toObservableClient(original, false);
       }
       return original;
     },

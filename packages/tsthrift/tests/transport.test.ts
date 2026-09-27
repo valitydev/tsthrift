@@ -2,11 +2,17 @@ import http from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, test } from "vite-plus/test";
 import {
+  ThriftApplicationError,
   ThriftConnectionError,
   ThriftHttpError,
   ThriftProtocolError,
+  ThriftServiceError,
   ThriftTimeoutError,
+  catchServiceError,
+  catchSystemError,
   createHttpTransport,
+  isThriftServiceError,
+  isThriftSystemError,
   mergeHeaderProviders,
 } from "../src/index.ts";
 
@@ -200,6 +206,74 @@ describe("HTTP transport", () => {
       "x-root-trace": "trace-global",
       "x-service-name": "payment",
       "x-child-trace": "trace-global-child",
+    });
+  });
+
+  describe("error catch helpers", () => {
+    const serviceError = new ThriftServiceError("InvalidAmount", "invalidAmount", {
+      reason: "Below minimum",
+      min: 100,
+    });
+    const httpError = new ThriftHttpError(500, "Internal Server Error");
+    const timeoutError = new ThriftTimeoutError(3000);
+    const connError = new ThriftConnectionError("Connection refused");
+    const protoError = new ThriftProtocolError("Corrupted frame");
+    const appError = new ThriftApplicationError("Unknown method", 1);
+    const genericError = new Error("Something else");
+
+    test("isThriftServiceError identifies service errors and matches type name", () => {
+      expect(isThriftServiceError(serviceError)).toBe(true);
+      expect(isThriftServiceError(serviceError, "InvalidAmount")).toBe(true);
+      expect(isThriftServiceError(serviceError, "OtherError")).toBe(false);
+      expect(isThriftServiceError(httpError)).toBe(false);
+      expect(isThriftServiceError(genericError)).toBe(false);
+    });
+
+    test("catchServiceError invokes handler when error matches and returns result", () => {
+      const handled = catchServiceError(serviceError, (err) => {
+        expect(err.type).toBe("InvalidAmount");
+        expect((err.data as any).min).toBe(100);
+        return "handled-amount";
+      });
+      expect(handled).toBe("handled-amount");
+
+      const handledWithType = catchServiceError(serviceError, "InvalidAmount", (err) => {
+        return `handled-${err.type}`;
+      });
+      expect(handledWithType).toBe("handled-InvalidAmount");
+
+      const nonMatchingType = catchServiceError(serviceError, "CustomerNotFound", () => "nope");
+      expect(nonMatchingType).toBeUndefined();
+
+      const ignoredHttp = catchServiceError(httpError, () => "fail");
+      expect(ignoredHttp).toBeUndefined();
+    });
+
+    test("isThriftSystemError identifies all system failure types", () => {
+      expect(isThriftSystemError(httpError)).toBe(true);
+      expect(isThriftSystemError(timeoutError)).toBe(true);
+      expect(isThriftSystemError(connError)).toBe(true);
+      expect(isThriftSystemError(protoError)).toBe(true);
+      expect(isThriftSystemError(appError)).toBe(true);
+      expect(isThriftSystemError(serviceError)).toBe(false);
+      expect(isThriftSystemError(genericError)).toBe(false);
+    });
+
+    test("catchSystemError handles system errors and returns result", () => {
+      const handledHttp = catchSystemError(httpError, (err) => `http-${err.name}`);
+      expect(handledHttp).toBe("http-ThriftHttpError");
+
+      const handledTimeout = catchSystemError(timeoutError, (err) => `timeout-${err.name}`);
+      expect(handledTimeout).toBe("timeout-ThriftTimeoutError");
+
+      const handledApp = catchSystemError(appError, (err) => `app-${err.name}`);
+      expect(handledApp).toBe("app-ThriftApplicationError");
+
+      const ignoredService = catchSystemError(serviceError, () => "not-system");
+      expect(ignoredService).toBeUndefined();
+
+      const ignoredGeneric = catchSystemError(genericError, () => "not-thrift");
+      expect(ignoredGeneric).toBeUndefined();
     });
   });
 });
