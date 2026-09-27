@@ -18,6 +18,7 @@
   "exports": {
     ".": "./dist/index.mjs",
     "./angular": "./dist/angular/index.mjs",
+    "./query": "./dist/query/index.mjs",
     "./runtime": "./dist/runtime.mjs",
     "./package.json": "./package.json"
   },

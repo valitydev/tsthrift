@@ -1,12 +1,14 @@
 import { describe, expect, test } from "vite-plus/test";
 import { createEnvironmentInjector, inject, Injector, runInInjectionContext } from "@angular/core";
-import { of } from "rxjs";
+import { firstValueFrom, of } from "rxjs";
 import {
   THRIFT_CONFIG,
   THRIFT_SERVICES_REGISTRY,
   createHttpClientFetch,
+  deferThriftCall,
   provideThriftConfig,
   provideThriftServices,
+  toObservableClient,
   type AngularHttpClientLike,
 } from "../src/angular/index.ts";
 import type { ThriftServiceDescriptor } from "../src/index.ts";
@@ -127,5 +129,34 @@ describe("Angular Thrift DI integration", () => {
 
     const text = await response.text();
     expect(text).toBe("thrift-response-payload");
+  });
+
+  test("deferThriftCall defers execution until subscription", async () => {
+    let calls = 0;
+    const obs = deferThriftCall(async () => {
+      calls++;
+      return `result-${calls}`;
+    });
+    expect(calls).toBe(0);
+
+    const val1 = await firstValueFrom(obs);
+    expect(val1).toBe("result-1");
+    expect(calls).toBe(1);
+
+    const val2 = await firstValueFrom(obs);
+    expect(val2).toBe("result-2");
+    expect(calls).toBe(2);
+  });
+
+  test("toObservableClient converts client methods to return Observables", async () => {
+    const mockClient = {
+      echo: async (msg: string) => `echo:${msg}`,
+      value: 42,
+    };
+    const obsClient = toObservableClient(mockClient);
+    expect(obsClient.value).toBe(42);
+
+    const result = await firstValueFrom(obsClient.echo("angular-test"));
+    expect(result).toBe("echo:angular-test");
   });
 });

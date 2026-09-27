@@ -1,5 +1,5 @@
 import { expect, test, vi } from "vite-plus/test";
-import { createMetadataClient } from "../src/metadata/client.ts";
+import { createLazyMetadataClient, createMetadataClient } from "../src/metadata/client.ts";
 import { MetadataIndex } from "../src/metadata/index.ts";
 import { MetadataCodecs } from "../src/metadata/codecs.ts";
 import { BinaryReader, BinaryWriter, MessageType } from "../src/runtime.ts";
@@ -137,4 +137,39 @@ test("resolves container typedefs in their defining module and relative includes
   const writer = new BinaryWriter();
   codec.write(writer, [{ id: 9007199254740993n }]);
   expect(codec.read(new BinaryReader(writer.finish()))).toEqual([{ id: 9007199254740993n }]);
+});
+
+test("createLazyMetadataClient returns client synchronously and resolves on first call", async () => {
+  const metadata = schema();
+  const loader = vi.fn(async () => ({ default: metadata }));
+  const client = createLazyMetadataClient<{ next: (n: bigint) => Promise<bigint> }>({
+    endpoint: "unused",
+    namespace: "example",
+    serviceName: "Example",
+    metadata: loader,
+    transport: async (bytes) => {
+      const reader = new BinaryReader(bytes);
+      const header = reader.readMessageBegin();
+      reader.readFieldBegin();
+      const val = reader.readI64();
+      const writer = new BinaryWriter();
+      writer.writeMessageBegin("next", MessageType.Reply, header.sequenceId);
+      writer.writeFieldBegin(10, 0);
+      writer.writeI64(val * 2n);
+      writer.writeFieldStop();
+      return writer.finish();
+    },
+  });
+
+  // Not a Thenable:
+  expect((client as any).then).toBeUndefined();
+  expect(loader).not.toHaveBeenCalled();
+
+  const res1 = await client.next(21n);
+  expect(res1).toBe(42n);
+  expect(loader).toHaveBeenCalledTimes(1);
+
+  const res2 = await client.next(50n);
+  expect(res2).toBe(100n);
+  expect(loader).toHaveBeenCalledTimes(1);
 });

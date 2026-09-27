@@ -74,3 +74,32 @@ export async function createMetadataClient<T extends object = DynamicThriftClien
   addService(config.namespace, config.serviceName);
   return createRpcClient<T>(methods, config, config.serviceName, config.namespace);
 }
+
+/**
+ * Creates a synchronous proxy client that lazily initializes metadata and codecs
+ * on the first RPC method invocation. Ideal for dependency injection (e.g. Angular).
+ */
+export function createLazyMetadataClient<T extends object = DynamicThriftClient>(
+  config: MetadataClientConfig,
+): T {
+  let clientPromise: Promise<T> | undefined;
+  const getClient = () => {
+    if (!clientPromise) clientPromise = createMetadataClient<T>(config);
+    return clientPromise;
+  };
+  return new Proxy(Object.create(null) as T, {
+    get(_target, prop: string | symbol) {
+      if (typeof prop !== "string" || prop === "then") return undefined;
+      return async (...args: unknown[]) => {
+        const client = await getClient();
+        const method = (client as Record<string, unknown>)[prop];
+        if (typeof method !== "function") {
+          throw new TypeError(
+            `Method ${prop} not found on client for service ${config.serviceName}`,
+          );
+        }
+        return method.apply(client, args);
+      };
+    },
+  });
+}

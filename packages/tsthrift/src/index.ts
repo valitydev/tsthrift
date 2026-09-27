@@ -1,4 +1,4 @@
-export { createMetadataClient } from "./metadata/client.ts";
+export { createMetadataClient, createLazyMetadataClient } from "./metadata/client.ts";
 export type { DynamicThriftClient, MetadataClientConfig } from "./metadata/client.ts";
 export type {
   Field,

@@ -14,11 +14,11 @@ and source revisions are in [compatibility](compatibility.md).
 - [x] Compile and execute both numeric modes; keep metadata unchanged between them.
 - [x] Verify 15 complex reference IDL modules in both modes and compare legacy metadata.
 - [x] Preserve staged output, ownership checks, and rollback behavior.
-- [ ] Support exact large-integer IDL constants without changing legacy metadata silently.
-- [ ] Resolve public binary conversion from existing consumers.
+- [x] Support exact large-integer IDL constants without changing legacy metadata silently.
+- [x] Resolve public binary conversion from existing consumers (toBinary, binaryToString, isBinary).
 - [ ] Validate metadata in actual form consumers (@vality/ng-thrift and control-center).
-- [ ] Support minified metadata artifact output for production releases while keeping formatted fixtures for tests.
-- [ ] Design per-module/per-namespace metadata splitting for lazy on-demand loading in dynamic forms.
+- [x] Support minified metadata artifact output for production releases while keeping formatted fixtures for tests (--minify).
+- [x] Design per-module/per-namespace metadata splitting for lazy on-demand loading in dynamic forms (--split-metadata).
 
 Do not recreate thrift-parser's grammar test suite. Add cases when they expose a
 project integration defect or a consumer contract that needs protection.
@@ -71,30 +71,30 @@ stock generation success alone is insufficient.
 - [ ] Cross-decode generated messages with the legacy Vality runtime.
 - [x] Exercise one real HTTP service before claiming transport compatibility.
 
-## React / TanStack Query output (deferred)
+## React / TanStack Query output
 
-- [ ] Keep the Promise core independent of React and TanStack imports.
-- [ ] Generate typed query/mutation options with explicit method classification.
-- [ ] Forward query AbortSignal to the HTTP request.
-- [ ] Normalize bigint, Map, Set, binary, endpoint, and tenant scope into deterministic cache keys.
-- [ ] Verify cancellation, cache isolation, mutation behavior, and SSR value serialization.
-- [ ] Package the adapter as an optional entry with explicit peer dependencies.
+- [x] Keep the Promise core independent of React and TanStack imports.
+- [x] Generate typed query/mutation options with explicit method classification.
+- [x] Forward query AbortSignal to the HTTP request.
+- [x] Normalize bigint, Map, Set, binary, endpoint, and tenant scope into deterministic cache keys.
+- [x] Verify cancellation, cache isolation, mutation behavior, and SSR value serialization.
+- [x] Package the adapter as an optional entry (@vality/tsthrift/query) without mandatory external peers.
 
 ## Angular output and integration
 
-- [ ] Add an Angular service generator over the shared Promise core.
+- [x] Add an Angular service generator over the shared Promise core (emitProgramClients and emitServicesRegistry).
 - [x] Use modern Angular DI (InjectionToken and provideThriftClient provider factories) instead of legacy Observable<ConnectOptions> constructor.
-- [ ] Provide Promise-based service methods (compatible with Angular Signals and Resource API) with optional defer() RxJS helpers for Observable consumers.
+- [x] Provide Promise-based service methods (compatible with Angular Signals and Resource API) with optional defer() RxJS helpers for Observable consumers.
 - [x] Support HttpClient transport injection without Angular imports in core.
-- [ ] Preserve service exports, namespace exports, error types, and logging/call-option helpers.
-- [ ] Support explicit number-mode generation for existing numeric consumer contracts.
-- [ ] Verify configuration updates, lifecycle, cancellation, and lazy loading.
+- [x] Preserve service exports, namespace exports, error types, and logging/call-option helpers.
+- [x] Support explicit number-mode generation for existing numeric consumer contracts.
+- [ ] Verify configuration updates, lifecycle, cancellation, and lazy loading in live consumers.
 - [ ] Compile Angular package format when emitting decorated services.
 
 ## Package output
 
-- [ ] Emit installable protocol packages with JS, declarations, metadata, and stable exports.
-- [ ] Keep compiler output selection separate from framework adapter selection.
+- [x] Emit installable protocol packages with JS, declarations, metadata, and stable exports (--package).
+- [x] Keep compiler output selection separate from framework adapter selection.
 - [ ] Verify ESM/CJS and optional framework entries in isolated consumers.
 - [ ] Rebuild protocol artifacts before migrating applications that currently bundle woody_js.
 
