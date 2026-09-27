@@ -27,7 +27,7 @@ reader.assertDone();
 
 This is a low-level API, not a generated client. Callers must validate expected
 message names/types/sequence IDs, field types, required fields, and exceptions.
-The native generated client performs these checks through emitted codecs.
+The runtime client performs these checks through `MetadataCodecs` constructed from metadata.
 
 ## Values and structure
 
@@ -47,8 +47,8 @@ id)` and terminate each struct with `writeFieldStop()`. `readFieldBegin()` retur
 - `skip(type)` consumes unknown values recursively, including nested maps, lists,
   sets, structs, and fixed-width UUID values. UUID model generation is not supported.
 
-Native generated `binary` models use Uint8Array. The models/apache targets retain
-their legacy string declaration; existing binary consumers require acceptance testing.
+Native generated `binary` models use Uint8Array, while legacy model declarations used
+string; existing binary consumers require acceptance testing.
 Empty structs have a STOP byte; deciding whether an optional struct is absent
 belongs to the public conversion layer, which must preserve explicitly present `{}`.
 

@@ -173,3 +173,28 @@ test("createLazyMetadataClient returns client synchronously and resolves on firs
   expect(res2).toBe(100n);
   expect(loader).toHaveBeenCalledTimes(1);
 });
+
+test("supports pre-initialized MetadataIndex without metadata or structuredClone", async () => {
+  const index = new MetadataIndex(schema());
+  const client = await createMetadataClient<{ next: (n: bigint) => Promise<bigint> }>({
+    endpoint: "unused",
+    namespace: "example",
+    serviceName: "Example",
+    index,
+    transport: async (bytes) => {
+      const reader = new BinaryReader(bytes);
+      const header = reader.readMessageBegin();
+      reader.readFieldBegin();
+      const val = reader.readI64();
+      const writer = new BinaryWriter();
+      writer.writeMessageBegin("next", MessageType.Reply, header.sequenceId);
+      writer.writeFieldBegin(10, 0);
+      writer.writeI64(val + 1n);
+      writer.writeFieldStop();
+      return writer.finish();
+    },
+  });
+
+  const res = await client.next(99n);
+  expect(res).toBe(100n);
+});

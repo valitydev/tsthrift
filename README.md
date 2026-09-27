@@ -12,7 +12,7 @@ A client can be created at runtime using only the legacy metadata array:
 import { createMetadataClient } from "@vality/tsthrift";
 
 const client = await createMetadataClient({
-  metadata,
+  metadata, // or pre-built index: metadataIndex
   namespace: "example",
   serviceName: "Example",
   endpoint: "/rpc/example",
@@ -23,8 +23,9 @@ const value = await client.next(42n, { timeoutMs: 10_000 });
 ```
 
 `metadata` accepts an array, a Promise, or a loader returning an array or a module
-with a default array export. The factory loads and snapshots it once, resolves
-includes/typedefs/defaults/inheritance, and caches executable codecs in memory.
+with a default array export. Alternatively, supply a pre-built `index: MetadataIndex`
+to avoid re-indexing when creating multiple clients. The factory snapshots it once,
+resolves includes/typedefs/defaults/inheritance, and caches executable codecs in memory.
 No generated codec/class modules, IDL parser, Apache runtime, or eval are
 needed at runtime. Reuse the client for subsequent calls; create another client
 when the schema changes.
@@ -38,7 +39,7 @@ The async factory reserves the method name `then` to avoid Promise assimilation.
 
 - `@vality/tsthrift`: Zero-framework core runtime, Binary Protocol, metadata client, and HTTP transport.
 - `@vality/tsthrift-angular`: Angular dependency injection, providers (`provideThriftServices`, `provideThriftClient`), and RxJS adapters (`toObservableClient`, `deferThriftCall`).
-- `@vality/tsthrift-cli`: Pure TypeScript compiler generating models, `metadata.json`, and framework-agnostic client factories.
+- `@vality/tsthrift-cli`: Pure TypeScript compiler generating models, modular metadata, and framework-agnostic client factories.
 
 ## Angular integration
 

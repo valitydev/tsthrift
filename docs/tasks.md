@@ -18,7 +18,7 @@ and source revisions are in [compatibility](compatibility.md).
 - [x] Resolve public binary conversion from existing consumers (toBinary, binaryToString, isBinary).
 - [ ] Validate metadata in actual form consumers (@vality/ng-thrift and control-center).
 - [x] Support minified metadata artifact output for production releases while keeping formatted fixtures for tests (--minify).
-- [x] Implement per-module metadata splitting and compile-time transitive dependency loader (loadMetadata) in TypeScript modules (--split-metadata).
+- [x] Implement modular metadata emission (`metadata/`) and compile-time transitive dependency loader (`loadMetadata`) in TypeScript modules; emit monolithic JSON only with explicit `--metadata-json`.
 
 Do not recreate thrift-parser's grammar test suite. Add cases when they expose a
 project integration defect or a consumer contract that needs protection.
@@ -33,9 +33,9 @@ project integration defect or a consumer contract that needs protection.
 - [x] Execute a metadata-only browser bundle with Node globals absent and string code generation disabled.
 - [x] Initialize all 14 reference clients directly from 15 metadata modules in both modes.
 
-## Native TypeScript backend (runtime via metadata.json)
+## Native TypeScript backend (runtime via metadata / loadMetadata)
 
-- [x] Streamline native execution to runtime `metadata.json` via `createMetadataClient` (removed static native codegen).
+- [x] Streamline native execution to runtime metadata via `createMetadataClient` (removed static native codegen).
 - [x] Preserve struct-keyed maps, Set, plain structs, empty optional values, and recursive types.
 - [x] Resolve transitive typedef imports, container scopes, and inherited service methods in metadata.
 - [x] Select request options by argument position, including callback/options/params-named data.
@@ -50,7 +50,7 @@ project integration defect or a consumer contract that needs protection.
 ## Apache JS backend (removed in favor of metadata runtime)
 
 - [x] Removed Apache 0.24 JS compilation, wrapper generation, and `@vality/tsthrift/apache` runtime.
-- [x] Default CLI generation to TypeScript models and `metadata.json` (`--no-models` for metadata only).
+- [x] Default CLI generation to TypeScript models, modular metadata, and client factories (`--metadata-json` for monolithic JSON, `--no-models` for metadata only).
 - [x] Streamline RPC execution to pure metadata client (`createMetadataClient`) and native Binary Protocol.
 - [x] Retain official Apache 0.24 wire protocol cross-decoding as a test-only reference for binary format verification.
 

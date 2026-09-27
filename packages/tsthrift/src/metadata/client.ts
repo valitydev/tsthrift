@@ -10,7 +10,8 @@ import type { MetadataSource } from "../transport/types.ts";
 import { MetadataCodecs } from "./codecs.ts";
 
 export interface MetadataClientConfig extends RpcClientConfig {
-  metadata: MetadataSource;
+  metadata?: MetadataSource;
+  index?: MetadataIndex;
   namespace: string;
   serviceName: string;
   i64Mode?: I64Mode;
@@ -24,12 +25,16 @@ export async function createMetadataClient<T extends object = DynamicThriftClien
 ): Promise<T> {
   const mode = config.i64Mode ?? "bigint";
   if (mode !== "bigint" && mode !== "number") throw new Error("Unknown i64 mode");
-  const loaded = await (typeof config.metadata === "function"
-    ? config.metadata()
-    : config.metadata);
-  const metadata = Array.isArray(loaded) ? loaded : loaded.default;
-  if (!Array.isArray(metadata)) throw new TypeError("Expected metadata array");
-  const index = new MetadataIndex(structuredClone(metadata));
+  let index = config.index;
+  if (!index) {
+    if (!config.metadata) throw new TypeError("Expected metadata or index in config");
+    const loaded = await (typeof config.metadata === "function"
+      ? config.metadata()
+      : config.metadata);
+    const metadata = Array.isArray(loaded) ? loaded : loaded.default;
+    if (!Array.isArray(metadata)) throw new TypeError("Expected metadata array");
+    index = new MetadataIndex(structuredClone(metadata));
+  }
   const codecs = new MetadataCodecs(index, mode);
   const methods: Record<string, MethodCodec> = Object.create(null);
   const visited = new Set<string>();

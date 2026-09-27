@@ -44,7 +44,7 @@ are compatibility responsibilities owned by tsthrift, even when parsing is deleg
 | Collections      | Map, Set, arrays                        | Native codecs preserve composite keys directly                                        |
 | Structs/unions   | Public plain objects                    | Native read/write uses plain objects without class conversion                         |
 | Services         | Observable wrappers and ConnectOptions$ | Native Promise factories, Angular DI tokens, and RxJS adapters (`toObservableClient`) |
-| Metadata loading | Cached metadata$                        | Lazy JSON import on service descriptors; RPC calls independent                        |
+| Metadata loading | Cached metadata$                        | Modular metadata loading via loadMetadata (or monolithic metadata.json when enabled)  |
 | Exports          | Namespace services, errors, logging     | Native module-scoped factories; no drop-in package claim                              |
 | HTTP             | Binary body, endpoint, per-call headers | Shared HTTP adapter exercised by native generated clients                             |
 | Errors           | Declared errors and transport failures  | Native plain declared values; application errors preserve numeric code                |
@@ -79,7 +79,7 @@ Stock Apache 0.24 emits object properties for maps. An executed stock ES6 decode
 of two struct-keyed entries produced only `{"[object Object]":"second"}`. Typed
 keys and the first value were lost. The Vality generator/helper runtime uses Map.
 
-The native backend emits codecs that write Map entries directly and read them
+The native runtime uses `MetadataCodecs` that write Map entries directly and read them
 back into Map with decoded keys. No generated Apache source rewriting, object-key
 conversion, or C++ fork is required. Apache's independent Binary Protocol reads
 native requests and writes native replies in integration tests containing two
@@ -106,7 +106,7 @@ and framework acceptance remain pending.
 Damsel revision `8d6174bddedc6d9aefa407fdc1d54877b8686ff9` was generated from entries
 `domain_config_v2`, `domain`, `payment_processing`, `accounter`, `webhooker`,
 `api_extensions`, and `proxy_provider`. Both numeric modes compiled all 15 reachable
-modules and instantiated all 14 clients. The emitted SystemAccountSet codec
+modules and instantiated all 14 clients. The runtime SystemAccountSet codec
 round-tripped two CurrencyRef map keys. This does not establish compatibility with
 a deployed Damsel server or the full legacy application API.
 

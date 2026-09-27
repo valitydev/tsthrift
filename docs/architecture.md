@@ -24,26 +24,27 @@ may provide a matching existing TS client type. The asynchronous factory rejects
 an IDL method named `then`, which would otherwise trigger Promise assimilation.
 
 ```text
-metadata.json -> runtime schema resolution -> cached codecs -> Promise methods
-                                                         -> Binary Protocol / HTTP
+metadata/ (or metadata.json) -> runtime schema resolution -> cached codecs -> Promise methods
+                                                                          -> Binary Protocol / HTTP
 ```
 
 ## Native client runtime
 
 Native client execution operates dynamically via `createMetadataClient` directly from
-`metadata.json` without an external Thrift compiler or static code generation for codecs/clients.
-The Binary Protocol reader and writer provide the wire implementation. Static native codegen
-(`--target native`) has been removed in favor of this metadata-driven runtime.
+metadata (`loadMetadata` or optional `metadata.json`) without an external Thrift compiler or static code generation for codecs/clients.
+The Binary Protocol reader and writer provide the wire implementation. Static client/codec
+code generation has been replaced with this metadata-driven runtime.
 
 ```text
 Thrift IDL
   -> pinned parser / include graph
-       -> metadata.json (monolithic schema) & modular metadata/ (loadMetadata per namespace)
+       -> modular metadata/ (loadMetadata per namespace) & optional metadata.json (--metadata-json)
        -> public TS models, enums, constants (emitted by default)
 ```
 
-The CLI generates TypeScript models, monolithic `metadata.json`, and modular metadata modules (`metadata/`)
-with a `loadMetadata(namespace)` loader resolving full transitive include closures. Native RPC clients are
+The CLI generates TypeScript models, modular metadata modules (`metadata/`) with a
+`loadMetadata(namespace)` loader resolving full transitive include closures, and optional
+monolithic `metadata.json` (when `--metadata-json` is provided). Native RPC clients are
 constructed directly at runtime via `createMetadataClient` using either `loadMetadata` or `metadata.json`.
 
 ## Compiler responsibilities
@@ -54,7 +55,8 @@ constructed directly at runtime via `createMetadataClient` using either `loadMet
 - Output publication stages files and preserves prior output on failure.
 
 These are source artifacts, not an automatically published protocol package.
-Compile them as ESM with JSON module support, or use a TypeScript-aware bundler.
+Compile them as ESM with standard TypeScript/JavaScript tooling; modular metadata
+files are TypeScript modules and do not require JSON module import support.
 
 ## Native value and wire contracts
 
@@ -98,7 +100,7 @@ Declared exceptions reject with decoded plain objects. Application exceptions
 use `ThriftApplicationError` with the server's numeric code. Oneway methods send
 ONEWAY and resolve after the transport completes without decoding a reply.
 
-`NativeClientConfig` accepts endpoint, static/dynamic headers, timeout, fetch,
+`MetadataClientConfig` (and underlying `RpcClientConfig`) accepts endpoint, static/dynamic headers, timeout, fetch,
 logging, and an optional byte `transport`. The default HTTP transport posts
 `application/x-thrift`, merges per-call headers, rejects non-200 responses, and
 aborts fetch on timeout or caller cancellation. Its current compatibility policy
