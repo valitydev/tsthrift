@@ -15,8 +15,6 @@ import { emitSplitMetadata, emitMetadataLoader } from "../metadata/emit-split-me
 import { parseI64Mode } from "./i64-mode.ts";
 import type { I64Mode } from "./i64-mode.ts";
 
-export type GenerateTarget = "metadata" | "models";
-
 export interface GenerateOptions {
   input: string;
   output: string;
@@ -26,14 +24,13 @@ export interface GenerateOptions {
   clients?: boolean;
   minify?: boolean;
   splitMetadata?: boolean;
+  metadataJson?: boolean;
   package?: boolean;
   packageName?: string;
-  target?: GenerateTarget;
   i64?: I64Mode;
 }
 
 export interface GenerateResult {
-  target: GenerateTarget;
   i64: I64Mode;
   models: boolean;
   clients: boolean;
@@ -46,9 +43,8 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
   const input = path.resolve(options.input);
   const output = path.resolve(options.output);
   const includes = [input, ...(options.includes ?? []).map((root) => path.resolve(root))];
-  const shouldEmitModels = options.models ?? options.target !== "metadata";
+  const shouldEmitModels = options.models ?? true;
   const shouldEmitClients = shouldEmitModels && options.clients !== false;
-  const target: GenerateTarget = shouldEmitModels ? "models" : "metadata";
   const i64 = parseI64Mode(options.i64);
 
   const schema = await loadSchema(input, includes, options.namespaces);
@@ -111,10 +107,14 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
       await writeFile(path.join(staging, "index.ts"), `${indexLines.join("\n")}\n`);
     }
 
-    await writeFile(
-      path.join(staging, "metadata.json"),
-      emitMetadata(schema, { minify: options.minify }),
-    );
+    const shouldEmitMetadataJson = options.metadataJson ?? !shouldEmitModels;
+
+    if (shouldEmitMetadataJson) {
+      await writeFile(
+        path.join(staging, "metadata.json"),
+        emitMetadata(schema, { minify: options.minify }),
+      );
+    }
 
     const shouldEmitSplitMetadata = options.splitMetadata || shouldEmitClients;
     if (shouldEmitSplitMetadata) {
@@ -161,12 +161,12 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
       path.join(staging, "generation.json"),
       JSON.stringify(
         {
-          target,
           i64,
           models: shouldEmitModels,
           clients: shouldEmitClients,
           minify: options.minify ?? false,
           splitMetadata: options.splitMetadata ?? false,
+          metadataJson: shouldEmitMetadataJson,
           namespaces: schema.roots.map((root) => root.name),
         },
         null,
@@ -176,7 +176,6 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
   });
 
   return {
-    target,
     i64,
     models: shouldEmitModels,
     clients: shouldEmitClients,

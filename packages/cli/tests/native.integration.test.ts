@@ -77,7 +77,13 @@ test.each(["bigint", "number"] as const)(
       }
     `,
       );
-      await generate({ input, output, target: "models", i64, namespaces: ["example"] });
+      await generate({
+        input,
+        output,
+        i64,
+        namespaces: ["example"],
+        metadataJson: true,
+      });
       const compiled = path.join(directory, "compiled");
       await execute(process.execPath, [
         tsc,

@@ -70,8 +70,8 @@ vp run build
 node packages/cli/dist/cli.mjs --input ./proto --output ./generated
 ```
 
-By default, the CLI generates TypeScript models/interfaces (`models/`), `metadata.json`, and universal clients (`clients/`).
-Pass `--no-models` to generate only `metadata.json`, or `--no-clients` to skip client factories.
+By default, the CLI generates TypeScript models/interfaces (`models/`), modular metadata (`metadata/`), and universal clients (`clients/`).
+Pass `--metadata-json` to also emit monolithic `metadata.json`, `--no-models` to generate only metadata without models or clients, or `--no-clients` to skip client factories.
 
 Repeat `--include` for include roots and `--namespace` for entry filenames without
 `.thrift`. Without `--namespace`, all top-level IDL files are entries. Only reachable

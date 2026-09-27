@@ -48,12 +48,12 @@ test.each(["number", "bigint"] as const)(
       await readFile(path.join(options.output, "generation.json"), "utf8"),
     );
     expect(generation).toEqual({
-      target: "models",
       i64,
       models: true,
       clients: true,
       minify: false,
       splitMetadata: false,
+      metadataJson: false,
       namespaces: ["example"],
     });
 
@@ -64,7 +64,6 @@ test.each(["number", "bigint"] as const)(
       "generation.json",
       "index.ts",
       "metadata",
-      "metadata.json",
       "models",
     ]);
 
@@ -97,10 +96,10 @@ test.each(["number", "bigint"] as const)(
       throw new Error(`tsc failed: ${error.stdout}\n${error.stderr}`);
     }
 
-    const metadataText = await readFile(path.join(options.output, "metadata.json"), "utf8");
-    const metadata = JSON.parse(metadataText) as Metadata[];
-    expect(metadata.find((entry) => entry.name === "common")?.path).toBe("shared/common.thrift");
-    expect(metadata.find((entry) => entry.name === "example")?.ast.struct?.Empty).toEqual([]);
+    const commonMeta = await readFile(path.join(options.output, "metadata/common.ts"), "utf8");
+    expect(commonMeta).toContain('"path": "shared/common.thrift"');
+    const exampleMeta = await readFile(path.join(options.output, "metadata/example.ts"), "utf8");
+    expect(exampleMeta).toContain('"Empty": []');
   },
 );
 
@@ -112,24 +111,30 @@ test("generates models without client factories when clients: false is passed", 
   expect(result.clients).toBe(false);
 
   const files = await readdir(options.output);
-  expect(files.sort()).toEqual([
-    ".tsthrift.json",
-    "generation.json",
-    "index.ts",
-    "metadata.json",
-    "models",
-  ]);
+  expect(files.sort()).toEqual([".tsthrift.json", "generation.json", "index.ts", "models"]);
   expect(files).not.toContain("clients");
 });
 
 test("generates minified metadata when minify: true", async () => {
   const options = await setup();
-  await generate({ ...options, minify: true });
+  await generate({ ...options, minify: true, metadataJson: true });
 
   const metadataText = await readFile(path.join(options.output, "metadata.json"), "utf8");
   // Minified JSON contains only the trailing newline
   expect(metadataText.trim().split("\n")).toHaveLength(1);
   expect(JSON.parse(metadataText)).toHaveLength(2);
+});
+
+test("emits monolithic metadata.json when metadataJson: true", async () => {
+  const options = await setup();
+  await generate({ ...options, metadataJson: true });
+
+  const files = await readdir(options.output);
+  expect(files).toContain("metadata.json");
+
+  const metadataText = await readFile(path.join(options.output, "metadata.json"), "utf8");
+  const metadata = JSON.parse(metadataText) as Metadata[];
+  expect(metadata.find((entry) => entry.name === "common")?.path).toBe("shared/common.thrift");
 });
 
 test("splits metadata per module when splitMetadata: true", async () => {
@@ -178,12 +183,12 @@ test("generates only metadata when models is disabled via models: false", async 
 test("preserves previous output when generation fails", async () => {
   const options = await setup();
   await generate(options);
-  const before = await readFile(path.join(options.output, "metadata.json"), "utf8");
+  const before = await readFile(path.join(options.output, "generation.json"), "utf8");
 
   await writeFile(path.join(options.input, "broken.thrift"), "struct Broken { 1: i32 a 1: i32 b }");
 
   await expect(generate(options)).rejects.toThrow("Duplicate field ID");
-  expect(await readFile(path.join(options.output, "metadata.json"), "utf8")).toBe(before);
+  expect(await readFile(path.join(options.output, "generation.json"), "utf8")).toBe(before);
 });
 
 test("CLI supports --no-clients, --minify, --split-metadata, and --package", async () => {
@@ -200,6 +205,7 @@ test("CLI supports --no-clients, --minify, --split-metadata, and --package", asy
     "example",
     "--minify",
     "--split-metadata",
+    "--metadata-json",
     "--package",
     "--package-name",
     "@custom/test-pkg",

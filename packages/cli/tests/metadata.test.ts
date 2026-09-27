@@ -25,7 +25,7 @@ async function setup() {
 
 test("preserves the legacy form metadata contract without model or Apache generation", async () => {
   const options = await setup();
-  const result = await generate({ ...options, target: "metadata" });
+  const result = await generate({ ...options, models: false });
   const actual = JSON.parse(await readFile(path.join(options.output, "metadata.json"), "utf8"));
   const baseline = JSON.parse(
     await readFile(path.join(import.meta.dirname, "fixtures/expected/metadata.json"), "utf8"),
@@ -46,7 +46,7 @@ test("metadata generation does not depend on supported model constant expression
     path.join(options.input, "constants.thrift"),
     "const string FIRST = SECOND const string SECOND = FIRST",
   );
-  await generate({ ...options, target: "metadata" });
+  await generate({ ...options, models: false });
   await expect(generate(options)).rejects.toThrow("Circular constant reference");
   expect(await readdir(options.output)).not.toContain("models");
 });
@@ -57,8 +57,7 @@ test("CLI metadata generation works with no compiler on PATH", async () => {
     process.execPath,
     [
       path.resolve(import.meta.dirname, "../src/cli.ts"),
-      "--target",
-      "metadata",
+      "--no-models",
       "--input",
       options.input,
       "--include",
@@ -68,5 +67,5 @@ test("CLI metadata generation works with no compiler on PATH", async () => {
     ],
     { env: { ...process.env, PATH: "" } },
   );
-  expect(result.stdout).toContain("metadata: generated 2 module(s)");
+  expect(result.stdout).toContain("generated 2 module(s)");
 });

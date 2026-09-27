@@ -119,6 +119,7 @@ test("CLI switches public i64 mode without changing metadata", async () => {
     options.input,
     "--output",
     options.output,
+    "--metadata-json",
   ];
   const env = { ...process.env, PATH: "" };
   await execute(process.execPath, args, { env });
@@ -131,7 +132,7 @@ test("CLI switches public i64 mode without changing metadata", async () => {
     "export type Identifier = number;",
   );
   expect(await readFile(path.join(options.output, "metadata.json"), "utf8")).toBe(metadata);
-  await generate({ ...options, target: "metadata", i64: "bigint" });
+  await generate({ ...options, models: false, i64: "bigint" });
   expect(await readFile(path.join(options.output, "metadata.json"), "utf8")).toBe(metadata);
 });
 

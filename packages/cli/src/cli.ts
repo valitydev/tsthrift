@@ -15,6 +15,7 @@ Generate metadata, TypeScript models, and client factories.
       --no-clients       Generate models and metadata without client factories
       --minify           Minify emitted metadata JSON files
       --split-metadata   Emit per-module metadata files in metadata/
+      --metadata-json    Emit monolithic metadata.json in output directory
       --package          Emit package.json and tsconfig.json in output directory
       --package-name     Name for emitted package.json (default: output dir basename)
       --i64             Public i64 representation: bigint (default) | number
@@ -34,9 +35,9 @@ try {
       "no-clients": { type: "boolean" },
       minify: { type: "boolean" },
       "split-metadata": { type: "boolean" },
+      "metadata-json": { type: "boolean" },
       package: { type: "boolean" },
       "package-name": { type: "string" },
-      target: { type: "string" },
       i64: { type: "string" },
       help: { type: "boolean", short: "h" },
     },
@@ -45,7 +46,7 @@ try {
   else {
     if (!values.input || !values.output)
       throw new Error("--input and --output are required. Use --help for usage.");
-    const models = values["no-models"] ? false : values.target === "metadata" ? false : true;
+    const models = values["no-models"] ? false : true;
     const clients = values["no-clients"] ? false : undefined;
     const result = await generate({
       input: values.input,
@@ -56,13 +57,12 @@ try {
       clients,
       minify: values.minify,
       splitMetadata: values["split-metadata"],
+      metadataJson: values["metadata-json"],
       package: values.package,
       packageName: values["package-name"],
       i64: parseI64Mode(values.i64),
     });
-    console.log(
-      `${result.target}: generated ${result.modules.length} module(s) in ${result.output}`,
-    );
+    console.log(`generated ${result.modules.length} module(s) in ${result.output}`);
   }
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));

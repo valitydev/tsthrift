@@ -33,7 +33,7 @@ test("generated enums exist at runtime with numeric values and reverse mappings"
     `,
     );
     const result = await generate({ input, output });
-    expect(result.target).toBe("models");
+    expect(result.models).toBe(true);
     expect(result.compilerVersion).toBeUndefined();
     const model = path.join(output, "models/example.ts");
     expect(await readFile(model, "utf8")).toContain("export enum Status");
