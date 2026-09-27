@@ -70,7 +70,11 @@ export async function createMetadataClient<T extends object = DynamicThriftClien
         args: struct(`${key}.${method.name}.args`, () => args),
         argumentNames: method.args.map((field) => field.name),
         result: struct(`${key}.${method.name}.result`, () => reply),
-        exceptions: method.throws.map((field) => field.name),
+        exceptions: method.throws.map((field) => {
+          const typeStr = typeof field.type === "string" ? field.type : "";
+          const resolved = index.resolveName(typeStr, namespace);
+          return { name: field.name, type: resolved.name };
+        }),
         returns: method.type !== "void",
         oneway: method.oneway,
       };

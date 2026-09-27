@@ -77,6 +77,7 @@ Pass `--metadata-json` to also emit monolithic `metadata.json`, `--no-models` to
 Repeat `--include` for include roots and `--namespace` for entry filenames without
 `.thrift`. Without `--namespace`, all top-level IDL files are entries. Only reachable
 includes are loaded. `--i64 number` selects safe numeric values instead of bigint.
+Pass `--allow-duplicate-modules` to allow duplicate module basenames across include directories using first-wins shadowing.
 
 Use a dedicated output directory. Generation stages output, preserves previous
 artifacts on failure, and rejects unrelated/unowned files. Settings are recorded

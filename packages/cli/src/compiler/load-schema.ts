@@ -17,6 +17,7 @@ export async function loadSchema(
   input: string,
   includeRoots: string[],
   namespaces?: string[],
+  allowDuplicateModules?: boolean,
 ): Promise<Schema> {
   const root = await realpath(input);
   const searchRoots = [
@@ -39,7 +40,17 @@ export async function loadSchema(
     const name = path.basename(filename, ".thrift");
     if (!/^[A-Za-z_][\w]*$/.test(name)) throw new Error(`Unsupported module name: ${filename}`);
     const conflict = filenames.get(name);
-    if (conflict) throw new Error(`Duplicate module name ${name}: ${conflict} and ${filename}`);
+    if (conflict) {
+      if (allowDuplicateModules) {
+        if (visiting.has(conflict)) throw new Error(`Circular include: ${filename}`);
+        const existing = programs.get(conflict);
+        if (existing) {
+          console.warn(`[WARN] Module "${name}" in ${filename} is shadowed by ${conflict}`);
+          return existing;
+        }
+      }
+      throw new Error(`Duplicate module name ${name}: ${conflict} and ${filename}`);
+    }
     filenames.set(name, filename);
     let ast: ThriftAst;
     try {

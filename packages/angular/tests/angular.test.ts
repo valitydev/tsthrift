@@ -215,4 +215,72 @@ describe("Angular Thrift DI integration", () => {
     const result = await firstValueFrom(obsClient.echo("angular-test"));
     expect(result).toBe("echo:angular-test");
   });
+
+  test("toObservableClient wraps nested .safe methods and returns safe Observable results", async () => {
+    const mockClient = {
+      echo: async (msg: string) => `echo:${msg}`,
+      safe: {
+        echo: async (msg: string) => ({ data: `echo:${msg}`, error: undefined }),
+      },
+    };
+    const obsClient = toObservableClient(mockClient);
+    const res = await firstValueFrom(obsClient.safe.echo("safe-test"));
+    expect(res).toEqual({ data: "echo:safe-test", error: undefined });
+  });
+
+  test("toObservableClient cancels underlying call via AbortSignal upon unsubscription", async () => {
+    let capturedSignal: AbortSignal | undefined;
+    let abortedAtUnsubscribe = false;
+
+    const mockClient = {
+      longCall: async (options?: any) => {
+        capturedSignal = options?.signal;
+        return new Promise<string>((resolve, reject) => {
+          options?.signal?.addEventListener("abort", () => {
+            abortedAtUnsubscribe = true;
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        });
+      },
+    };
+
+    const obsClient = toObservableClient(mockClient);
+    const subscription = obsClient.longCall().subscribe({
+      error: () => {},
+    });
+
+    expect(capturedSignal).toBeDefined();
+    expect(capturedSignal?.aborted).toBe(false);
+
+    subscription.unsubscribe();
+    expect(abortedAtUnsubscribe).toBe(true);
+    expect(capturedSignal?.aborted).toBe(true);
+  });
+
+  test("createHttpClientFetch aborts and unsubscribes when init.signal is aborted", async () => {
+    let unsubscribed = false;
+    const mockHttpClient: AngularHttpClientLike = {
+      request: () => {
+        return {
+          subscribe: () => {
+            return {
+              unsubscribe: () => {
+                unsubscribed = true;
+              },
+            };
+          },
+        };
+      },
+    };
+
+    const controller = new AbortController();
+    const adaptedFetch = createHttpClientFetch(mockHttpClient);
+    const fetchPromise = adaptedFetch("http://example.com/thrift", {
+      signal: controller.signal,
+    });
+
+    controller.abort(new DOMException("Manual abort", "AbortError"));
+    await expect(fetchPromise).rejects.toThrow("Manual abort");
+    expect(unsubscribed).toBe(true);
+  });
 });

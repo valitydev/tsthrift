@@ -337,8 +337,9 @@ describe("Native codec safety, DoS protection & stress tests", () => {
     });
 
     const t0 = performance.now();
-    const result = await client.processBatch({ items });
+    const res = await client.processBatch({ items });
     const totalDuration = performance.now() - t0;
+    const result = res;
 
     expect(requestCapturedByApache).toBe(true);
     expect(result.count).toBe(itemCount);

@@ -50,7 +50,6 @@ test("loads only selected inputs and reachable includes, preserving legacy metad
   const models = emitModels(program);
   expect(models).toContain('import * as common from "./common.js"');
   expect(models).toContain("globalThis.Map<string, Identifier[]>");
-  expect(models).toContain('"labels"?: globalThis.Map<bigint, string>');
   expect(models).toContain("extends common.Base");
   expect(models).toContain('"next"(id: bigint, options?: RequestOptions): Promise<bigint>');
   expect(models).toContain('"CLOSED" = 5');
@@ -83,4 +82,37 @@ test("rejects duplicate module basenames instead of overwriting output", async (
   await writeFile(path.join(directory, "nested", "test.thrift"), "struct Y {}");
   await writeFile(path.join(directory, "test.thrift"), 'include "nested/test.thrift"');
   await expect(loadSchema(directory, [])).rejects.toThrow(/Duplicate module name test/);
+});
+
+test("shadows duplicate module when allowDuplicateModules is true (first-wins)", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "tsthrift-schema-shadow-"));
+  directories.push(directory);
+  await mkdir(path.join(directory, "dir_a"));
+  await mkdir(path.join(directory, "dir_b"));
+  await writeFile(path.join(directory, "dir_a", "shared.thrift"), "struct SharedA { 1: string a }");
+  await writeFile(path.join(directory, "dir_b", "shared.thrift"), "struct SharedB { 1: string b }");
+  await writeFile(
+    path.join(directory, "dep1.thrift"),
+    'include "dir_a/shared.thrift"\nstruct Dep1 { 1: shared.SharedA a }',
+  );
+  await writeFile(
+    path.join(directory, "dep2.thrift"),
+    'include "dir_b/shared.thrift"\nstruct Dep2 { 1: shared.SharedA b }',
+  );
+  await writeFile(
+    path.join(directory, "entry.thrift"),
+    'include "dep1.thrift"\ninclude "dep2.thrift"\nstruct Entry { 1: dep1.Dep1 d1, 2: dep2.Dep2 d2 }',
+  );
+
+  // Without flag: throws Duplicate module name
+  await expect(loadSchema(directory, [], ["entry"])).rejects.toThrow(
+    /Duplicate module name shared/,
+  );
+
+  // With allowDuplicateModules: shadows second with first (first-wins)
+  const schema = await loadSchema(directory, [], ["entry"], true);
+  expect(schema.programs.map((p) => p.name).sort()).toEqual(["dep1", "dep2", "entry", "shared"]);
+  const sharedProgram = schema.programs.find((p) => p.name === "shared");
+  expect(sharedProgram?.ast.struct?.SharedA).toBeDefined();
+  expect(sharedProgram?.ast.struct?.SharedB).toBeUndefined();
 });

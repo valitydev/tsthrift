@@ -1,5 +1,3 @@
-import { firstValueFrom } from "rxjs";
-
 export interface AngularHttpClientLike {
   request(
     method: string,
@@ -34,25 +32,43 @@ export function createHttpClientFetch(httpClient: AngularHttpClientLike): typeof
       observe: "response",
     });
 
-    const res = (await firstValueFrom(response$)) as {
-      status: number;
-      statusText: string;
-      body: ArrayBuffer | null;
-      headers: { keys(): string[]; get(key: string): string | null };
-    };
-
-    const responseHeaders = new Headers();
-    if (res.headers && typeof res.headers.keys === "function") {
-      for (const key of res.headers.keys()) {
-        const val = res.headers.get(key);
-        if (val) responseHeaders.set(key, val);
-      }
+    if (init?.signal?.aborted) {
+      throw init.signal.reason ?? new DOMException("The operation was aborted", "AbortError");
     }
 
-    return new Response(res.body ?? new Uint8Array(), {
-      status: res.status,
-      statusText: res.statusText,
-      headers: responseHeaders,
+    return new Promise<Response>((resolve, reject) => {
+      const sub = response$.subscribe({
+        next: (res: any) => {
+          const responseHeaders = new Headers();
+          if (res.headers && typeof res.headers.keys === "function") {
+            for (const key of res.headers.keys()) {
+              const val = res.headers.get(key);
+              if (val) responseHeaders.set(key, val);
+            }
+          }
+          resolve(
+            new Response(res.body ?? new Uint8Array(), {
+              status: res.status,
+              statusText: res.statusText,
+              headers: responseHeaders,
+            }),
+          );
+        },
+        error: (err: unknown) => reject(err),
+      });
+
+      if (init?.signal) {
+        init.signal.addEventListener(
+          "abort",
+          () => {
+            sub.unsubscribe();
+            reject(
+              init.signal?.reason ?? new DOMException("The operation was aborted", "AbortError"),
+            );
+          },
+          { once: true },
+        );
+      }
     });
   };
 }

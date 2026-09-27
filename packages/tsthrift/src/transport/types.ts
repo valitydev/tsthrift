@@ -1,4 +1,18 @@
 import type { Metadata } from "../metadata/types.ts";
+import type { ThriftError } from "./errors.ts";
+
+/** Result type for safe RPC calls in openapi-fetch style. */
+export type ThriftResult<TData, TError = ThriftError> =
+  | { data: TData; error: undefined }
+  | { data: undefined; error: TError };
+
+/** Unwraps a ThriftResult, returning data if successful, or throwing error if failed. */
+export function unwrapResult<TData, TError>(result: ThriftResult<TData, TError>): TData {
+  if (result.error !== undefined) {
+    throw result.error;
+  }
+  return (result as { data: TData }).data;
+}
 
 /** Provider of request headers, either static record or sync/async factory receiving higher-level base headers. */
 export type HeaderProvider =

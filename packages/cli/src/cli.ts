@@ -19,6 +19,7 @@ Generate metadata, TypeScript models, and service factories.
       --package          Emit package.json and tsconfig.json in output directory
       --package-name     Name for emitted package.json (default: output dir basename)
       --i64             Public i64 representation: bigint (default) | number
+      --allow-duplicate-modules Allow duplicate module basenames across includes (first-wins)
   -h, --help            Show this help
 
 Output is an intermediate generation artifact or standalone protocol package.
@@ -39,6 +40,7 @@ try {
       package: { type: "boolean" },
       "package-name": { type: "string" },
       i64: { type: "string" },
+      "allow-duplicate-modules": { type: "boolean" },
       help: { type: "boolean", short: "h" },
     },
   });
@@ -61,6 +63,7 @@ try {
       package: values.package,
       packageName: values["package-name"],
       i64: parseI64Mode(values.i64),
+      allowDuplicateModules: values["allow-duplicate-modules"],
     });
     console.log(`generated ${result.modules.length} module(s) in ${result.output}`);
   }

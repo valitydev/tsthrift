@@ -13,6 +13,7 @@ export type {
 export { ThriftApplicationError } from "./transport/rpc-client.ts";
 export * from "./transport/errors.ts";
 export { createHttpTransport, mergeHeaderProviders } from "./transport/http-transport.ts";
+export { unwrapResult } from "./transport/types.ts";
 export type {
   HeaderProvider,
   MetadataModule,
@@ -20,6 +21,7 @@ export type {
   RequestOptions,
   HttpTransportConfig,
   ThriftLogParams,
+  ThriftResult,
   ThriftServiceDescriptor,
   TransportFunction,
 } from "./transport/types.ts";

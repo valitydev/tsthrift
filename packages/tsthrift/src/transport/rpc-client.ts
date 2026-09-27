@@ -1,7 +1,13 @@
 import { BinaryReader } from "../runtime/binary-reader.ts";
 import { BinaryWriter } from "../runtime/binary-writer.ts";
 import { MessageType } from "../runtime/wire.ts";
-import { ThriftError, ThriftProtocolError } from "./errors.ts";
+import {
+  ThriftError,
+  ThriftProtocolError,
+  ThriftServiceError,
+  THRIFT_EXCEPTION_INFO,
+  getThriftExceptionInfo,
+} from "./errors.ts";
 import { createHttpTransport } from "./http-transport.ts";
 import type { RequestOptions, HttpTransportConfig, TransportFunction } from "./types.ts";
 import { type Codec, i32, string } from "../codecs/scalar.ts";
@@ -12,11 +18,16 @@ export type RpcClientConfig = Pick<
   "endpoint" | "headers" | "timeoutMs" | "fetch" | "loggingFn"
 > & { transport?: TransportFunction };
 
+export interface MethodException {
+  name: string;
+  type: string;
+}
+
 export interface MethodCodec {
   args: Codec<Record<string, unknown>>;
   argumentNames: string[];
   result: Codec<Record<string, unknown>>;
-  exceptions: string[];
+  exceptions: (string | MethodException)[];
   returns: boolean;
   oneway: boolean;
 }
@@ -54,7 +65,19 @@ function decodeReply(bytes: Uint8Array, name: string, sequenceId: number, method
   const present = Object.keys(result);
   if (present.length > 1) throw new ThriftProtocolError("Multiple fields in RPC result");
   for (const exception of method.exceptions) {
-    if (Object.hasOwn(result, exception)) throw result[exception];
+    const fieldName = typeof exception === "string" ? exception : exception.name;
+    const typeName = typeof exception === "string" ? exception : exception.type;
+    if (Object.hasOwn(result, fieldName)) {
+      const payload = result[fieldName] as object;
+      if (payload && typeof payload === "object") {
+        Object.defineProperty(payload, THRIFT_EXCEPTION_INFO, {
+          value: { type: typeName, fieldName },
+          enumerable: false,
+          configurable: true,
+        });
+      }
+      throw payload;
+    }
   }
   if (!method.returns) return undefined;
   if (!Object.hasOwn(result, "success"))
@@ -101,5 +124,32 @@ export function createRpcClient<T extends object>(
       }
     },
   ]);
-  return Object.fromEntries(entries) as T;
+  const client = Object.fromEntries(entries) as T;
+  const safeEntries = Object.entries(methods).map(([name]) => [
+    name,
+    async (...args: unknown[]) => {
+      try {
+        const data = await (client as Record<string, (...args: unknown[]) => Promise<unknown>>)[
+          name
+        ](...args);
+        return { data, error: undefined };
+      } catch (error) {
+        const info = getThriftExceptionInfo(error);
+        if (info && error && typeof error === "object") {
+          return {
+            data: undefined,
+            error: new ThriftServiceError(info.type, info.fieldName, error),
+          };
+        }
+        return { data: undefined, error };
+      }
+    },
+  ]);
+  Object.defineProperty(client, "safe", {
+    value: Object.fromEntries(safeEntries),
+    enumerable: false,
+    writable: false,
+    configurable: true,
+  });
+  return client;
 }

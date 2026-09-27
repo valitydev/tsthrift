@@ -28,6 +28,7 @@ export interface GenerateOptions {
   package?: boolean;
   packageName?: string;
   i64?: I64Mode;
+  allowDuplicateModules?: boolean;
 }
 
 export interface GenerateResult {
@@ -47,7 +48,12 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
   const shouldEmitServices = shouldEmitModels && options.services !== false;
   const i64 = parseI64Mode(options.i64);
 
-  const schema = await loadSchema(input, includes, options.namespaces);
+  const schema = await loadSchema(
+    input,
+    includes,
+    options.namespaces,
+    options.allowDuplicateModules,
+  );
   for (const program of schema.programs) {
     const relative = path.relative(output, program.filename);
     if (!relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative)) {

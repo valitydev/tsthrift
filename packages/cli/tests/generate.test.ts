@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { cp, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
@@ -222,4 +222,49 @@ test("CLI supports --no-services, --minify, --split-metadata, and --package", as
 
   const metadataText = await readFile(path.join(options.output, "metadata.json"), "utf8");
   expect(metadataText.trim().split("\n")).toHaveLength(1);
+});
+
+test("supports --allow-duplicate-modules in CLI and generate()", async () => {
+  const options = await setup();
+  const dirA = path.join(options.input, "dep_a");
+  const dirB = path.join(options.input, "dep_b");
+  await mkdir(dirA, { recursive: true });
+  await mkdir(dirB, { recursive: true });
+  await writeFile(path.join(dirA, "shadowed.thrift"), "struct ShadowedA { 1: string a }");
+  await writeFile(path.join(dirB, "shadowed.thrift"), "struct ShadowedB { 1: string b }");
+  await writeFile(
+    path.join(options.input, "client_a.thrift"),
+    'include "dep_a/shadowed.thrift"\nstruct ClientA { 1: shadowed.ShadowedA val }',
+  );
+  await writeFile(
+    path.join(options.input, "client_b.thrift"),
+    'include "dep_b/shadowed.thrift"\nstruct ClientB { 1: shadowed.ShadowedA val }',
+  );
+
+  // Without flag it throws
+  await expect(
+    generate({
+      input: options.input,
+      output: options.output,
+      namespaces: ["client_a", "client_b"],
+    }),
+  ).rejects.toThrow(/Duplicate module name shadowed/);
+
+  // With CLI flag --allow-duplicate-modules
+  const result = await execute(process.execPath, [
+    path.resolve(import.meta.dirname, "../src/cli.ts"),
+    "--input",
+    options.input,
+    "--output",
+    options.output,
+    "--namespace",
+    "client_a",
+    "--namespace",
+    "client_b",
+    "--allow-duplicate-modules",
+  ]);
+
+  expect(result.stdout).toContain("generated 3 module(s)");
+  const modelFiles = await readdir(path.join(options.output, "models"));
+  expect(modelFiles.sort()).toEqual(["client_a.ts", "client_b.ts", "shadowed.ts"]);
 });
