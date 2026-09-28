@@ -159,6 +159,9 @@ export type ObservableClient<TClient extends object> = {
       : TClient[K] extends (...args: infer Args) => Promise<infer R>
         ? (...args: Args) => Observable<R>
         : TClient[K];
+} & {
+  /** Access to the underlying raw Promise-based client instance. */
+  promise: TClient;
 };
 
 /**
@@ -173,6 +176,7 @@ export function toObservableClient<TClient extends object>(
   return new Proxy(client as any, {
     get(target, prop: string | symbol) {
       if (typeof prop !== "string" || prop === "then") return undefined;
+      if (prop === "promise") return client;
       const original = (target as any)[prop];
       if (typeof original === "function") {
         return createObservableMethod(target, original, unwrap);

@@ -11,6 +11,19 @@ import {
 } from "@vality/tsthrift";
 import { THRIFT_CONFIG, THRIFT_SERVICES_REGISTRY, getServiceToken } from "./tokens.ts";
 import { toObservableClient } from "./rxjs.ts";
+import {
+  getObservableServiceConfig,
+  getObservableServiceDescriptor,
+  isObservableServiceToken,
+  type ObservableServiceToken,
+} from "./observable-service.ts";
+
+/**
+ * Target accepted by provideThriftService: either a raw ThriftServiceDescriptor or an ObservableServiceToken.
+ */
+export type ThriftServiceTarget<TService extends object = object> =
+  | ThriftServiceDescriptor<TService>
+  | ObservableServiceToken<TService>;
 
 /**
  * Provides global Thrift client configuration in Angular DI.
@@ -23,25 +36,39 @@ export function provideThriftConfig(config: HttpTransportConfig): Provider {
 }
 
 /**
- * Provides an individual Thrift service proxy in Angular DI by its descriptor.
+ * Provides an individual Thrift service proxy in Angular DI by its descriptor or ObservableServiceToken.
  */
 export function provideThriftService<TService extends object>(
-  descriptor: ThriftServiceDescriptor<TService>,
+  target: ThriftServiceTarget<TService>,
   config?: Partial<HttpTransportConfig>,
 ): Provider {
+  const isToken = isObservableServiceToken(target);
+  const descriptor = isToken ? getObservableServiceDescriptor(target)! : target;
+  const token = isToken ? target : getServiceToken(descriptor);
+  const targetConfig = isToken ? getObservableServiceConfig(target) : undefined;
+
   return {
-    provide: getServiceToken(descriptor),
+    provide: token,
     useFactory: () => {
       const baseConfig = inject(THRIFT_CONFIG, { optional: true });
       const factory = descriptor.createService;
-      const rawClient = !config
+      const effectiveOverride = !targetConfig
+        ? config
+        : !config
+          ? targetConfig
+          : {
+              ...targetConfig,
+              ...config,
+              headers: mergeHeaderProviders(targetConfig.headers, config.headers),
+            };
+      const rawClient = !effectiveOverride
         ? factory(baseConfig)
         : !baseConfig
-          ? factory(config)
+          ? factory(effectiveOverride)
           : factory({
               ...baseConfig,
-              ...config,
-              headers: mergeHeaderProviders(baseConfig.headers, config.headers),
+              ...effectiveOverride,
+              headers: mergeHeaderProviders(baseConfig.headers, effectiveOverride.headers),
             });
       return toObservableClient(rawClient);
     },
@@ -52,14 +79,24 @@ export function provideThriftService<TService extends object>(
  * Registers multiple Thrift services in Angular DI.
  */
 export function provideThriftServices(
-  ...serviceLists: (ThriftServiceDescriptor | readonly ThriftServiceDescriptor[])[]
+  ...serviceLists: (ThriftServiceTarget | readonly ThriftServiceTarget[])[]
 ): EnvironmentProviders {
   const flatServices: ThriftServiceDescriptor[] = [];
   for (const item of serviceLists) {
     if (Array.isArray(item)) {
-      flatServices.push(...item);
+      for (const s of item) {
+        flatServices.push(
+          isObservableServiceToken(s)
+            ? getObservableServiceDescriptor(s)!
+            : (s as ThriftServiceDescriptor),
+        );
+      }
     } else if (item && typeof item === "object") {
-      flatServices.push(item as ThriftServiceDescriptor);
+      flatServices.push(
+        isObservableServiceToken(item)
+          ? getObservableServiceDescriptor(item)!
+          : (item as ThriftServiceDescriptor),
+      );
     }
   }
 

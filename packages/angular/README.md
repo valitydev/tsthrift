@@ -79,8 +79,51 @@ export class PaymentDetailsComponent implements OnInit {
 
   // Calling service methods returns cold Observables
   payment$ = this.paymentService.getPayment(1001n);
+
+  // Direct access to the underlying Promise client for async/await or Signals
+  async loadPayment() {
+    const payment = await this.paymentService.promise.getPayment(1001n);
+  }
 }
 ```
+
+## Creating Self-Providing Observable Services (`createObservableService`)
+
+For the cleanest developer experience, you can create service tokens directly in your application's API layer with their unique endpoint and configuration:
+
+```ts
+// src/app/api/payment.ts
+import { createObservableService } from "@vality/tsthrift-angular";
+import { PaymentProcessingDescriptor } from "./generated/payment_processing.js";
+
+// Self-provides in "any" injector with a unique endpoint:
+export const PaymentProcessing = createObservableService(PaymentProcessingDescriptor, {
+  endpoint: "https://payments.example.com/rpc",
+  timeoutMs: 15_000,
+});
+```
+
+Then inject it directly in components without needing any boilerplate in `app.config.ts`:
+
+```ts
+import { Component, inject } from "@angular/core";
+import { PaymentProcessing } from "./api/payment.js";
+
+@Component({ ... })
+export class CheckoutComponent {
+  private paymentService = inject(PaymentProcessing);
+
+  // Cold Observable by default:
+  payment$ = this.paymentService.getPayment(1001n);
+
+  // Promise-based execution via .promise:
+  async process() {
+    const res = await this.paymentService.promise.getPayment(1001n);
+  }
+}
+```
+
+Any global settings from `provideThriftConfig` (e.g. auth headers, Woody tracing) are automatically resolved and merged with the service's configuration.
 
 ## Advanced Usage
 
@@ -163,16 +206,17 @@ this.paymentService.getPayment(id).pipe(
 
 ### DI Providers & Tokens
 
+- `createObservableService(descriptor, config?): ObservableServiceToken<TClient>`: Creates an injectable token self-providing the observable client in DI with optional unique per-service configuration.
 - `provideThriftConfig(config: HttpTransportConfig): Provider`: Configures global Thrift settings.
-- `provideThriftServices(...serviceLists): EnvironmentProviders`: Registers all generated service descriptors into Angular DI.
-- `provideThriftService(descriptor, config?): Provider`: Registers a single service descriptor with optional overrides.
+- `provideThriftServices(...serviceLists): EnvironmentProviders`: Registers all generated service descriptors or tokens into Angular DI.
+- `provideThriftService(target, config?): Provider`: Registers a single service descriptor or token with optional overrides.
 - `getServiceToken(descriptor)` / `createServiceToken(descriptor)`: Returns the `InjectionToken<ObservableClient<TService>>` for the given service descriptor.
 - `THRIFT_CONFIG`: Injection token for the global `HttpTransportConfig`.
 - `THRIFT_SERVICES_REGISTRY`: Injection token for `Map<string, ThriftServiceDescriptor>`.
 
 ### RxJS & HTTP Utilities
 
-- `toObservableClient(client, unwrap = true)`: Proxies a Thrift client into an Observable-returning client.
+- `toObservableClient(client, unwrap = true)`: Proxies a Thrift client into an Observable-returning client with `.promise` access to the underlying Promise client.
 - `deferThriftCall(callFactory)`: Wraps a Promise Thrift call into a cold Observable.
 - `unwrapResult()`: RxJS operator to unwrap `ThriftResult` streams.
 - `createHttpClientFetch(httpClient)`: Bridges an Angular `HttpClient` instance to the Web `fetch` interface.

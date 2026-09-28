@@ -12,9 +12,11 @@ import {
   THRIFT_CONFIG,
   THRIFT_SERVICES_REGISTRY,
   createHttpClientFetch,
+  createObservableService,
   createServiceToken,
   deferThriftCall,
   getServiceToken,
+  isObservableServiceToken,
   provideThriftConfig,
   provideThriftService,
   provideThriftServices,
@@ -370,5 +372,100 @@ describe("Angular Thrift DI integration", () => {
     controller.abort(new DOMException("Manual abort", "AbortError"));
     await expect(fetchPromise).rejects.toThrow("Manual abort");
     expect(unsubscribed).toBe(true);
+  });
+
+  test("createObservableService creates token self-provided in root with unique endpoint", async () => {
+    const customServiceToken = createObservableService(dummyDescriptor, {
+      endpoint: "http://example.com/unique-endpoint",
+    });
+
+    expect(isObservableServiceToken(customServiceToken)).toBe(true);
+    expect((customServiceToken as any).descriptor).toBe(dummyDescriptor);
+    expect((customServiceToken as any).config?.endpoint).toBe("http://example.com/unique-endpoint");
+
+    const injector = Injector.create({ providers: [] });
+    await runInInjectionContext(injector, async () => {
+      const client = inject(customServiceToken);
+      const res = await firstValueFrom(client.echo("hello"));
+      expect(res).toBe("[http://example.com/unique-endpoint] hello");
+
+      // Test .promise property access
+      expect(typeof client.promise.echo).toBe("function");
+      const promiseRes = await client.promise.echo("world");
+      expect(promiseRes).toBe("[http://example.com/unique-endpoint] world");
+    });
+  });
+
+  test("createObservableService merges with global THRIFT_CONFIG", async () => {
+    const token = createObservableService(dummyDescriptor, {
+      endpoint: "http://example.com/service-endpoint",
+      headers: () => ({ "x-service": "custom" }),
+    });
+
+    const envInjector = createEnvironmentInjector(
+      [
+        provideThriftConfig({
+          endpoint: "http://example.com/base",
+          headers: () => ({ Authorization: "Bearer global" }),
+        }),
+      ],
+      null as unknown as any,
+    );
+
+    await runInInjectionContext(envInjector, async () => {
+      const client = inject(token);
+      const res = await firstValueFrom(client.echo("check"));
+      expect(res).toBe("[http://example.com/service-endpoint] check");
+
+      const resolvedHeaders = await client.config?.headers?.();
+      expect(resolvedHeaders).toEqual({
+        Authorization: "Bearer global",
+        "x-service": "custom",
+      });
+    });
+  });
+
+  test("provideThriftService overrides ObservableServiceToken config", async () => {
+    const token = createObservableService(dummyDescriptor, {
+      endpoint: "http://example.com/initial",
+    });
+
+    const envInjector = createEnvironmentInjector(
+      [
+        provideThriftService(token, {
+          endpoint: "http://example.com/overridden",
+        }),
+      ],
+      null as unknown as any,
+    );
+
+    await runInInjectionContext(envInjector, async () => {
+      const client = inject(token);
+      const res = await firstValueFrom(client.echo("test"));
+      expect(res).toBe("[http://example.com/overridden] test");
+    });
+  });
+
+  test("provideThriftServices accepts ObservableServiceToken in service lists", async () => {
+    const token = createObservableService(dummyDescriptor, {
+      endpoint: "http://example.com/token-endpoint",
+    });
+
+    const envInjector = createEnvironmentInjector(
+      [
+        provideThriftConfig({ endpoint: "http://example.com/fallback" }),
+        provideThriftServices([token]),
+      ],
+      null as unknown as any,
+    );
+
+    await runInInjectionContext(envInjector, async () => {
+      const registry = envInjector.get(THRIFT_SERVICES_REGISTRY);
+      expect(registry.has("TestService")).toBe(true);
+
+      const client = inject(token);
+      const res = await firstValueFrom(client.echo("reg"));
+      expect(res).toBe("[http://example.com/fallback] reg");
+    });
   });
 });

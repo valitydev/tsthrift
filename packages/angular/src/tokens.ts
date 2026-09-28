@@ -37,3 +37,13 @@ export function createServiceToken<TClient = unknown>(
 ): InjectionToken<TClient extends object ? ObservableClient<TClient> : TClient> {
   return getServiceToken(descriptor);
 }
+
+/**
+ * Registers an existing InjectionToken for a given Thrift service descriptor in the cache.
+ */
+export function registerServiceToken<TClient = unknown>(
+  descriptor: ThriftServiceDescriptor<TClient>,
+  token: InjectionToken<TClient extends object ? ObservableClient<TClient> : TClient>,
+): void {
+  serviceTokens.set(descriptor, token);
+}

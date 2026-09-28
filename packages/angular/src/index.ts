@@ -3,8 +3,19 @@ export {
   THRIFT_SERVICES_REGISTRY,
   getServiceToken,
   createServiceToken,
+  registerServiceToken,
 } from "./tokens.ts";
-export { provideThriftConfig, provideThriftServices, provideThriftService } from "./providers.ts";
+export {
+  createObservableService,
+  isObservableServiceToken,
+  type ObservableServiceToken,
+} from "./observable-service.ts";
+export {
+  provideThriftConfig,
+  provideThriftServices,
+  provideThriftService,
+  type ThriftServiceTarget,
+} from "./providers.ts";
 export { createHttpClientFetch, type AngularHttpClientLike } from "./http-client-fetch.ts";
 export {
   deferThriftCall,
