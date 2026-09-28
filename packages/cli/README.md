@@ -158,10 +158,6 @@ const result = await generate({
 console.log(`Generated modules: ${result.modules.join(", ")}`);
 ```
 
-## License
-
-Apache-2.0
-
 ## Output ownership and bundling
 
 Use separate dedicated directories for generated sources and bundles. Each output
@@ -175,3 +171,12 @@ only generated entries, ignores consumer Vite configuration, and leaves the
 consumer package manifest unchanged. Source and bundle paths must not overlap.
 The package recipe uses example versions; select the published tsthrift versions
 when installing dependencies.
+
+## Known Limitations
+
+- **IDL numeric constants:** Integer constants in `.thrift` files are constrained to JavaScript safe integer bounds (`Number.MIN_SAFE_INTEGER` to `Number.MAX_SAFE_INTEGER`, i.e., ±(2^53 - 1)). Unsafe integer literals exceeding 53 bits are rejected at compile time to prevent silent precision loss during AST parsing. Runtime RPC parameters, structs, and network payloads preserve the full signed 64-bit range via `bigint`.
+- **UUID representation:** Dedicated UUID classes or validator wrappers are not generated. Schemas defining UUIDs via `typedef string UUID` (or `binary`) emit standard TypeScript type aliases (`export type UUID = string;`).
+
+## License
+
+Apache-2.0

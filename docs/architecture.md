@@ -147,7 +147,7 @@ not production server, Angular application, or dynamic-form acceptance.
 Run `vp install`, `vp check`, `vp run build`, then `vp test`. No external Thrift
 compiler is required; tests execute directly against the native runtime and wire
 verifiers. Native HTTP tests require permission to bind loopback sockets. See
-[compatibility](compatibility.md) and [tasks](tasks.md) for remaining release work.
+[compatibility](compatibility.md) and [release audit](release-audit.md) for remaining release work.
 
 Metadata-only integration runs use a directory containing no generated model,
 codec, or client modules. The same Apache request/reply checks, loopback HTTP,

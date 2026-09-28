@@ -28,16 +28,20 @@ release. Add a tool name to select part of the graph. For example, run
 
 ## Continuing implementation
 
-Read `docs/tasks.md`, `docs/architecture.md`, and `docs/compatibility.md` before
-changing the generator or transport. Keep checked tasks tied to actual verification.
-Do not commit or push automatically. Document technical contracts and reproducible
+Read `docs/architecture.md`, `docs/compatibility.md`, and `docs/release-audit.md` before
+changing the generator or transport. Document technical contracts and reproducible
 setup without personal preferences, conversation history, or machine-specific account paths.
 Consult the source revisions in `docs/compatibility.md` when changing compatibility behavior.
+
+### Documentation and task lifecycle
+
+- Permanent documentation in `docs/` and package READMEs must remain concise, objective, and contract-focused.
+- Ephemeral task checklists (such as `tasks.md`) are reserved solely for retaining context within a single feature branch during active development; do not commit or merge them into `main`.
 
 ### Change verification criteria
 
 - Inspect the relevant upstream/legacy implementation when touching compatibility.
 - Execute affected generated output, not just source-shape assertions.
 - Check module responsibilities, imports/exports, and `git diff --check`.
-- Keep task status and technical documentation strictly neutral, objective, and reproducible.
+- Keep technical documentation strictly neutral, objective, and reproducible.
 - Distinguish verified artifacts from transport, browser, and consumer acceptance.
