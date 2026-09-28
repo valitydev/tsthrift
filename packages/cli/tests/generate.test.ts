@@ -168,6 +168,7 @@ test("emits package.json and tsconfig.json when package: true", async () => {
   expect(pkg.main).toBe("./index.js");
   expect(pkg.module).toBe("./index.js");
   expect(pkg.types).toBe("./index.d.ts");
+  expect(pkg.license).toBe("Apache-2.0");
   expect(pkg.exports["."]).toEqual({
     types: "./index.d.ts",
     import: "./index.js",
@@ -175,6 +176,46 @@ test("emits package.json and tsconfig.json when package: true", async () => {
   });
   expect(pkg.exports["./package.json"]).toBe("./package.json");
   expect(pkg.peerDependencies["@vality/tsthrift"]).toBeDefined();
+});
+
+test("inherits name, version, and license from root package.json when package: true", async () => {
+  const options = await setup();
+  const projectRoot = path.dirname(options.output);
+  const rootPkg = {
+    name: "@vality/damsel",
+    version: "1.4.2",
+    license: "Apache-2.0",
+  };
+  await writeFile(path.join(projectRoot, "package.json"), JSON.stringify(rootPkg, null, 2));
+
+  await generate({ ...options, package: true });
+
+  const pkg = JSON.parse(await readFile(path.join(options.output, "package.json"), "utf8"));
+  expect(pkg.name).toBe("@vality/damsel");
+  expect(pkg.version).toBe("1.4.2");
+  expect(pkg.license).toBe("Apache-2.0");
+});
+
+test("overrides root package name and version when explicitly provided", async () => {
+  const options = await setup();
+  const projectRoot = path.dirname(options.output);
+  const rootPkg = {
+    name: "@vality/damsel",
+    version: "1.4.2",
+  };
+  await writeFile(path.join(projectRoot, "package.json"), JSON.stringify(rootPkg, null, 2));
+
+  await generate({
+    ...options,
+    package: true,
+    packageName: "@vality/custom-name",
+    packageVersion: "2.0.0",
+  });
+
+  const pkg = JSON.parse(await readFile(path.join(options.output, "package.json"), "utf8"));
+  expect(pkg.name).toBe("@vality/custom-name");
+  expect(pkg.version).toBe("2.0.0");
+  expect(pkg.license).toBe("Apache-2.0");
 });
 
 test("generates only metadata when models is disabled via models: false", async () => {

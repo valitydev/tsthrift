@@ -17,7 +17,8 @@ Generate metadata, TypeScript models, and service factories.
       --split-metadata   Emit per-module metadata files in metadata/
       --metadata-json    Emit monolithic metadata.json in output directory
       --package          Emit package.json and tsconfig.json in output directory
-      --package-name     Name for emitted package.json (default: output dir basename)
+      --package-name     Name for emitted package.json (default: root package.json or output dir basename)
+      --package-version  Version for emitted package.json (default: root package.json or 0.0.0)
       --i64             Public i64 representation: bigint (default) | number
       --allow-duplicate-modules Allow duplicate module basenames across includes (first-wins)
   -h, --help            Show this help
@@ -39,6 +40,7 @@ try {
       "metadata-json": { type: "boolean" },
       package: { type: "boolean" },
       "package-name": { type: "string" },
+      "package-version": { type: "string" },
       i64: { type: "string" },
       "allow-duplicate-modules": { type: "boolean" },
       help: { type: "boolean", short: "h" },
@@ -62,6 +64,7 @@ try {
       metadataJson: values["metadata-json"],
       package: values.package,
       packageName: values["package-name"],
+      packageVersion: values["package-version"],
       i64: parseI64Mode(values.i64),
       allowDuplicateModules: values["allow-duplicate-modules"],
     });

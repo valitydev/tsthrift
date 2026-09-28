@@ -2,15 +2,18 @@
   "name": "tsthrift-monorepo",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "type": "module",
   "scripts": {
     "ready": "vp check && vp run -r test && vp run -r build",
     "build": "vp run -r build",
     "test": "vp test",
-    "check": "vp check"
+    "check": "vp check",
+    "bump": "bumpp -r"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "bumpp": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   },

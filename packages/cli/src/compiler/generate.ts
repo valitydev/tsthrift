@@ -14,6 +14,7 @@ import { emitMetadata } from "../metadata/emit-metadata.ts";
 import { emitSplitMetadata, emitMetadataLoader } from "../metadata/emit-split-metadata.ts";
 import { parseI64Mode } from "./i64-mode.ts";
 import type { I64Mode } from "./i64-mode.ts";
+import { findRootPackageInfo } from "./root-package.ts";
 
 export interface GenerateOptions {
   input: string;
@@ -27,6 +28,8 @@ export interface GenerateOptions {
   metadataJson?: boolean;
   package?: boolean;
   packageName?: string;
+  packageVersion?: string;
+  rootPackageJson?: string;
   i64?: I64Mode;
   allowDuplicateModules?: boolean;
 }
@@ -135,9 +138,15 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
     }
 
     if (options.package) {
+      const rootPkg = await findRootPackageInfo({
+        rootPackageJson: options.rootPackageJson,
+        input: options.input,
+        output: options.output,
+      });
       const pkgJson = {
-        name: options.packageName ?? path.basename(output),
-        version: "0.0.0",
+        name: options.packageName ?? rootPkg?.name ?? path.basename(output),
+        version: options.packageVersion ?? rootPkg?.version ?? "0.0.0",
+        license: rootPkg?.license ?? "Apache-2.0",
         type: "module",
         main: "./index.js",
         module: "./index.js",
