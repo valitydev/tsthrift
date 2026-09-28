@@ -6,7 +6,7 @@ export async function loadClient(directory, mode, _backend = "metadata") {
   const metadata = JSON.parse(await readFile(`${directory}/metadata.json`, "utf8"));
   let model;
   try {
-    model = await import(pathToFileURL(`${directory}/models/example.js`));
+    model = await import(pathToFileURL(`${directory}/example/models.js`));
   } catch {}
   const createExample = (config) =>
     createMetadataClient({

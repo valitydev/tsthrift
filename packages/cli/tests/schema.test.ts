@@ -5,6 +5,7 @@ import { afterEach, expect, test } from "vite-plus/test";
 import { loadSchema } from "../src/compiler/load-schema.ts";
 import { validateSchema } from "../src/compiler/validate-schema.ts";
 import { emitModels } from "../src/compiler/emit-models.ts";
+import { emitProgramServices } from "../src/compiler/emit-services.ts";
 
 const fixtures = path.join(import.meta.dirname, "fixtures");
 const directories: string[] = [];
@@ -46,12 +47,15 @@ test("loads only selected inputs and reachable includes, preserving legacy metad
   });
   expect(program.ast.service?.Example?.extends).toBe("common.Base");
   const models = emitModels(program);
-  expect(models).toContain('import * as common from "./common.js"');
+  expect(models).toContain('import * as common from "../common/models.js"');
   expect(models).toContain("globalThis.Map<string, Identifier[]>");
-  expect(models).toContain("extends common.Base");
-  expect(models).toContain('"next"(id: bigint, options?: RequestOptions): Promise<bigint>');
   expect(models).toContain('"CLOSED" = 5');
   expect(models).toContain('new globalThis.Map([["first", 1]])');
+  const services = emitProgramServices(program);
+  expect(services[0]!.content).toContain("extends common_Base");
+  expect(services[0]!.content).toContain(
+    '"next"(id: bigint, options?: models.RequestOptions): Promise<bigint>',
+  );
 });
 
 test.each([

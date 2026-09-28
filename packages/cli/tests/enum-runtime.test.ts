@@ -35,7 +35,7 @@ test("generated enums exist at runtime with numeric values and reverse mappings"
     const result = await generate({ input, output });
     expect(result.models).toBe(true);
     expect(result.compilerVersion).toBeUndefined();
-    const model = path.join(output, "models/example.ts");
+    const model = path.join(output, "example/models.ts");
     expect(await readFile(model, "utf8")).toContain("export enum Status");
     await execute(process.execPath, [
       tsc,
@@ -52,7 +52,7 @@ test("generated enums exist at runtime with numeric values and reverse mappings"
       model,
     ]);
     await writeFile(path.join(compiled, "package.json"), '{"type":"module"}');
-    const script = `const { Status } = await import(${JSON.stringify(pathToFileURL(path.join(compiled, "example.js")).href)}); console.log(JSON.stringify(Status));`;
+    const script = `const { Status } = await import(${JSON.stringify(pathToFileURL(path.join(compiled, "models.js")).href)}); console.log(JSON.stringify(Status));`;
     const execution = await execute(process.execPath, ["--input-type=module", "--eval", script]);
     expect(JSON.parse(execution.stdout)).toEqual({
       NEGATIVE: -2,
@@ -65,7 +65,7 @@ test("generated enums exist at runtime with numeric values and reverse mappings"
       "7": "ALIAS",
       "8": "AFTER",
     });
-    expect(await readFile(path.join(compiled, "example.d.ts"), "utf8")).toContain(
+    expect(await readFile(path.join(compiled, "models.d.ts"), "utf8")).toContain(
       "export declare enum Status",
     );
   } finally {

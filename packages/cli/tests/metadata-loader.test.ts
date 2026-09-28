@@ -69,7 +69,7 @@ test("loadMetadata loads only reachable dependencies and memoizes result", async
   const options = await setup();
   await generate(options);
 
-  const metadataIndexPath = path.join(options.output, "metadata", "index.ts");
+  const metadataIndexPath = path.join(options.output, "metadata.ts");
   const { loadMetadata } = await import(pathToFileURL(metadataIndexPath).href);
 
   // example depends on common

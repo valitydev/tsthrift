@@ -70,12 +70,12 @@ test("emits executable referenced, structured, and nested collection constants",
     "es2022",
     "--outDir",
     compiled,
-    path.join(options.output, "models/example.ts"),
-    path.join(options.output, "models/common.ts"),
+    path.join(options.output, "example/models.ts"),
+    path.join(options.output, "common/models.ts"),
   ]);
   await writeFile(path.join(compiled, "package.json"), '{"type":"module"}');
   const script = `
-    const values = await import(${JSON.stringify(pathToFileURL(path.join(compiled, "example.js")).href)});
+    const values = await import(${JSON.stringify(pathToFileURL(path.join(compiled, "example/models.js")).href)});
     console.log(JSON.stringify({ ...values, VALUES: [...values.VALUES], STATES: [...values.STATES], common: undefined }));
   `;
   const executed = await execute(process.execPath, ["--input-type=module", "--eval", script]);

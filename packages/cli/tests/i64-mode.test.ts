@@ -59,13 +59,18 @@ test.each([undefined, "number", "bigint"] as const)(
     const mode = i64 ?? "bigint";
     const result = await generate({ ...options, i64 });
     expect(result.i64).toBe(mode);
-    const models = path.join(options.output, "models");
-    const source = await readFile(path.join(models, "example.ts"), "utf8");
-    expect(source).toContain(`"id": ${mode};`);
-    expect(source).toContain(`"id"?: ${mode};`);
-    expect(source).toContain(`globalThis.Map<${mode}, ${mode}[]>`);
-    expect(source).toContain(`"next"(id: ${mode}, options?: RequestOptions): Promise<${mode}>;`);
-    expect(await readFile(path.join(models, "common.ts"), "utf8")).toContain(
+    const exampleSource = await readFile(path.join(options.output, "example/models.ts"), "utf8");
+    const exampleService = await readFile(
+      path.join(options.output, "example/services/Example.ts"),
+      "utf8",
+    );
+    expect(exampleSource).toContain(`"id": ${mode};`);
+    expect(exampleSource).toContain(`"id"?: ${mode};`);
+    expect(exampleSource).toContain(`globalThis.Map<${mode}, ${mode}[]>`);
+    expect(exampleService).toContain(
+      `"next"(id: ${mode}, options?: models.RequestOptions): Promise<${mode}>;`,
+    );
+    expect(await readFile(path.join(options.output, "common/models.ts"), "utf8")).toContain(
       `export type Identifier = ${mode};`,
     );
     const compiled = path.join(options.directory, "compiled");
@@ -80,11 +85,12 @@ test.each([undefined, "number", "bigint"] as const)(
       "es2022",
       "--outDir",
       compiled,
-      path.join(models, "example.ts"),
+      path.join(options.output, "example/models.ts"),
+      path.join(options.output, "common/models.ts"),
     ]);
     await writeFile(path.join(compiled, "package.json"), '{"type":"module"}');
     const script = `
-      const m = await import(${JSON.stringify(pathToFileURL(path.join(compiled, "example.js")).href)});
+      const m = await import(${JSON.stringify(pathToFileURL(path.join(compiled, "example/models.js")).href)});
       const [key, [values]] = [...m.VALUES][0];
       const describe = value => [typeof value, String(value)];
       console.log(JSON.stringify({
@@ -119,12 +125,12 @@ test("CLI switches public i64 mode without changing metadata", async () => {
   ];
   const env = { ...process.env, PATH: "" };
   await execute(process.execPath, args, { env });
-  expect(await readFile(path.join(options.output, "models/common.ts"), "utf8")).toContain(
+  expect(await readFile(path.join(options.output, "common/models.ts"), "utf8")).toContain(
     "export type Identifier = bigint;",
   );
   const metadata = await readFile(path.join(options.output, "metadata.json"), "utf8");
   await execute(process.execPath, [...args, "--i64", "number"], { env });
-  expect(await readFile(path.join(options.output, "models/common.ts"), "utf8")).toContain(
+  expect(await readFile(path.join(options.output, "common/models.ts"), "utf8")).toContain(
     "export type Identifier = number;",
   );
   expect(await readFile(path.join(options.output, "metadata.json"), "utf8")).toBe(metadata);

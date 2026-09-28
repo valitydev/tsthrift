@@ -46,23 +46,22 @@ test.each(["number", "bigint"] as const)(
 
     const files = await readdir(options.output);
     expect(files.sort()).toEqual([
-      "common.ts",
-      "example.ts",
+      "common",
+      "example",
       "index.ts",
-      "metadata",
-      "models",
-      "services",
+      "metadata.ts",
+      "services.ts",
       "tsconfig.json",
     ]);
 
-    const modelsDir = path.join(options.output, "models");
-    const modelFiles = await readdir(modelsDir);
-    expect(modelFiles.sort()).toEqual(["common.ts", "example.ts"]);
+    const commonDir = path.join(options.output, "common");
+    const commonFiles = await readdir(commonDir);
+    expect(commonFiles.sort()).toEqual(["index.ts", "metadata.ts", "models.ts", "services"]);
 
-    const servicesDir = path.join(options.output, "services");
-    const serviceFiles = await readdir(servicesDir);
-    expect(serviceFiles.sort()).toEqual(["common", "example", "index.ts", "services.ts"]);
-    const exampleServiceFiles = await readdir(path.join(servicesDir, "example"));
+    const exampleDir = path.join(options.output, "example");
+    const exampleFiles = await readdir(exampleDir);
+    expect(exampleFiles.sort()).toEqual(["index.ts", "metadata.ts", "models.ts", "services"]);
+    const exampleServiceFiles = await readdir(path.join(exampleDir, "services"));
     expect(exampleServiceFiles.sort()).toEqual(["Example.ts", "index.ts"]);
 
     // Verify TypeScript type checking on generated models and services
@@ -85,25 +84,23 @@ test.each(["number", "bigint"] as const)(
     }
 
     const indexContent = await readFile(path.join(options.output, "index.ts"), "utf8");
-    expect(indexContent).toContain('export * as common from "./common.js";');
-    expect(indexContent).toContain('export * as example from "./example.js";');
-    expect(indexContent).toContain(
-      'export { SERVICES, SERVICES_LIST } from "./services/services.js";',
-    );
-    expect(indexContent).toContain('export { loadMetadata } from "./metadata/index.js";');
+    expect(indexContent).toContain('export * as common from "./common/index.js";');
+    expect(indexContent).toContain('export * as example from "./example/index.js";');
+    expect(indexContent).toContain('export { SERVICES, SERVICES_LIST } from "./services.js";');
+    expect(indexContent).toContain('export { loadMetadata } from "./metadata.js";');
     expect(indexContent).not.toContain("generateId");
     expect(indexContent).not.toContain("generateTraceId");
 
-    const commonEntry = await readFile(path.join(options.output, "common.ts"), "utf8");
-    expect(commonEntry).toContain('export * from "./models/common.js";');
+    const commonEntry = await readFile(path.join(options.output, "common/index.ts"), "utf8");
+    expect(commonEntry).toContain('export * from "./models.js";');
 
-    const exampleEntry = await readFile(path.join(options.output, "example.ts"), "utf8");
-    expect(exampleEntry).toContain('export * from "./models/example.js";');
-    expect(exampleEntry).toContain('export * from "./services/example/index.js";');
+    const exampleEntry = await readFile(path.join(options.output, "example/index.ts"), "utf8");
+    expect(exampleEntry).toContain('export * from "./models.js";');
+    expect(exampleEntry).toContain('export * from "./services/index.js";');
 
-    const commonMeta = await readFile(path.join(options.output, "metadata/common.ts"), "utf8");
+    const commonMeta = await readFile(path.join(options.output, "common/metadata.ts"), "utf8");
     expect(commonMeta).toContain('"path": "shared/common.thrift"');
-    const exampleMeta = await readFile(path.join(options.output, "metadata/example.ts"), "utf8");
+    const exampleMeta = await readFile(path.join(options.output, "example/metadata.ts"), "utf8");
     expect(exampleMeta).toContain('"Empty": []');
   },
 );
@@ -116,15 +113,8 @@ test("generates models without service factories when services: false is passed"
   expect(result.services).toBe(false);
 
   const files = await readdir(options.output);
-  expect(files.sort()).toEqual([
-    "common.ts",
-    "example.ts",
-    "index.ts",
-    "metadata",
-    "models",
-    "tsconfig.json",
-  ]);
-  expect(files).not.toContain("services");
+  expect(files.sort()).toEqual(["common", "example", "index.ts", "metadata.ts", "tsconfig.json"]);
+  expect(files).not.toContain("services.ts");
 });
 
 test("emits monolithic metadata.json when metadataJson: true", async () => {
@@ -139,22 +129,22 @@ test("emits monolithic metadata.json when metadataJson: true", async () => {
   expect(metadata.find((entry) => entry.name === "common")?.path).toBe("shared/common.thrift");
 });
 
-test("emits modular metadata in metadata/ by default", async () => {
+test("emits modular metadata in namespace directories and loader in root by default", async () => {
   const options = await setup();
   await generate(options);
 
-  const metadataDir = path.join(options.output, "metadata");
-  const files = await readdir(metadataDir);
-  expect(files.sort()).toEqual(["common.ts", "example.ts", "index.ts"]);
-
-  const common = await readFile(path.join(metadataDir, "common.ts"), "utf8");
+  const common = await readFile(path.join(options.output, "common/metadata.ts"), "utf8");
   expect(common).toContain('"name": "common"');
   expect(common).toContain("export const metadata");
 
-  const loader = await readFile(path.join(metadataDir, "index.ts"), "utf8");
+  const example = await readFile(path.join(options.output, "example/metadata.ts"), "utf8");
+  expect(example).toContain('"name": "example"');
+  expect(example).toContain("export const metadata");
+
+  const loader = await readFile(path.join(options.output, "metadata.ts"), "utf8");
   expect(loader).toContain("export const loadMetadata");
   expect(loader).toContain("createMetadataLoader");
-  expect(loader).toContain('import("./common.js")');
+  expect(loader).toContain('import("./common/metadata.js")');
 });
 
 test("emits tsconfig.json in generated directory when bundle: true", async () => {
@@ -208,9 +198,10 @@ test("CLI supports --no-services and --metadata-json", async () => {
   expect(result.stdout).toContain("generated 2 module(s)");
   const files = await readdir(options.output);
   expect(files).toContain("metadata.json");
-  expect(files).toContain("models");
-  expect(files).toContain("services");
-  expect(files).toContain("metadata");
+  expect(files).toContain("common");
+  expect(files).toContain("example");
+  expect(files).toContain("metadata.ts");
+  expect(files).toContain("services.ts");
   expect(files).not.toContain("package.json");
 
   const metadataText = await readFile(path.join(options.output, "metadata.json"), "utf8");
@@ -258,8 +249,10 @@ test("supports --allow-duplicate-modules in CLI and generate()", async () => {
   ]);
 
   expect(result.stdout).toContain("generated 3 module(s)");
-  const modelFiles = await readdir(path.join(options.output, "models"));
-  expect(modelFiles.sort()).toEqual(["client_a.ts", "client_b.ts", "shadowed.ts"]);
+  const generatedDirs = await readdir(options.output);
+  expect(generatedDirs).toContain("client_a");
+  expect(generatedDirs).toContain("client_b");
+  expect(generatedDirs).toContain("shadowed");
 });
 
 test("bundles output into dist/ with types when bundle: true", async () => {
@@ -330,10 +323,11 @@ test("CLI supports --bundle and --dist flags with subpath exports", async () => 
   const distFiles = await readdir(dist);
   expect(distFiles).toContain("index.mjs");
   expect(distFiles).toContain("index.d.mts");
-  expect(distFiles).toContain("common.mjs");
-  expect(distFiles).toContain("common.d.mts");
-  expect(distFiles).toContain("example.mjs");
-  expect(distFiles).toContain("example.d.mts");
+  expect(distFiles).toContain("common");
+  expect(distFiles).toContain("example");
+  const commonDist = await readdir(path.join(dist, "common"));
+  expect(commonDist).toContain("index.mjs");
+  expect(commonDist).toContain("index.d.mts");
 });
 
 test("CLI and generate() support glob patterns for input", async () => {
@@ -345,8 +339,8 @@ test("CLI and generate() support glob patterns for input", async () => {
   });
   expect(result.modules.sort()).toEqual(["common", "example"]);
   const files = await readdir(options.output);
-  expect(files).toContain("example.ts");
-  expect(files).toContain("common.ts");
+  expect(files).toContain("example");
+  expect(files).toContain("common");
 });
 
 test("CLI defaults output to generated and requires only --input", async () => {
@@ -371,7 +365,7 @@ test("CLI defaults output to generated and requires only --input", async () => {
   expect(result.stdout).toMatch(/\/generated\b/);
   const generatedFiles = await readdir(path.join(dir, "generated"));
   expect(generatedFiles).toContain("index.ts");
-  expect(generatedFiles).toContain("models");
+  expect(generatedFiles).toContain("test");
   await rm(dir, { recursive: true, force: true });
 });
 

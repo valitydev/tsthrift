@@ -36,7 +36,7 @@ Import `provideThriftConfig` and `provideThriftServices` in your standalone appl
 import { ApplicationConfig } from "@angular/core";
 import { provideHttpClient } from "@angular/common/http";
 import { provideThriftConfig, provideThriftServices } from "@vality/tsthrift-angular";
-import { SERVICES_LIST } from "./generated/services/services.js";
+import { SERVICES_LIST } from "./generated/services.js";
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -59,7 +59,7 @@ Use `inject` with `getServiceToken` and the service descriptor from generated `S
 import { Component, inject, OnInit } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { getServiceToken } from "@vality/tsthrift-angular";
-import { SERVICES } from "./generated/services/services.js";
+import { SERVICES } from "./generated/services.js";
 
 @Component({
   selector: "app-payment-details",
@@ -94,10 +94,10 @@ For the cleanest developer experience, you can create service tokens directly in
 ```ts
 // src/app/api/payment.ts
 import { createObservableService } from "@vality/tsthrift-angular";
-import { PaymentProcessingDescriptor } from "./generated/payment_processing.js";
+import { PaymentProcessing } from "./generated/payment_processing/index.js";
 
 // Self-provides in "any" injector with a unique endpoint:
-export const PaymentProcessing = createObservableService(PaymentProcessingDescriptor, {
+export const PaymentProcessingService = createObservableService(PaymentProcessing, {
   endpoint: "https://payments.example.com/rpc",
   timeoutMs: 15_000,
 });
@@ -107,11 +107,11 @@ Then inject it directly in components without needing any boilerplate in `app.co
 
 ```ts
 import { Component, inject } from "@angular/core";
-import { PaymentProcessing } from "./api/payment.js";
+import { PaymentProcessingService } from "./api/payment.js";
 
 @Component({ ... })
 export class CheckoutComponent {
-  private paymentService = inject(PaymentProcessing);
+  private paymentService = inject(PaymentProcessingService);
 
   // Cold Observable by default:
   payment$ = this.paymentService.getPayment(1001n);
@@ -156,7 +156,7 @@ Override configuration (such as distinct endpoints, headers, or timeouts) for an
 
 ```ts
 import { provideThriftService } from "@vality/tsthrift-angular";
-import { SERVICES } from "./generated/services/services.js";
+import { SERVICES } from "./generated/services.js";
 
 export const appConfig: ApplicationConfig = {
   providers: [

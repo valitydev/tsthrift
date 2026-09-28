@@ -97,8 +97,8 @@ async function verifyReplyEncoding(
 test.each(["bigint", "number"] as const)(
   "all supported types and composite keys match generated Java (%s)",
   async (mode) => {
-    const { createEcho } = await generated(mode, "services/alpha/Echo.js");
-    const { loadMetadata } = await generated(mode, "metadata/index.js");
+    const { createEcho } = await generated(mode, "alpha/services/Echo.js");
+    const { loadMetadata } = await generated(mode, "metadata.js");
     for (const empty of [false, true]) {
       const scenario = `${empty ? "empty" : "all"}-${mode}`;
       // Explicit mode isolates wire conformance from the separately audited factory-mode defect.
@@ -133,9 +133,9 @@ test.each(["bigint", "number"] as const)(
     const scenario = `damsel-${mode}`;
     const { createRepository } = await generated(
       mode,
-      "damsel/services/domain_config_v2/Repository.js",
+      "damsel/domain_config_v2/services/Repository.js",
     );
-    const { loadMetadata } = await generated(mode, "damsel/metadata/index.js");
+    const { loadMetadata } = await generated(mode, "damsel/metadata.js");
     const client = createRepository({
       endpoint: "unused",
       i64Mode: mode,
@@ -195,8 +195,8 @@ test.each(["bigint", "number"] as const)(
   "declared exception matches generated Java (%s)",
   async (mode) => {
     const scenario = `failure-${mode}`;
-    const { createEcho } = await generated(mode, "services/alpha/Echo.js");
-    const { loadMetadata } = await generated(mode, "metadata/index.js");
+    const { createEcho } = await generated(mode, "alpha/services/Echo.js");
+    const { loadMetadata } = await generated(mode, "metadata.js");
     const client = createEcho({
       endpoint: "unused",
       i64Mode: mode,
@@ -243,7 +243,7 @@ test("same service and IDL namespace names remain isolated by source module", as
 });
 
 test.each(["notify", "fire"])("void/oneway %s uses the official envelope", async (method) => {
-  const { createEcho } = await generated("bigint", "services/alpha/Echo.js");
+  const { createEcho } = await generated("bigint", "alpha/services/Echo.js");
   const client = createEcho({ endpoint: "unused", transport: await transport(method) });
   await expect(client[method]("")).resolves.toBeUndefined();
 });

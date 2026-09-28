@@ -32,7 +32,7 @@ export function emitModuleMetadata(
 
   return {
     name: program.name,
-    filename: `${program.name}.ts`,
+    filename: "metadata.ts",
     content: lines.join("\n"),
   };
 }
@@ -64,7 +64,7 @@ export function emitMetadataLoader(schema: Schema): string {
     lines.push(`  ${JSON.stringify(program.name)}: () =>`);
     lines.push("    Promise.all([");
     for (const dep of deps) {
-      lines.push(`      import("./${dep.name}.js"),`);
+      lines.push(`      import("./${dep.name}/metadata.js"),`);
     }
     lines.push("    ]),");
   }

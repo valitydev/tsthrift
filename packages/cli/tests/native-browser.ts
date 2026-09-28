@@ -7,7 +7,7 @@ import { BinaryReader, BinaryWriter, MessageType } from "@vality/tsthrift";
 /** Executes a browser-targeted bundle without Node globals or dependencies. */
 export async function verifyBrowserBundle(
   output: string,
-  entry = path.join(output, "services/example/Example.ts"),
+  entry = path.join(output, "example/services/Example.ts"),
 ) {
   const result = await build({
     configFile: false,

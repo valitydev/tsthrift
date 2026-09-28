@@ -50,7 +50,7 @@ When schemas are compiled using `@vality/tsthrift-cli`, service definitions prov
 
 ```ts
 import { createHttpTransport } from "@vality/tsthrift";
-import { createPaymentProcessing } from "./generated/services/payment_processing/PaymentProcessing.js";
+import { createPaymentProcessing } from "./generated/payment_processing/index.js";
 
 const client = createPaymentProcessing({
   endpoint: "https://api.example.com/rpc/payment",

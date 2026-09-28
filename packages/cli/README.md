@@ -82,21 +82,19 @@ When compiling a schema (for example, with namespaces `base` and `payment`), the
 ```text
 generated/
 ├── index.ts                     # Root re-exports of all namespaces and services
-├── base.ts                      # Namespace entry point for `base`
-├── payment.ts                   # Namespace entry point for `payment`
-├── models/                      # TypeScript type declarations
-│   ├── base.ts
-│   └── payment.ts
-├── metadata/                    # Modular metadata and lazy loader
-│   ├── base.ts
-│   ├── payment.ts
-│   └── index.ts                 # loadMetadata(namespace) loader
-├── services/                    # Framework-agnostic client factories
-│   ├── payment/
-│   │   ├── PaymentProcessing.ts # createPaymentProcessing factory
-│   │   └── index.ts
-│   ├── services.ts              # SERVICES and SERVICES_LIST registry
-│   └── index.ts
+├── metadata.ts                  # Root loadMetadata(namespace) lazy loader
+├── services.ts                  # Global SERVICES and SERVICES_LIST registry
+├── base/                        # Namespace directory for `base`
+│   ├── index.ts                 # Namespace entry point (models + metadata)
+│   ├── models.ts                # TypeScript models, structs, enums, consts
+│   └── metadata.ts              # Local AST metadata module
+├── payment/                     # Namespace directory for `payment`
+│   ├── index.ts                 # Namespace entry point (models + services + metadata)
+│   ├── models.ts                # TypeScript models for payment
+│   ├── metadata.ts              # Local AST metadata module
+│   └── services/                # Service interfaces, factories, and descriptors
+│       ├── PaymentProcessing.ts # PaymentProcessing interface, factory, descriptor
+│       └── index.ts
 └── tsconfig.json                # Bundler-ready TypeScript configuration
 ```
 

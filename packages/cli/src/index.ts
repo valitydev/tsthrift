@@ -3,7 +3,6 @@ export {
   emitProgramServices,
   emitProgramIndex,
   emitServicesRegistry,
-  emitServicesRootIndex,
 } from "./compiler/emit-services.ts";
 export type { EmittedServiceFile } from "./compiler/emit-services.ts";
 export type { GenerateOptions, GenerateResult } from "./compiler/generate.ts";
