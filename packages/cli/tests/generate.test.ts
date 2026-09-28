@@ -165,6 +165,15 @@ test("emits package.json and tsconfig.json when package: true", async () => {
   const pkg = JSON.parse(await readFile(path.join(options.output, "package.json"), "utf8"));
   expect(pkg.name).toBe("@vality/proto-example");
   expect(pkg.type).toBe("module");
+  expect(pkg.main).toBe("./index.js");
+  expect(pkg.module).toBe("./index.js");
+  expect(pkg.types).toBe("./index.d.ts");
+  expect(pkg.exports["."]).toEqual({
+    types: "./index.d.ts",
+    import: "./index.js",
+    default: "./index.js",
+  });
+  expect(pkg.exports["./package.json"]).toBe("./package.json");
   expect(pkg.peerDependencies["@vality/tsthrift"]).toBeDefined();
 });
 

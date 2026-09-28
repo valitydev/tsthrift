@@ -140,7 +140,16 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
         version: "0.0.0",
         type: "module",
         main: "./index.js",
+        module: "./index.js",
         types: "./index.d.ts",
+        exports: {
+          ".": {
+            types: "./index.d.ts",
+            import: "./index.js",
+            default: "./index.js",
+          },
+          "./package.json": "./package.json",
+        },
         files: ["**/*.js", "**/*.d.ts", "**/*.json"],
         peerDependencies: {
           "@vality/tsthrift": "*",
