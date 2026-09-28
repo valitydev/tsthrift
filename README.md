@@ -151,9 +151,23 @@ is retained solely in test devDependencies to cross-verify wire compatibility.
 ## Development
 
 ```sh
+# Lint, format, and type check
 vp check
+
+# Build all packages
 vp run build
+
+# Run unit and integration tests
 vp test
+
+# Verify package archives, CLI, and Angular DI (16/22)
+vp run test:packages
+
+# Run Chromium browser smoke tests via Playwright
+vp run test:browser
+
+# Run Java binary conformance tests with Damsel
+vp run test:conformance
 ```
 
 Tests exercise generated models and metadata-only clients in both i64 modes,
@@ -164,7 +178,6 @@ without Node globals or runtime code generation.
 - [Architecture](docs/architecture.md)
 - [Binary runtime](docs/runtime.md)
 - [Latest Damsel binary conformance](docs/conformance.md)
-- [Release readiness audit](docs/release-audit.md)
 
 ## Output ownership and bundling
 

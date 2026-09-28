@@ -131,9 +131,8 @@ Both reference variants have been executed and verified:
   All 9 test suites passed with 100% byte-for-byte request/reply equality and Java processor decoding.
 
 Support in `setup.ts` alone is not treated as verification: each variant is verified by full
-test execution through `vp run test:conformance`. See [release audit](release-audit.md) for remaining
-implementation defects.
+test execution through `vp run test:conformance`.
 
-The release audit also executes the large 50-object Damsel Commit scenarios: eleven
+Conformance testing also executes the large 50-object Damsel Commit scenarios: eleven
 cases per compiler/runtime pair, including generated factories without an explicit
-runtime i64Mode override. See [release audit](release-audit.md).
+runtime i64Mode override.

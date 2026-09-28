@@ -28,7 +28,7 @@ release. Add a tool name to select part of the graph. For example, run
 
 ## Continuing implementation
 
-Read `docs/architecture.md`, `docs/compatibility.md`, and `docs/release-audit.md` before
+Read `docs/architecture.md`, `docs/compatibility.md`, and `docs/conformance.md` before
 changing the generator or transport. Document technical contracts and reproducible
 setup without personal preferences, conversation history, or machine-specific account paths.
 Consult the source revisions in `docs/compatibility.md` when changing compatibility behavior.
