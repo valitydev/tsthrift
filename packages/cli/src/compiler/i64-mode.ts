@@ -1,4 +1,6 @@
-export type I64Mode = "number" | "bigint";
+import type { I64Mode } from "@vality/tsthrift";
+
+export type { I64Mode };
 
 export function parseI64Mode(value: unknown = "bigint"): I64Mode {
   if (value !== "number" && value !== "bigint") {

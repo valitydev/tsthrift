@@ -142,9 +142,7 @@ is retained solely in test devDependencies to cross-verify wire compatibility.
   legacy string declarations or Buffer methods need adaptation.
 - Unsafe integral IDL literals (> 53 bits) remain rejected because the IDL parser (`thrift-parser`) and JSON metadata AST cannot preserve 64-bit integers without precision loss. Runtime RPC values preserve the full 64-bit range via bigint.
 - Native codecs preserve struct-keyed maps directly.
-- Metadata fixtures and generated output have been verified; live form consumers,
-  decorated Angular services, Observable API compatibility, package publishing,
-  and production-service acceptance remain pending.
+- Metadata fixtures, generated output, Angular DI providers, and Observable clients have been verified across Angular 16 and 22; live production service deployment and downstream form-consumer acceptance remain pending.
 - Native UUID support operates with 16-byte fixed-width binary encoding (WireType 16) and RFC 4122 canonical string models. Native output is ESM-oriented.
 
 ## Development

@@ -149,7 +149,7 @@ const result = await client.process(data, {
 
 ## Woody Tracing
 
-The package includes built-in support for Woody tracing headers (`woody-trace-id`, `woody-span-id`, `woody-parent-id`):
+The package includes built-in support for Woody tracing headers (`x-woody-trace-id`, `x-woody-span-id`, `x-woody-parent-id`):
 
 ```ts
 import { createWoodyHeaderProvider, generateTraceId } from "@vality/tsthrift";
@@ -179,16 +179,19 @@ import {
 
 // Writing
 const writer = new BinaryWriter();
-writer.writeMessageBegin("ping", MessageType.CALL, 1);
-writer.writeStructBegin("ping_args");
+writer.writeMessageBegin("ping", MessageType.Call, 1);
+writer.writeFieldBegin(WireType.String, 1);
+writer.writeString("hello");
 writer.writeFieldStop();
-writer.writeStructEnd();
-writer.writeMessageEnd();
-const bytes = writer.toUint8Array();
+const bytes = writer.finish();
 
 // Reading
 const reader = new BinaryReader(bytes);
-const header = reader.readMessageBegin();
+const header = reader.readMessageBegin(); // { name: "ping", type: MessageType.Call, sequenceId: 1 }
+const field = reader.readFieldBegin(); // { type: WireType.String, id: 1 }
+const value = reader.readString(); // "hello"
+reader.skip(reader.readFieldBegin().type); // WireType.Stop
+reader.assertDone();
 ```
 
 ## License

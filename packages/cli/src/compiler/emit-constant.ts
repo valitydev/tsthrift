@@ -4,6 +4,7 @@ import { resolveType } from "./resolve-type.ts";
 import { constantReference, referenceName } from "./constant-reference.ts";
 import { emitScalarConstant } from "./emit-scalar-constant.ts";
 import type { I64Mode } from "./i64-mode.ts";
+import type { BinaryTargetType } from "./emit-models.ts";
 
 export function emitConstant(
   program: Program,
@@ -12,7 +13,7 @@ export function emitConstant(
   i64: I64Mode,
   scope = program,
   seen = new Set<string>(),
-  binary: "string" | "Uint8Array" = "string",
+  binary: BinaryTargetType = "string",
 ): string {
   const reference = referenceName(value);
   if (reference !== undefined) {

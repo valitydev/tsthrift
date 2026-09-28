@@ -115,11 +115,7 @@ and RFC 4122 string models.
 
 ## Limits and verification status
 
-The suite supplies `i64Mode` explicitly when invoking generated factories. This
-isolates wire conformance from the known factory-mode propagation defect. Binary
-runtime values are Uint8Array; the existing generated string declarations are
-still a release blocker. These tests do not establish correct TypeScript public
-types, live-browser behavior, Angular integration, or production-server acceptance.
+Generated models and runtime values use `Uint8Array` for binary data and bind the selected `i64Mode` into generated factories. Conformance tests verify serialization fidelity, processor argument decoding, and reply roundtrips against Java reference implementations. These tests focus on wire and protocol conformance, leaving production server deployment and end-to-end frontend integration to downstream consumer verification.
 
 Both reference variants have been executed and verified:
 

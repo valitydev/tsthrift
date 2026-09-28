@@ -1,6 +1,13 @@
 import { assertI64, numberToI64 } from "./i64.ts";
 import { parseUuid } from "./uuid.ts";
-import { assertInteger, assertMessageType, assertValueType, WireType } from "./wire.ts";
+import {
+  assertInteger,
+  assertMessageType,
+  assertValueType,
+  BINARY_VERSION_1,
+  DEFAULT_MAX_BYTES,
+  WireType,
+} from "./wire.ts";
 
 /** Writes unframed, big-endian Thrift Binary Protocol messages. */
 export class BinaryWriter {
@@ -8,7 +15,7 @@ export class BinaryWriter {
   private view: DataView;
   private offset = 0;
 
-  constructor(private readonly maxBytes = 16 * 1024 * 1024) {
+  constructor(private readonly maxBytes = DEFAULT_MAX_BYTES) {
     assertInteger(maxBytes, 1, 2147483647);
     this.bytes = new Uint8Array(Math.min(256, maxBytes));
     this.view = new DataView(this.bytes.buffer);
@@ -90,7 +97,7 @@ export class BinaryWriter {
 
   writeMessageBegin(name: string, type: number, sequenceId: number): void {
     assertMessageType(type);
-    this.writeI32(-2147418112 | type);
+    this.writeI32(BINARY_VERSION_1 | type);
     this.writeString(name);
     this.writeI32(sequenceId);
   }

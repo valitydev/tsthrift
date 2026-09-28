@@ -1,6 +1,7 @@
 import type { MetadataIndex } from "./index.ts";
 import type { I64Mode, ValueType } from "./types.ts";
 import { numberToI64 } from "../runtime/i64.ts";
+import { DEFAULT_MAX_DEPTH } from "../runtime/wire.ts";
 
 function reference(value: unknown): string[] | undefined {
   if (!value || typeof value !== "object" || !("=" in value)) return undefined;
@@ -21,7 +22,7 @@ export function evaluateDefault(
   seen = new Set<string>(),
   depth = 0,
 ): unknown {
-  if (depth > 64) throw new Error("Metadata default exceeds nesting limit");
+  if (depth >= DEFAULT_MAX_DEPTH) throw new Error("Metadata default exceeds nesting limit");
   const parts = reference(value)?.join(".").split(".");
   if (parts) {
     let owner = scope;

@@ -29,7 +29,7 @@ export type MetadataModule = Metadata[] | { default: Metadata[] };
 export type MetadataSource =
   | Metadata[]
   | Promise<MetadataModule>
-  | (() => Promise<MetadataModule> | MetadataModule);
+  | ((namespace?: string) => Promise<MetadataModule> | MetadataModule);
 
 import type { WoodyHeadersConfig } from "./woody.ts";
 

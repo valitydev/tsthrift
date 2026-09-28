@@ -1,16 +1,16 @@
 import type { BinaryReader } from "../runtime/binary-reader.ts";
 import type { BinaryWriter } from "../runtime/binary-writer.ts";
-import { WireType } from "../runtime/wire.ts";
+import { DEFAULT_MAX_DEPTH, WireType, type WireTypeValue } from "../runtime/wire.ts";
 
 /** Executable wire contract emitted by the compiler; no metadata lookup is needed. */
 export interface Codec<T = any> {
-  type: number;
+  type: WireTypeValue;
   read(reader: BinaryReader, depth?: number): T;
   write(writer: BinaryWriter, value: T, depth?: number): void;
 }
 
 export function nextDepth(depth = 0): number {
-  if (depth >= 64) throw new RangeError("Thrift value exceeds nesting limit");
+  if (depth >= DEFAULT_MAX_DEPTH) throw new RangeError("Thrift value exceeds nesting limit");
   return depth + 1;
 }
 

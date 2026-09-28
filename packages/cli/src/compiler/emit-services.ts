@@ -1,6 +1,7 @@
 import type { ValueType } from "@vality/tsthrift";
 import type { Program, Schema } from "./load-schema.ts";
 import type { I64Mode } from "./i64-mode.ts";
+import type { BinaryTargetType } from "./emit-models.ts";
 
 export interface EmittedServiceFile {
   programName: string;
@@ -9,7 +10,7 @@ export interface EmittedServiceFile {
   content: string;
 }
 
-function serviceTsType(type: ValueType, i64: I64Mode, binary: "string" | "Uint8Array"): string {
+function serviceTsType(type: ValueType, i64: I64Mode, binary: BinaryTargetType): string {
   if (typeof type !== "string") {
     if (type.name === "map")
       return `globalThis.Map<${serviceTsType(type.keyType, i64, binary)}, ${serviceTsType(type.valueType, i64, binary)}>`;
@@ -30,7 +31,7 @@ function serviceTsType(type: ValueType, i64: I64Mode, binary: "string" | "Uint8A
 export function emitProgramServices(
   program: Program,
   i64: I64Mode = "bigint",
-  binary: "string" | "Uint8Array" = "Uint8Array",
+  binary: BinaryTargetType = "Uint8Array",
 ): EmittedServiceFile[] {
   const files: EmittedServiceFile[] = [];
   const services = program.ast.service ?? {};

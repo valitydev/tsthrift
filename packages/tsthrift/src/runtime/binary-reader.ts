@@ -1,7 +1,18 @@
 import { i64ToNumber } from "./i64.ts";
 import { skipValue } from "./skip-value.ts";
 import { formatUuid } from "./uuid.ts";
-import { assertInteger, assertMessageType, assertValueType, WireType } from "./wire.ts";
+import {
+  assertInteger,
+  assertMessageType,
+  assertValueType,
+  BINARY_VERSION_1,
+  BINARY_VERSION_MASK,
+  DEFAULT_MAX_BYTES,
+  DEFAULT_MAX_COLLECTION_SIZE,
+  DEFAULT_MAX_DEPTH,
+  WireType,
+  type WireTypeValue,
+} from "./wire.ts";
 
 export interface BinaryReaderOptions {
   maxBytes?: number;
@@ -22,9 +33,9 @@ export class BinaryReader {
     private readonly bytes: Uint8Array,
     options: BinaryReaderOptions = {},
   ) {
-    const maxBytes = options.maxBytes ?? 16 * 1024 * 1024;
-    this.maxCollectionSize = options.maxCollectionSize ?? 1_000_000;
-    this.maxSkipDepth = options.maxSkipDepth ?? 64;
+    const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
+    this.maxCollectionSize = options.maxCollectionSize ?? DEFAULT_MAX_COLLECTION_SIZE;
+    this.maxSkipDepth = options.maxSkipDepth ?? DEFAULT_MAX_DEPTH;
     this.strictRead = options.strictRead ?? true;
     assertInteger(maxBytes, 1, 2147483647);
     assertInteger(this.maxCollectionSize, 0, 2147483647);
@@ -92,7 +103,8 @@ export class BinaryReader {
     let name: string;
     let type: number;
     if (header < 0) {
-      if ((header & -65536) !== -2147418112) throw new Error("Unsupported binary protocol version");
+      if ((header & BINARY_VERSION_MASK) !== BINARY_VERSION_1)
+        throw new Error("Unsupported binary protocol version");
       type = header & 255;
       name = this.readString();
     } else {
@@ -105,11 +117,11 @@ export class BinaryReader {
     return { name, type, sequenceId: this.readI32() };
   }
 
-  readFieldBegin(): { type: number; id: number } {
+  readFieldBegin(): { type: WireTypeValue; id: number } {
     const type = this.readByte();
     if (type === WireType.Stop) return { type, id: 0 };
     assertValueType(type);
-    return { type, id: this.readI16() };
+    return { type: type as WireTypeValue, id: this.readI16() };
   }
 
   private readSize(): number {
@@ -118,18 +130,22 @@ export class BinaryReader {
     return size;
   }
 
-  readMapBegin(): { keyType: number; valueType: number; size: number } {
+  readMapBegin(): { keyType: WireTypeValue; valueType: WireTypeValue; size: number } {
     const keyType = this.readByte();
     const valueType = this.readByte();
     assertValueType(keyType);
     assertValueType(valueType);
-    return { keyType, valueType, size: this.readSize() };
+    return {
+      keyType: keyType as WireTypeValue,
+      valueType: valueType as WireTypeValue,
+      size: this.readSize(),
+    };
   }
 
-  readCollectionBegin(): { elementType: number; size: number } {
+  readCollectionBegin(): { elementType: WireTypeValue; size: number } {
     const elementType = this.readByte();
     assertValueType(elementType);
-    return { elementType, size: this.readSize() };
+    return { elementType: elementType as WireTypeValue, size: this.readSize() };
   }
 
   skip(type: number): void {

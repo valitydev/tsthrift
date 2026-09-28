@@ -4,6 +4,7 @@ import * as scalar from "../codecs/scalar.ts";
 import { list, map, set } from "../codecs/collections.ts";
 import { struct, type WireField } from "../codecs/struct.ts";
 import { evaluateDefault } from "./defaults.ts";
+import { DEFAULT_MAX_DEPTH } from "../runtime/wire.ts";
 
 /** Resolves metadata once and retains recursive codec identities for this schema. */
 export class MetadataCodecs {
@@ -15,7 +16,7 @@ export class MetadataCodecs {
   ) {}
 
   type(type: ValueType, namespace: string, depth = 0): scalar.Codec {
-    if (depth > 64) throw new Error("Metadata type exceeds nesting limit");
+    if (depth >= DEFAULT_MAX_DEPTH) throw new Error("Metadata type exceeds nesting limit");
     const resolved = this.index.resolveType(type, namespace);
     if (resolved.kind === "primitive") {
       switch (resolved.type) {

@@ -1,7 +1,7 @@
 import type { BinaryReader } from "./binary-reader.ts";
-import { WireType } from "./wire.ts";
+import { WireType, type WireTypeValue } from "./wire.ts";
 
-const widths: Readonly<Record<number, number>> = {
+const widths: Readonly<Partial<Record<WireTypeValue, number>>> = {
   [WireType.Bool]: 1,
   [WireType.Byte]: 1,
   [WireType.I16]: 2,
@@ -13,7 +13,7 @@ const widths: Readonly<Record<number, number>> = {
 
 export function skipValue(reader: BinaryReader, type: number, depth: number): void {
   if (depth <= 0) throw new RangeError("Maximum skip depth exceeded");
-  const width = widths[type];
+  const width = widths[type as WireTypeValue];
   if (width !== undefined) {
     reader.skipBytes(width);
   } else if (type === WireType.String) {
