@@ -81,7 +81,6 @@ test.each(["bigint", "number"] as const)(
         input,
         output,
         i64,
-        namespaces: ["example"],
         metadataJson: true,
       });
       const compiled = path.join(directory, "compiled");

@@ -1,4 +1,4 @@
-import { readFile, readdir, realpath } from "node:fs/promises";
+import { glob, lstat, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import parse from "thrift-parser";
 import type { Metadata, ThriftAst } from "@vality/tsthrift";
@@ -13,21 +13,69 @@ export interface Schema {
   programs: Program[];
 }
 
+async function resolveInputFiles(input: string | string[]): Promise<string[]> {
+  const patterns = Array.isArray(input) ? input : [input];
+  const matched = new Set<string>();
+
+  for (const pattern of patterns) {
+    let stat;
+    try {
+      stat = await lstat(pattern);
+    } catch {
+      // not a direct file/directory path as-is, treat as glob
+    }
+
+    if (stat?.isDirectory()) {
+      for await (const file of glob(path.join(pattern, "**", "*.thrift"))) {
+        matched.add(await realpath(file));
+      }
+    } else if (stat?.isFile()) {
+      if (pattern.endsWith(".thrift")) {
+        matched.add(await realpath(pattern));
+      }
+    } else {
+      let found = false;
+      for await (const file of glob(pattern)) {
+        if (file.endsWith(".thrift")) {
+          matched.add(await realpath(file));
+          found = true;
+        }
+      }
+      if (!found && !pattern.includes("*") && !pattern.includes("?")) {
+        throw new Error(`Input file not found: ${pattern}`);
+      }
+    }
+  }
+
+  const files = [...matched].sort();
+  if (!files.length) {
+    const display = Array.isArray(input) ? input.join(", ") : input;
+    throw new Error(`No Thrift inputs found for: ${display}`);
+  }
+  return files;
+}
+
 export async function loadSchema(
-  input: string,
-  includeRoots: string[],
-  namespaces?: string[],
+  input: string | string[],
+  includeRoots: string[] = [],
   allowDuplicateModules?: boolean,
 ): Promise<Schema> {
-  const root = await realpath(input);
+  const inputFiles = await resolveInputFiles(input);
+  const explicitDirs: string[] = [];
+  for (const p of Array.isArray(input) ? input : [input]) {
+    try {
+      const s = await lstat(p);
+      if (s.isDirectory()) explicitDirs.push(await realpath(p));
+    } catch {}
+  }
+
   const searchRoots = [
-    root,
-    ...(await Promise.all(includeRoots.map((directory) => realpath(directory)))),
+    ...new Set([
+      ...explicitDirs,
+      ...inputFiles.map((file) => path.dirname(file)),
+      ...(await Promise.all(includeRoots.map((dir) => realpath(dir)))),
+    ]),
   ];
-  const entries = await readdir(root, { withFileTypes: true });
-  const files = entries.filter((entry) => entry.isFile() && entry.name.endsWith(".thrift"));
-  const names = namespaces ?? files.map((file) => path.basename(file.name, ".thrift"));
-  if (!names.length) throw new Error(`No Thrift inputs found in ${root}`);
   const programs = new Map<string, Program>();
   const filenames = new Map<string, string>();
   const visiting = new Set<string>();
@@ -66,7 +114,7 @@ export async function loadSchema(
           searchRoots.find((directory) => {
             const relative = path.relative(directory, filename);
             return !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
-          }) ?? root,
+          }) ?? path.dirname(filename),
           filename,
         )
         .split(path.sep)
@@ -97,10 +145,9 @@ export async function loadSchema(
   }
 
   const roots: Program[] = [];
-  for (const name of [...new Set(names)].sort()) {
-    const entry = files.find((file) => file.name === `${name}.thrift`);
-    if (!entry) throw new Error(`Unknown input namespace ${name} in ${root}`);
-    roots.push(await visit(path.join(root, entry.name)));
+  for (const file of inputFiles) {
+    roots.push(await visit(file));
   }
+  roots.sort((a, b) => a.name.localeCompare(b.name));
   return { roots, programs: [...programs.values()].sort((a, b) => a.path.localeCompare(b.path)) };
 }

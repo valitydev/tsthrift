@@ -3,16 +3,15 @@ import { parseArgs } from "node:util";
 import { generate } from "./compiler/generate.ts";
 import { parseI64Mode } from "./compiler/i64-mode.ts";
 
-const help = `Usage: tsthrift --input <directory> [options]
+const help = `Usage: tsthrift --input <path/glob> [options]
 
 Generate metadata, TypeScript models, and service factories.
 
-  -i, --input            Directory containing entry .thrift files
+  -i, --input            Thrift file, directory, or glob pattern (repeatable)
   -o, --output           Generated TypeScript source directory (default: generated)
       --bundle           Compile and bundle generated TypeScript into distribution directory
   -d, --dist             Bundle output directory (default: dist)
   -I, --include          Additional include root (repeatable)
-  -n, --namespace        Entry filename without .thrift (repeatable; default: all)
       --no-models        Generate only metadata.json without models or services
       --no-services      Generate models and metadata without service factories
       --metadata-json    Emit monolithic metadata.json in output directory
@@ -22,14 +21,14 @@ Generate metadata, TypeScript models, and service factories.
 `;
 
 try {
-  const { values } = parseArgs({
+  const { values, positionals } = parseArgs({
+    allowPositionals: true,
     options: {
-      input: { type: "string", short: "i" },
+      input: { type: "string", short: "i", multiple: true },
       output: { type: "string", short: "o" },
       bundle: { type: "boolean" },
       dist: { type: "string", short: "d" },
       include: { type: "string", short: "I", multiple: true },
-      namespace: { type: "string", short: "n", multiple: true },
       "no-models": { type: "boolean" },
       "no-services": { type: "boolean" },
       "metadata-json": { type: "boolean" },
@@ -40,16 +39,16 @@ try {
   });
   if (values.help) console.log(help);
   else {
-    if (!values.input) throw new Error("--input is required. Use --help for usage.");
+    const inputs = [...(values.input ?? []), ...positionals];
+    if (!inputs.length) throw new Error("--input is required. Use --help for usage.");
     const models = values["no-models"] ? false : true;
     const services = values["no-services"] ? false : undefined;
     const result = await generate({
-      input: values.input,
+      input: inputs.length === 1 ? inputs[0]! : inputs,
       output: values.output,
       bundle: values.bundle,
       dist: values.dist,
       includes: values.include,
-      namespaces: values.namespace,
       models,
       services,
       metadataJson: values["metadata-json"],

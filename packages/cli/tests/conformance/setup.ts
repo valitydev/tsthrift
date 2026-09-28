@@ -221,9 +221,8 @@ export async function prepareConformance(directory: string) {
     const output = path.join(directory, i64);
     await generate({ input, includes: [proto], output, i64 });
     await generate({
-      input: proto,
+      input: path.join(proto, "domain_config_v2.thrift"),
       output: path.join(output, "damsel"),
-      namespaces: ["domain_config_v2"],
       i64,
     });
     await run(process.execPath, [tsc, "-p", path.join(output, "tsconfig.json")]);

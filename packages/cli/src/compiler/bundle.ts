@@ -6,7 +6,7 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 
 export interface BundleOptions {
-  entry: string;
+  entry: string | string[];
   outDir: string;
   tsconfig?: string;
   cwd?: string;
@@ -32,12 +32,13 @@ async function hasPackageJson(startDir: string): Promise<boolean> {
  * Bundles the generated TypeScript library using Vite+ Pack (vp pack).
  */
 export async function bundleOutput(options: BundleOptions): Promise<void> {
-  const args = ["pack", options.entry, "--dts", "--minify", "--out-dir", options.outDir];
+  const entries = Array.isArray(options.entry) ? options.entry : [options.entry];
+  const args = ["pack", ...entries, "--dts", "--minify", "--out-dir", options.outDir];
   if (options.tsconfig) {
     args.push("--tsconfig", options.tsconfig);
   }
 
-  const cwd = options.cwd ?? path.dirname(options.entry);
+  const cwd = options.cwd ?? path.dirname(entries[0]!);
   const hasPkg = await hasPackageJson(cwd);
   const tempPkg = path.join(cwd, "package.json");
   let createdTempPkg = false;

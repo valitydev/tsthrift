@@ -16,15 +16,13 @@ async function source(text: string) {
   const directory = await mkdtemp(path.join(tmpdir(), "tsthrift-schema-"));
   directories.push(directory);
   await writeFile(path.join(directory, "test.thrift"), text);
-  return loadSchema(directory, [], ["test"]);
+  return loadSchema(directory, []);
 }
 
 test("loads only selected inputs and reachable includes, preserving legacy metadata", async () => {
-  const schema = await loadSchema(
-    path.join(fixtures, "proto"),
-    [path.join(fixtures, "dependency")],
-    ["example"],
-  );
+  const schema = await loadSchema(path.join(fixtures, "proto", "example.thrift"), [
+    path.join(fixtures, "dependency"),
+  ]);
   validateSchema(schema);
   expect(schema.programs.map((program) => program.name).sort()).toEqual(["common", "example"]);
   const program = schema.roots[0]!;
@@ -105,12 +103,12 @@ test("shadows duplicate module when allowDuplicateModules is true (first-wins)",
   );
 
   // Without flag: throws Duplicate module name
-  await expect(loadSchema(directory, [], ["entry"])).rejects.toThrow(
+  await expect(loadSchema(path.join(directory, "entry.thrift"), [])).rejects.toThrow(
     /Duplicate module name shared/,
   );
 
   // With allowDuplicateModules: shadows second with first (first-wins)
-  const schema = await loadSchema(directory, [], ["entry"], true);
+  const schema = await loadSchema(path.join(directory, "entry.thrift"), [], true);
   expect(schema.programs.map((p) => p.name).sort()).toEqual(["dep1", "dep2", "entry", "shared"]);
   const sharedProgram = schema.programs.find((p) => p.name === "shared");
   expect(sharedProgram?.ast.struct?.SharedA).toBeDefined();

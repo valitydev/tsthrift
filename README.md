@@ -71,14 +71,12 @@ vp run build
 node packages/cli/dist/cli.mjs --input ./proto
 ```
 
-By default, the CLI generates TypeScript models/interfaces (`models/`), modular metadata (`metadata/`), and universal service factories (`services/`) into `./generated` (configurable via `-o, --output`).
+By default, the CLI generates TypeScript models/interfaces (`models/`), modular metadata (`metadata/`), universal service factories (`services/`), and per-namespace entry points into `./generated` (configurable via `-o, --output`).
 
-Pass `--bundle` to compile the generated sources into an optimized, minified distribution bundle (`index.mjs` and `index.d.mts`) in `./dist` (configurable via `-d, --dist`).
+Pass `--bundle` to compile the generated sources into an optimized, minified distribution bundle with subpath exports (`index.mjs`, `<namespace>.mjs`, and `.d.mts` declarations) in `./dist` (configurable via `-d, --dist`).
 Pass `--metadata-json` to also emit monolithic `metadata.json`, `--no-models` to generate only metadata without models or services, or `--no-services` to skip service factories.
 
-Repeat `--include` for include roots and `--namespace` for entry filenames without
-`.thrift`. Without `--namespace`, all top-level IDL files are entries. Only reachable
-includes are loaded. `--i64 number` selects safe numeric values instead of bigint.
+Input (`-i, --input`) supports directories, specific files, or glob patterns (e.g. `--input "proto/**/*.thrift"`). Repeat `--include` for additional include roots. `--i64 number` selects safe numeric values instead of bigint.
 Pass `--allow-duplicate-modules` to allow duplicate module basenames across include directories using first-wins shadowing.
 
 Use a dedicated output directory. Generation stages output and preserves previous
@@ -86,31 +84,32 @@ artifacts on failure.
 
 ## Protocol package configuration (package.json)
 
-For protocol repositories (such as `@vality/damsel` or service schema packages) that contain `.thrift` specifications and distribute generated TypeScript models/clients, configure `package.json` at the root of the repository:
+For protocol repositories that contain `.thrift` specifications and distribute generated TypeScript models/clients, configure `package.json` at the root of the repository:
 
 ```json
 {
-  "name": "@vality/damsel",
+  "name": "sample-proto",
   "version": "1.0.0",
   "type": "module",
+  "scripts": {
+    "codegen": "tsthrift --input \"proto/**/*.thrift\" --bundle"
+  },
   "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
-      "import": "./dist/index.mjs",
-      "default": "./dist/index.mjs"
+      "import": "./dist/index.mjs"
+    },
+    "./*": {
+      "types": "./dist/*.d.mts",
+      "import": "./dist/*.mjs"
     },
     "./proto/*": "./proto/*",
     "./package.json": "./package.json"
   },
   "files": ["dist", "proto"],
-  "scripts": {
-    "generate": "tsthrift --input ./proto --bundle",
-    "build": "npm run generate",
-    "prepack": "npm run build"
-  },
   "dependencies": {
     "@vality/tsthrift": "^1.0.0"
   },

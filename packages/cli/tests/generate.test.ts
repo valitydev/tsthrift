@@ -45,7 +45,15 @@ test.each(["number", "bigint"] as const)(
     expect(result.modules.sort()).toEqual(["common", "example"]);
 
     const files = await readdir(options.output);
-    expect(files.sort()).toEqual(["index.ts", "metadata", "models", "services", "tsconfig.json"]);
+    expect(files.sort()).toEqual([
+      "common.ts",
+      "example.ts",
+      "index.ts",
+      "metadata",
+      "models",
+      "services",
+      "tsconfig.json",
+    ]);
 
     const modelsDir = path.join(options.output, "models");
     const modelFiles = await readdir(modelsDir);
@@ -77,13 +85,21 @@ test.each(["number", "bigint"] as const)(
     }
 
     const indexContent = await readFile(path.join(options.output, "index.ts"), "utf8");
-    expect(indexContent).toContain('export * as common from "./models/common.js";');
-    expect(indexContent).toContain('export * as example from "./models/example.js";');
-    expect(indexContent).toContain('export * as services from "./services/index.js";');
-    expect(indexContent).toContain('export * from "./services/services.js";');
+    expect(indexContent).toContain('export * as common from "./common.js";');
+    expect(indexContent).toContain('export * as example from "./example.js";');
+    expect(indexContent).toContain(
+      'export { SERVICES, SERVICES_LIST } from "./services/services.js";',
+    );
     expect(indexContent).toContain('export { loadMetadata } from "./metadata/index.js";');
     expect(indexContent).not.toContain("generateId");
     expect(indexContent).not.toContain("generateTraceId");
+
+    const commonEntry = await readFile(path.join(options.output, "common.ts"), "utf8");
+    expect(commonEntry).toContain('export * from "./models/common.js";');
+
+    const exampleEntry = await readFile(path.join(options.output, "example.ts"), "utf8");
+    expect(exampleEntry).toContain('export * from "./models/example.js";');
+    expect(exampleEntry).toContain('export * from "./services/example/index.js";');
 
     const commonMeta = await readFile(path.join(options.output, "metadata/common.ts"), "utf8");
     expect(commonMeta).toContain('"path": "shared/common.thrift"');
@@ -100,7 +116,14 @@ test("generates models without service factories when services: false is passed"
   expect(result.services).toBe(false);
 
   const files = await readdir(options.output);
-  expect(files.sort()).toEqual(["index.ts", "metadata", "models", "tsconfig.json"]);
+  expect(files.sort()).toEqual([
+    "common.ts",
+    "example.ts",
+    "index.ts",
+    "metadata",
+    "models",
+    "tsconfig.json",
+  ]);
   expect(files).not.toContain("services");
 });
 
@@ -179,8 +202,6 @@ test("CLI supports --no-services and --metadata-json", async () => {
     options.output,
     "--include",
     options.includes[0]!,
-    "--namespace",
-    "example",
     "--metadata-json",
   ]);
 
@@ -216,9 +237,11 @@ test("supports --allow-duplicate-modules in CLI and generate()", async () => {
   // Without flag it throws
   await expect(
     generate({
-      input: options.input,
+      input: [
+        path.join(options.input, "client_a.thrift"),
+        path.join(options.input, "client_b.thrift"),
+      ],
       output: options.output,
-      namespaces: ["client_a", "client_b"],
     }),
   ).rejects.toThrow(/Duplicate module name shadowed/);
 
@@ -226,13 +249,11 @@ test("supports --allow-duplicate-modules in CLI and generate()", async () => {
   const result = await execute(process.execPath, [
     path.resolve(import.meta.dirname, "../src/cli.ts"),
     "--input",
-    options.input,
+    path.join(options.input, "client_a.thrift"),
+    "--input",
+    path.join(options.input, "client_b.thrift"),
     "--output",
     options.output,
-    "--namespace",
-    "client_a",
-    "--namespace",
-    "client_b",
     "--allow-duplicate-modules",
   ]);
 
@@ -288,7 +309,7 @@ test("bundles output into dist/ with minification by default when bundle: true",
   expect(indexContent.trim().split("\n")).toHaveLength(1);
 });
 
-test("CLI supports --bundle and --dist flags", async () => {
+test("CLI supports --bundle and --dist flags with subpath exports", async () => {
   const options = await setup();
   const dist = path.join(options.output, "../dist");
   const result = await execute(process.execPath, [
@@ -299,8 +320,6 @@ test("CLI supports --bundle and --dist flags", async () => {
     options.output,
     "--include",
     options.includes[0]!,
-    "--namespace",
-    "example",
     "--bundle",
     "--dist",
     dist,
@@ -311,6 +330,23 @@ test("CLI supports --bundle and --dist flags", async () => {
   const distFiles = await readdir(dist);
   expect(distFiles).toContain("index.mjs");
   expect(distFiles).toContain("index.d.mts");
+  expect(distFiles).toContain("common.mjs");
+  expect(distFiles).toContain("common.d.mts");
+  expect(distFiles).toContain("example.mjs");
+  expect(distFiles).toContain("example.d.mts");
+});
+
+test("CLI and generate() support glob patterns for input", async () => {
+  const options = await setup();
+  const globInput = path.join(options.input, "*.thrift");
+  const result = await generate({
+    ...options,
+    input: globInput,
+  });
+  expect(result.modules.sort()).toEqual(["common", "example"]);
+  const files = await readdir(options.output);
+  expect(files).toContain("example.ts");
+  expect(files).toContain("common.ts");
 });
 
 test("CLI defaults output to generated and requires only --input", async () => {
