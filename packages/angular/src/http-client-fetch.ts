@@ -1,3 +1,5 @@
+import { firstValueFrom, fromEvent, mergeMap, takeUntil, throwError } from "rxjs";
+
 export interface AngularHttpClientLike {
   request(
     method: string,
@@ -11,64 +13,45 @@ export interface AngularHttpClientLike {
   ): any;
 }
 
-/**
- * Adapts an Angular HttpClient instance to standard fetch API for Thrift transports.
- */
+function toResponse(res: any, body: BodyInit | null): Response {
+  const headers = new Headers();
+  for (const key of res.headers?.keys() ?? []) {
+    const value = res.headers.get(key);
+    if (value !== null) headers.set(key, value);
+  }
+  return new Response([204, 205, 304].includes(res.status) ? null : body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers,
+  });
+}
+
+/** Adapts Angular HTTP binary requests, cancellation, and backend errors to fetch semantics. */
 export function createHttpClientFetch(httpClient: AngularHttpClientLike): typeof fetch {
   return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-
-    const headersRecord: Record<string, string> = {};
-    if (init?.headers) {
-      new Headers(init.headers).forEach((value, key) => {
-        headersRecord[key] = value;
-      });
-    }
-
-    const response$ = httpClient.request("POST", url, {
-      body: init?.body,
-      headers: headersRecord,
+    const request = new Request(input, init);
+    request.signal.throwIfAborted();
+    // Angular serializes typed arrays as JSON; ArrayBuffer is its raw binary body type.
+    const body = request.body ? await request.arrayBuffer() : undefined;
+    request.signal.throwIfAborted();
+    const response$ = httpClient.request(request.method, request.url, {
+      body,
+      headers: Object.fromEntries(request.headers),
       responseType: "arraybuffer",
       observe: "response",
     });
-
-    if (init?.signal?.aborted) {
-      throw init.signal.reason ?? new DOMException("The operation was aborted", "AbortError");
-    }
-
-    return new Promise<Response>((resolve, reject) => {
-      const sub = response$.subscribe({
-        next: (res: any) => {
-          const responseHeaders = new Headers();
-          if (res.headers && typeof res.headers.keys === "function") {
-            for (const key of res.headers.keys()) {
-              const val = res.headers.get(key);
-              if (val) responseHeaders.set(key, val);
-            }
-          }
-          resolve(
-            new Response(res.body ?? new Uint8Array(), {
-              status: res.status,
-              statusText: res.statusText,
-              headers: responseHeaders,
-            }),
-          );
-        },
-        error: (err: unknown) => reject(err),
-      });
-
-      if (init?.signal) {
-        init.signal.addEventListener(
-          "abort",
-          () => {
-            sub.unsubscribe();
-            reject(
-              init.signal?.reason ?? new DOMException("The operation was aborted", "AbortError"),
-            );
-          },
-          { once: true },
-        );
+    const abort$ = fromEvent(request.signal, "abort").pipe(
+      mergeMap(() => throwError(() => request.signal.reason)),
+    );
+    try {
+      const response = await firstValueFrom<any>(response$.pipe(takeUntil(abort$)));
+      return toResponse(response, response.body ?? null);
+    } catch (error: any) {
+      if (request.signal.aborted) throw request.signal.reason;
+      if (error?.status >= 200 && error.status <= 599) {
+        return toResponse(error, error.error ?? null);
       }
-    });
+      throw error;
+    }
   };
 }

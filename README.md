@@ -71,9 +71,9 @@ vp run build
 node packages/cli/dist/cli.mjs --input ./proto
 ```
 
-By default, the CLI generates TypeScript models/interfaces (`models/`), modular metadata (`metadata/`), universal service factories (`services/`), and per-namespace entry points into `./generated` (configurable via `-o, --output`).
+By default, the CLI generates TypeScript models/interfaces (`<namespace>/models.ts`), modular metadata (`<namespace>/metadata.ts`), universal service factories (`<namespace>/services/`), and per-namespace entry points into `./generated` (configurable via `-o, --output`).
 
-Pass `--bundle` to compile the generated sources into an optimized, minified distribution bundle with subpath exports (`index.mjs`, `<namespace>.mjs`, and `.d.mts` declarations) in `./dist` (configurable via `-d, --dist`).
+Pass `--bundle` to compile the generated sources into an optimized, minified distribution bundle with subpath exports (`index.mjs`, `<namespace>/index.mjs`, and `.d.mts` declarations) in `./dist` (configurable via `-d, --dist`).
 Pass `--metadata-json` to also emit monolithic `metadata.json`, `--no-models` to generate only metadata without models or services, or `--no-services` to skip service factories.
 
 Input (`-i, --input`) supports directories, specific files, or glob patterns (e.g. `--input "proto/**/*.thrift"`). Repeat `--include` for additional include roots. `--i64 number` selects safe numeric values instead of bigint.
@@ -92,7 +92,9 @@ For protocol repositories that contain `.thrift` specifications and distribute g
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "codegen": "tsthrift --input \"proto/**/*.thrift\" --bundle"
+    "codegen": "tsthrift-cli --input \"proto/**/*.thrift\" --bundle",
+    "build": "npm run codegen",
+    "prepack": "npm run build"
   },
   "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
@@ -103,8 +105,8 @@ For protocol repositories that contain `.thrift` specifications and distribute g
       "import": "./dist/index.mjs"
     },
     "./*": {
-      "types": "./dist/*.d.mts",
-      "import": "./dist/*.mjs"
+      "types": "./dist/*/index.d.mts",
+      "import": "./dist/*/index.mjs"
     },
     "./proto/*": "./proto/*",
     "./package.json": "./package.json"
@@ -114,12 +116,14 @@ For protocol repositories that contain `.thrift` specifications and distribute g
     "@vality/tsthrift": "^1.0.0"
   },
   "devDependencies": {
-    "@vality/tsthrift-cli": "^1.0.0"
+    "@vality/tsthrift-cli": "^1.0.0",
+    "vite-plus": "^0.3.0",
+    "typescript": "^7.0.2"
   }
 }
 ```
 
-When running `npm run build`, `tsthrift` generates clean source code in `./generated` and compiles the standalone bundle with declaration files into `./dist`, ready for publishing or referencing as a package dependency.
+When running `npm run build`, `tsthrift-cli` generates clean source code in `./generated` and compiles the standalone bundle with declaration files into `./dist`, ready for publishing or referencing as a package dependency.
 
 ## Native clients and wire contracts
 
@@ -134,8 +138,8 @@ is retained solely in test devDependencies to cross-verify wire compatibility.
 
 ## Compatibility limits
 
-- Native binary uses Uint8Array. Model generation retains the historical
-  string declaration; consumers using strings or Buffer methods need adaptation.
+- Binary models, constants, and runtime values use Uint8Array. Consumers using
+  legacy string declarations or Buffer methods need adaptation.
 - Unsafe integral IDL literals remain rejected because the legacy parser cannot
   preserve their exact values in metadata.
 - Native codecs preserve struct-keyed maps directly.
@@ -162,3 +166,17 @@ without Node globals or runtime code generation.
 - [Binary runtime](docs/runtime.md)
 - [Latest Damsel binary conformance](docs/conformance.md)
 - [Release readiness audit](docs/release-audit.md)
+
+## Output ownership and bundling
+
+Use separate dedicated directories for generated sources and bundles. Each output
+contains `.tsthrift.json`, listing generated files. Regeneration refuses unowned
+nonempty directories, symbolic links, and additional handwritten files. Outputs
+from earlier versions without a manifest must be moved aside before regeneration.
+Compile sources into a separate directory; do not emit JS beside generated TS.
+
+`--bundle` requires local `vite-plus` and `typescript` installations. It builds
+only generated entries, ignores consumer Vite configuration, and leaves the
+consumer package manifest unchanged. Source and bundle paths must not overlap.
+The package recipe uses example versions; select the published tsthrift versions
+when installing dependencies.

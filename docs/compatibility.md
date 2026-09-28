@@ -110,8 +110,8 @@ missing results, malformed correlation/type, trailing bytes, real loopback HTTP,
 concurrent calls, cancellation, and timeout.
 
 Vite browser output is executed in an isolated JS context without Buffer or
-process. This verifies bundling and execution without Node globals; live browser
-and framework acceptance remain pending.
+process. This verifies bundling and execution without Node globals; live Chromium fetch/Angular XHR smoke tests are tracked in [release audit](release-audit.md).
+Application/form-consumer acceptance remains pending.
 
 Damsel revision `8d6174bddedc6d9aefa407fdc1d54877b8686ff9` was verified in the conformance
 suite against both Vality 0.20.1 and Apache 0.24.0 references. It was also generated from entries

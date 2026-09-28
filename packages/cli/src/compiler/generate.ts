@@ -1,10 +1,12 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { loadSchema } from "./load-schema.ts";
+import { validateOutput } from "./validate-output.ts";
 import { validateSchema } from "./validate-schema.ts";
 import { emitModels } from "./emit-models.ts";
 import { emitProgramServices, emitProgramIndex, emitServicesRegistry } from "./emit-services.ts";
 import { emitMetadata } from "../metadata/emit-metadata.ts";
+import { canonicalOutputPath, validateOwnedOutput } from "./output-ownership.ts";
 import { publishOutput } from "./publish-output.ts";
 import { emitModuleMetadata, emitMetadataLoader } from "../metadata/emit-split-metadata.ts";
 import { parseI64Mode } from "./i64-mode.ts";
@@ -47,13 +49,33 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
   const i64 = parseI64Mode(options.i64);
 
   const schema = await loadSchema(input, includes, options.allowDuplicateModules);
+  const canonicalOutput = await canonicalOutputPath(output);
+  const canonicalDist = options.bundle ? await canonicalOutputPath(dist) : dist;
   for (const program of schema.programs) {
-    const relative = path.relative(output, program.filename);
+    const relative = path.relative(canonicalOutput, program.filename);
     if (!relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative)) {
       throw new Error(`Output would contain input source: ${program.filename}`);
     }
   }
   validateSchema(schema);
+  if (shouldEmitModels) validateOutput(schema, shouldEmitServices);
+  if (options.bundle && !shouldEmitModels) throw new Error("--bundle requires models");
+  if (options.bundle) {
+    const overlaps = (a: string, b: string) => {
+      const relative = path.relative(a, b);
+      return (
+        relative === "" ||
+        (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative))
+      );
+    };
+    if (overlaps(canonicalOutput, canonicalDist) || overlaps(canonicalDist, canonicalOutput))
+      throw new Error("Source and bundle output directories must not overlap");
+    if (schema.programs.some((program) => overlaps(canonicalDist, program.filename)))
+      throw new Error("Bundle output would contain input source");
+  }
+
+  await validateOwnedOutput(output);
+  if (options.bundle) await validateOwnedOutput(dist);
 
   const models = shouldEmitModels
     ? schema.programs.map((program) => ({
@@ -66,6 +88,7 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
     shouldEmitServices &&
     schema.programs.some((p) => p.ast.service && Object.keys(p.ast.service).length > 0);
 
+  const isBundled = Boolean(options.bundle && shouldEmitModels);
   await publishOutput(output, async (staging) => {
     if (shouldEmitModels) {
       for (const program of schema.programs) {
@@ -143,23 +166,21 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
     if (shouldEmitMetadataJson) {
       await writeFile(path.join(staging, "metadata.json"), emitMetadata(schema));
     }
-  });
-
-  const isBundled = Boolean(options.bundle && shouldEmitModels);
-  if (isBundled) {
-    const entries = [
-      path.join(output, "index.ts"),
-      ...schema.programs.map((p) => path.join(output, p.name, "index.ts")),
-    ];
-    await publishOutput(dist, async (stagingDist) => {
-      await bundleOutput({
-        entry: entries,
-        outDir: stagingDist,
-        tsconfig: path.join(output, "tsconfig.json"),
-        cwd: path.dirname(output),
+    if (isBundled) {
+      const entries = [
+        path.join(staging, "index.ts"),
+        ...schema.programs.map((p) => path.join(staging, p.name, "index.ts")),
+      ];
+      await publishOutput(dist, async (stagingDist) => {
+        await bundleOutput({
+          entry: entries,
+          outDir: stagingDist,
+          tsconfig: path.join(staging, "tsconfig.json"),
+          cwd: path.dirname(output),
+        });
       });
-    });
-  }
+    }
+  });
 
   return {
     i64,

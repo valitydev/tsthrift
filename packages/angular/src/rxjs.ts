@@ -1,4 +1,5 @@
 import { map, Observable, type OperatorFunction } from "rxjs";
+import { createObservableMethod } from "./observable-method.ts";
 import type { RequestOptions, ThriftResult } from "@vality/tsthrift";
 
 /**
@@ -21,79 +22,6 @@ export function unwrapResult<TData, TError = unknown>(): OperatorFunction<
     );
 }
 
-function combineSignals(a?: AbortSignal, b?: AbortSignal): AbortSignal | undefined {
-  if (!a) return b;
-  if (!b) return a;
-  if ("any" in AbortSignal && typeof (AbortSignal as any).any === "function") {
-    return (AbortSignal as any).any([a, b]);
-  }
-  const controller = new AbortController();
-  const onAbort = () => controller.abort(a.aborted ? a.reason : b.reason);
-  if (a.aborted || b.aborted) {
-    onAbort();
-    return controller.signal;
-  }
-  a.addEventListener("abort", onAbort, { once: true });
-  b.addEventListener("abort", onAbort, { once: true });
-  return controller.signal;
-}
-
-function createObservableMethod(
-  target: any,
-  method: (...args: unknown[]) => Promise<unknown>,
-  unwrap: boolean,
-) {
-  return (...args: unknown[]) =>
-    new Observable((subscriber) => {
-      const abortController = new AbortController();
-      const lastArg = args[args.length - 1];
-      const hasOptions =
-        lastArg !== null &&
-        typeof lastArg === "object" &&
-        ("signal" in lastArg || "headers" in lastArg || "timeoutMs" in lastArg);
-
-      let callArgs: unknown[];
-      if (hasOptions) {
-        const options = lastArg as RequestOptions;
-        const mergedSignal = combineSignals(options.signal, abortController.signal);
-        callArgs = [...args.slice(0, -1), { ...options, signal: mergedSignal }];
-      } else {
-        callArgs = [...args, { signal: abortController.signal }];
-      }
-
-      Promise.resolve(method.apply(target, callArgs))
-        .then((result: any) => {
-          if (
-            unwrap &&
-            result !== null &&
-            typeof result === "object" &&
-            ("data" in result || "error" in result)
-          ) {
-            if (result.error !== undefined) {
-              if (!abortController.signal.aborted) {
-                subscriber.error(result.error);
-              }
-              return;
-            }
-            subscriber.next(result.data);
-            subscriber.complete();
-            return;
-          }
-          subscriber.next(result);
-          subscriber.complete();
-        })
-        .catch((err) => {
-          if (!abortController.signal.aborted) {
-            subscriber.error(err);
-          }
-        });
-
-      return () => {
-        abortController.abort();
-      };
-    });
-}
-
 /**
  * Wraps a Promise-returning Thrift client method call into a cold RxJS Observable.
  * Defers execution until subscribed and cleans up properly.
@@ -109,7 +37,8 @@ export function deferThriftCall<T>(
         if (
           result !== null &&
           typeof result === "object" &&
-          ("data" in result || "error" in result)
+          "data" in result &&
+          "error" in result
         ) {
           if (result.error !== undefined) {
             if (!abortController.signal.aborted) {

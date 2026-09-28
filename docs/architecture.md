@@ -66,14 +66,15 @@ request time. Maps retain typed keys, including structs; sets use Set and lists
 use arrays. Explicit `{}` remains present, and false/zero/empty strings survive.
 
 `--i64 bigint` preserves the signed 64-bit range. `--i64 number` rejects unsafe
-integers on write and read, including nested values and map keys. The mode is
-fixed in generated codecs or selected once using MetadataClientConfig.i64Mode.
+integers on write and read, including nested values and map keys. Generated service
+factories bind the selected mode and exclude i64Mode from their
+config. Direct metadata clients select it once using MetadataClientConfig.i64Mode.
 The legacy parser still rejects unsafe integral IDL literals because metadata
 cannot preserve them exactly.
 
 Native `binary` is Uint8Array, including constants and nested defaults. IDL
-binary string constants are UTF-8 encoded. Model generation retains the
-legacy string declaration. This explicit native contract requires consumer
+binary string constants are UTF-8 encoded. Generated models and constants use the
+same Uint8Array contract. This requires consumer
 migration where applications currently expect strings or Buffer APIs.
 
 Declared defaults are constructed per value. Only explicitly required fields
@@ -103,7 +104,11 @@ ONEWAY and resolve after the transport completes without decoding a reply.
 `MetadataClientConfig` (and underlying `RpcClientConfig`) accepts endpoint, static/dynamic headers, timeout, fetch,
 logging, and an optional byte `transport`. The default HTTP transport posts
 `application/x-thrift`, merges per-call headers, rejects non-200 responses, and
-aborts fetch on timeout or caller cancellation. Its current compatibility policy
+bounds header preparation, fetch, and streamed body reading under one deadline,
+and aborts fetch on timeout or caller cancellation. Default fetch response bodies
+are capped at 16 MiB before decoding. Angular HttpClient buffers its body before
+the adapter receives it, so its backend owns network allocation limits. The HTTP
+transport compatibility policy
 also accepts octet-stream and missing response Content-Type. A supplied transport
 owns its own I/O, cancellation, and timeout behavior.
 

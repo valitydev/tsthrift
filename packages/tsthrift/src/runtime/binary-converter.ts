@@ -24,6 +24,7 @@ export function toBinary(
   if (encoding === "hex") {
     const clean = input.replace(/\s+/g, "");
     if (clean.length % 2 !== 0) throw new TypeError("Invalid hex string length");
+    if (!/^[0-9a-f]*$/i.test(clean)) throw new TypeError("Invalid hex string");
     const bytes = new Uint8Array(clean.length / 2);
     for (let i = 0; i < clean.length; i += 2) {
       const byte = Number.parseInt(clean.slice(i, i + 2), 16);

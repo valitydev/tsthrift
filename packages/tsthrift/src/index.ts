@@ -42,3 +42,4 @@ export {
 } from "./transport/woody.ts";
 export type { FlakeIdOptions, WoodyHeadersConfig } from "./transport/woody.ts";
 export * from "./runtime.ts";
+export { THRIFT_METHOD_ARGUMENT_COUNT } from "./transport/method-arguments.ts";

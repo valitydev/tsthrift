@@ -1,3 +1,4 @@
+import { THRIFT_METHOD_ARGUMENT_COUNT } from "./method-arguments.ts";
 import { BinaryReader } from "../runtime/binary-reader.ts";
 import { BinaryWriter } from "../runtime/binary-writer.ts";
 import { MessageType } from "../runtime/wire.ts";
@@ -13,10 +14,7 @@ import type { RequestOptions, HttpTransportConfig, TransportFunction } from "./t
 import { type Codec, i32, string } from "../codecs/scalar.ts";
 import { struct } from "../codecs/struct.ts";
 
-export type RpcClientConfig = Pick<
-  HttpTransportConfig,
-  "endpoint" | "headers" | "timeoutMs" | "fetch" | "loggingFn"
-> & { transport?: TransportFunction };
+export type RpcClientConfig = HttpTransportConfig & { transport?: TransportFunction };
 
 export interface MethodException {
   name: string;
@@ -117,6 +115,11 @@ export function createRpcClient<T extends object>(
       }
     },
   ]);
+  for (const [name, call] of entries) {
+    Object.defineProperty(call, THRIFT_METHOD_ARGUMENT_COUNT, {
+      value: methods[name as string]!.argumentNames.length,
+    });
+  }
   const client = Object.fromEntries(entries) as T;
   const safeEntries = Object.entries(methods).map(([name]) => [
     name,
@@ -138,6 +141,11 @@ export function createRpcClient<T extends object>(
       }
     },
   ]);
+  for (const [name, call] of safeEntries) {
+    Object.defineProperty(call, THRIFT_METHOD_ARGUMENT_COUNT, {
+      value: methods[name as string]!.argumentNames.length,
+    });
+  }
   Object.defineProperty(client, "safe", {
     value: Object.fromEntries(safeEntries),
     enumerable: false,

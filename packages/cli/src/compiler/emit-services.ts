@@ -29,7 +29,7 @@ function serviceTsType(type: ValueType, i64: I64Mode, binary: "string" | "Uint8A
 export function emitProgramServices(
   program: Program,
   i64: I64Mode = "bigint",
-  binary: "string" | "Uint8Array" = "string",
+  binary: "string" | "Uint8Array" = "Uint8Array",
 ): EmittedServiceFile[] {
   const files: EmittedServiceFile[] = [];
   const services = program.ast.service ?? {};
@@ -40,7 +40,7 @@ export function emitProgramServices(
     if (service.extends) {
       if (service.extends.includes(".")) {
         const [incNamespace, incService] = service.extends.split(".");
-        parentImport = `import type { ${incService} as ${incNamespace}_${incService} } from "../../${incNamespace}/services/${incService}.js";\n`;
+        parentImport = `import type { ${incService} as ${incNamespace}_${incService} } from "../../${program.includes.get(incNamespace)!.name}/services/${incService}.js";\n`;
         parent = ` extends ${incNamespace}_${incService}`;
       } else {
         parentImport = `import type { ${service.extends} } from "./${service.extends}.js";\n`;
@@ -76,7 +76,7 @@ export function emitProgramServices(
       methods.join("\n"),
       "}",
       "",
-      `export interface ${serviceName}Config extends Omit<MetadataClientConfig, "serviceName" | "namespace" | "metadata"> {`,
+      `export interface ${serviceName}Config extends Omit<MetadataClientConfig, "serviceName" | "namespace" | "metadata" | "i64Mode"> {`,
       '  metadata?: MetadataClientConfig["metadata"];',
       "}",
       "",
@@ -87,10 +87,11 @@ export function emitProgramServices(
       ` */`,
       `export function create${serviceName}(config: ${serviceName}Config): ${serviceName} {`,
       `  return createLazyMetadataClient<${serviceName}>({`,
+      `    ...config,`,
+      `    i64Mode: ${JSON.stringify(i64)},`,
       `    serviceName: ${JSON.stringify(serviceName)},`,
       `    namespace: ${JSON.stringify(program.name)},`,
       `    metadata: config.metadata ?? defaultMetadata,`,
-      `    ...config,`,
       `  });`,
       `}`,
       "",

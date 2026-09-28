@@ -115,8 +115,8 @@ assert.deepEqual(observed, [
   [2n, "second", []],
 ]);
 if (model) {
-  const bytes =
-    typeof model.BYTES === "string" ? new TextEncoder().encode(model.BYTES) : model.BYTES;
+  assert.ok(model.BYTES instanceof Uint8Array);
+  const bytes = model.BYTES;
   assert.deepEqual([...bytes], [97, 98, 99]);
 }
 assert.deepEqual(lifecycle, ["call", "success"]);

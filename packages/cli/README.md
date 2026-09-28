@@ -25,7 +25,7 @@ pnpm add -D @vality/tsthrift-cli
 ## CLI Usage
 
 ```sh
-npx tsthrift-cli --input "proto/**/*.thrift" [options]
+npx --package @vality/tsthrift-cli tsthrift-cli --input "proto/**/*.thrift" [options]
 ```
 
 ### Options
@@ -49,7 +49,7 @@ npx tsthrift-cli --input "proto/**/*.thrift" [options]
 #### Basic generation
 
 ```sh
-npx tsthrift-cli --input ./proto --output ./src/generated
+npx --package @vality/tsthrift-cli tsthrift-cli --input ./proto --output ./src/generated
 ```
 
 #### Bundled distribution
@@ -57,13 +57,13 @@ npx tsthrift-cli --input ./proto --output ./src/generated
 Generate TypeScript sources into `./generated` and bundle them into optimized `.mjs` and `.d.mts` artifacts in `./dist`:
 
 ```sh
-npx tsthrift-cli --input "proto/**/*.thrift" --bundle --dist ./dist
+npx --package @vality/tsthrift-cli tsthrift-cli --input "proto/**/*.thrift" --bundle --dist ./dist
 ```
 
 #### With multiple include roots
 
 ```sh
-npx tsthrift-cli \
+npx --package @vality/tsthrift-cli tsthrift-cli \
   --input "proto/**/*.thrift" \
   --include ./vendor/proto \
   --include ./shared/proto
@@ -72,7 +72,7 @@ npx tsthrift-cli \
 #### Safe number mode for i64
 
 ```sh
-npx tsthrift-cli --input ./proto --i64 number
+npx --package @vality/tsthrift-cli tsthrift-cli --input ./proto --i64 number
 ```
 
 ## Generated Output Structure
@@ -109,7 +109,8 @@ For repositories that distribute generated TypeScript models and clients from `.
   "type": "module",
   "scripts": {
     "codegen": "tsthrift-cli --input \"proto/**/*.thrift\" --bundle",
-    "build": "npm run codegen"
+    "build": "npm run codegen",
+    "prepack": "npm run build"
   },
   "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
@@ -120,8 +121,8 @@ For repositories that distribute generated TypeScript models and clients from `.
       "import": "./dist/index.mjs"
     },
     "./*": {
-      "types": "./dist/*.d.mts",
-      "import": "./dist/*.mjs"
+      "types": "./dist/*/index.d.mts",
+      "import": "./dist/*/index.mjs"
     },
     "./proto/*": "./proto/*",
     "./package.json": "./package.json"
@@ -131,7 +132,9 @@ For repositories that distribute generated TypeScript models and clients from `.
     "@vality/tsthrift": "^1.0.0"
   },
   "devDependencies": {
-    "@vality/tsthrift-cli": "^1.0.0"
+    "@vality/tsthrift-cli": "^1.0.0",
+    "vite-plus": "^0.3.0",
+    "typescript": "^7.0.2"
   }
 }
 ```
@@ -158,3 +161,17 @@ console.log(`Generated modules: ${result.modules.join(", ")}`);
 ## License
 
 Apache-2.0
+
+## Output ownership and bundling
+
+Use separate dedicated directories for generated sources and bundles. Each output
+contains `.tsthrift.json`, listing generated files. Regeneration refuses unowned
+nonempty directories, symbolic links, and additional handwritten files. Outputs
+from earlier versions without a manifest must be moved aside before regeneration.
+Compile sources into a separate directory; do not emit JS beside generated TS.
+
+`--bundle` requires local `vite-plus` and `typescript` installations. It builds
+only generated entries, ignores consumer Vite configuration, and leaves the
+consumer package manifest unchanged. Source and bundle paths must not overlap.
+The package recipe uses example versions; select the published tsthrift versions
+when installing dependencies.

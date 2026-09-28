@@ -35,7 +35,7 @@ async function setup() {
 }
 
 test.each(["number", "bigint"] as const)(
-  "generates models, services, and metadata.json by default (%s mode)",
+  "generates models, services, and modular metadata by default (%s mode)",
   async (i64) => {
     const options = await setup();
     const result = await generate({ ...options, i64 });
@@ -46,6 +46,7 @@ test.each(["number", "bigint"] as const)(
 
     const files = await readdir(options.output);
     expect(files.sort()).toEqual([
+      ".tsthrift.json",
       "common",
       "example",
       "index.ts",
@@ -113,7 +114,14 @@ test("generates models without service factories when services: false is passed"
   expect(result.services).toBe(false);
 
   const files = await readdir(options.output);
-  expect(files.sort()).toEqual(["common", "example", "index.ts", "metadata.ts", "tsconfig.json"]);
+  expect(files.sort()).toEqual([
+    ".tsthrift.json",
+    "common",
+    "example",
+    "index.ts",
+    "metadata.ts",
+    "tsconfig.json",
+  ]);
   expect(files).not.toContain("services.ts");
 });
 
@@ -168,7 +176,7 @@ test("generates only metadata when models is disabled via models: false", async 
   expect(result.modules.sort()).toEqual(["common", "example"]);
 
   const files = await readdir(options.output);
-  expect(files.sort()).toEqual(["metadata.json"]);
+  expect(files.sort()).toEqual([".tsthrift.json", "metadata.json"]);
 });
 
 test("preserves previous output when generation fails", async () => {
@@ -374,4 +382,33 @@ test("generate() accepts options without output property", () => {
     input: "proto",
   };
   expect(options.output).toBeUndefined();
+});
+
+test.each([
+  ["service index { void ping() }", "path collision"],
+  ["struct metadata {}", "identifier collision"],
+  ["struct ExampleConfig {} service Example { void ping() }", "identifier collision"],
+  ["service Example { oneway i32 ping() }", "Invalid oneway"],
+  ['struct Data { 1: i32 a = "invalid" }', "Invalid i32 constant"],
+])("rejects invalid generated API before replacing output: %s", async (source, error) => {
+  const options = await setup();
+  await generate(options);
+  const before = await readFile(path.join(options.output, "index.ts"), "utf8");
+  await writeFile(path.join(options.input, "invalid.thrift"), source);
+  await expect(generate(options)).rejects.toThrow(error);
+  expect(await readFile(path.join(options.output, "index.ts"), "utf8")).toBe(before);
+});
+
+test("rejects overlapping bundle paths and refuses unrelated output", async () => {
+  const options = await setup();
+  await expect(generate({ ...options, bundle: true, dist: options.output })).rejects.toThrow(
+    "overlap",
+  );
+  await expect(generate({ ...options, bundle: true, dist: options.input })).rejects.toThrow(
+    "input source",
+  );
+  await mkdir(options.output);
+  await writeFile(path.join(options.output, "keep.txt"), "keep");
+  await expect(generate(options)).rejects.toThrow("unowned");
+  expect(await readFile(path.join(options.output, "keep.txt"), "utf8")).toBe("keep");
 });

@@ -60,6 +60,11 @@ test("loads only selected inputs and reachable includes, preserving legacy metad
 
 test.each([
   ["const i64 LIMIT = 9223372036854775807", /Unsafe numeric literal/],
+  ['struct Data { 1: i32 a = "invalid" }', /Invalid i32 constant/],
+  ["service Example { oneway i32 ping() }", /Invalid oneway/],
+  ["struct Data { -1: i32 a i32 b -2: i32 c }", /Duplicate field ID/],
+  ["service Example { void then() }", /Reserved service method/],
+  ["service Example { void safe() }", /Reserved service method/],
   ["typedef Missing ID", /Unresolved type Missing/],
   ["struct X { 1: uuid id }", /Unresolved type uuid/],
   ["typedef B A typedef A B", /Circular typedef/],

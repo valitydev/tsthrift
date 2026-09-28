@@ -81,6 +81,7 @@ export function provideThriftService<TService extends object>(
 export function provideThriftServices(
   ...serviceLists: (ThriftServiceTarget | readonly ThriftServiceTarget[])[]
 ): EnvironmentProviders {
+  const targets = serviceLists.flat() as ThriftServiceTarget[];
   const flatServices: ThriftServiceDescriptor[] = [];
   for (const item of serviceLists) {
     if (Array.isArray(item)) {
@@ -114,17 +115,7 @@ export function provideThriftServices(
     },
   ];
 
-  for (const service of flatServices) {
-    const token = getServiceToken(service);
-    providers.push({
-      provide: token,
-      useFactory: () => {
-        const baseConfig = inject(THRIFT_CONFIG, { optional: true });
-        const factory = service.createService;
-        return toObservableClient(factory(baseConfig) as object);
-      },
-    });
-  }
+  providers.push(...targets.map((target) => provideThriftService(target)));
 
   return makeEnvironmentProviders(providers);
 }

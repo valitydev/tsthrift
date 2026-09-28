@@ -1,218 +1,86 @@
 # Release readiness audit
 
-Date: 2026-09-27. Decision: not ready for a stable release of all advertised features.
-Production implementation was not changed by this audit. Follow-up conformance tests and
-documentation were added; standalone defect reproductions ran outside the repository.
+Date: 2026-09-28. Scope: metadata runtime, generated protocol packages, and Angular adapter.
+This supersedes the 2026-09-27 audit. Release fixes are implemented locally;
+publication and application migration are separate acceptance steps.
 
-## Verified baseline
+## Resolved defects
 
-- `vp install`: succeeded without tracked dependency changes.
-- `vp check`: formatting, lint, and type checks passed.
-- `vp test`: 19 files, 121 tests passed.
-- `vp run -r test`: package suites and the root suite passed.
-- `vp pack` executed directly in each of the three packages, bypassing task cache.
-- Each package was packed with pnpm and installed from its tarball into an isolated directory.
-- Core, runtime, CLI, and Angular ESM imports and Node `require()` imports succeeded on Node 24.21.0. This does not establish a legacy CommonJS build or support for older Node versions.
-- Installed `tsthrift-cli --help` succeeded.
-- Production dependency audit reported zero known advisories.
-- Damsel revision `8d6174bddedc6d9aefa407fdc1d54877b8686ff9`: 15 modules compiled and 14 metadata clients initialized in each numeric mode.
-- Existing tests exercised Apache wire comparison, loopback HTTP, malformed binary messages, and isolated browser-targeted bundles.
-- `git diff --check` passed. The initial audit started from a clean working tree.
-- Follow-up latest-Damsel conformance: nine cases passed against unmodified Apache-generated Java clients/processors; see [conformance](conformance.md).
+| Area                | Defect and resulting behavior                                                                                                                                                    | Verification                                                                                                                                                                      |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Generated factories | Number-mode models used bigint codecs. Factories now bind the emitted mode, reject conflicting typed configuration, and preserve default metadata when an override is undefined. | Both modes execute root exports and registry descriptors against Apache wire codecs and real HTTP. Installed bundled factories also execute.                                      |
+| Binary              | Models/constants declared strings while codecs required bytes. Generated binary values now use Uint8Array throughout.                                                            | Executed constants, type checking, wire tests, installed artifacts.                                                                                                               |
+| Angular HTTP        | Typed arrays were passed to HttpClient, whose binary body contract uses ArrayBuffer. Abort listeners leaked and backend HTTP errors lost their status.                           | Real HttpClient with its testing backend verifies serialized bytes, error body/status, and timeout teardown; adapter tests cover empty completion/network failures.               |
+| Observable adapter  | Payload fields named headers/signal/timeoutMs could be mistaken for request options; ordinary data fields could be unwrapped as results.                                         | Metadata methods carry their IDL argument count; tests exercise eager/lazy methods, options, safe calls, ordinary data fields, and cancellation before metadata loads.            |
+| Angular DI          | Bulk registration discarded token-specific endpoint/header overrides.                                                                                                            | Both individual and bulk registration use the same provider implementation.                                                                                                       |
+| HTTP lifecycle      | Header providers ran outside timeout/cancellation; header overrides were case-sensitive.                                                                                         | Stalled preparation, late resolution, pre-aborted calls, ignored fetch signals, and mixed-case overrides are tested.                                                              |
+| HTTP response       | Body buffering was unbounded before decoding; MIME validation accepted substring matches.                                                                                        | Streamed fetch responses are capped at 16 MiB and overflow cancels the stream. Media types are parsed exactly. Angular's backend still owns its prior body buffering.             |
+| Schema/output       | Invalid defaults, oneway signatures, implicit field IDs, reserved methods, and generated identifier/path collisions could survive generation.                                    | Rejected before output replacement; rollback tests preserve previous artifacts. Unsupported output identifiers are rejected explicitly.                                           |
+| Output safety       | Regeneration could erase unrelated directories.                                                                                                                                  | Ownership manifests, symlink checks, canonical path overlap checks, and refusal of extra handwritten files protect output directories.                                            |
+| Bundling            | CLI depended on a global command or an implicit npx download and could load the consumer's build config.                                                                         | Optional local Vite+/TypeScript peers; direct Pack API with explicit entries and no config/export mutation. Installed CLI builds and regenerates an installable protocol tarball. |
+| Binary conversion   | Malformed hex pairs could decode partially.                                                                                                                                      | Full-input validation and malformed-pair regressions.                                                                                                                             |
+| Conformance         | Large Damsel scenarios still imported pre-refactor output paths.                                                                                                                 | All eleven scenarios execute against each Java reference.                                                                                                                         |
+| Distribution        | Package examples had wrong CLI/subpath/build instructions.                                                                                                                       | READMEs and package SPDX metadata are published; the adapted Flake ID source carries its full MIT notice in a preserved legal comment.                                            |
+| Release workflow    | Publication was independent of CI and conformance.                                                                                                                               | Release now follows successful push CI for the current main SHA; CI includes artifact and browser acceptance. Hosted execution remains unverified locally.                        |
 
-## P1: generated numeric mode disagrees with runtime
+The Angular HTTP behavior follows the [HttpClient request/error/cancellation contracts](https://angular.dev/guide/http/making-requests).
+The release action uses the [Changesets v2 inputs](https://github.com/changesets/action/blob/v2/action.yml).
 
-Source: `packages/cli/src/compiler/emit-clients.ts:32-50`, called from `generate.ts:75`.
+## Reproducible checks
 
-Generate `service Example { i64 next(1: i64 value) }` with `i64: "number"`.
-The generated model accepts `number`, but neither factory embeds the generation mode.
-`createExampleClient({ endpoint, transport }).next(42)` rejects with
-`Expected signed i64 bigint, got 42` before calling transport. Decoding an i64 reply
-returns bigint even though the generated return declaration says number.
-The generated descriptor uses the same factory, affecting Angular consumers too.
-
-Required change: bind both factories and descriptors to the generated mode and prevent
-configuration from selecting a conflicting mode. Execute the generated factories in both modes.
-
-## P1: binary models and constants disagree with runtime
-
-Source: `packages/cli/src/compiler/emit-models.ts:37-40`, `generate.ts:62`;
-`packages/tsthrift/src/codecs/scalar.ts:54-63`.
-
-`service Example { binary echo(1: binary value) }` generates a string argument and
-`Promise<string>`. A type-correct call with `"abc"` fails with `Expected Uint8Array`.
-Binary constants are also emitted as strings. The Uint8Array emission option exists
-but is never selected by the generation orchestration.
-
-Required change: emit types and constants matching the native Uint8Array contract.
-The historical string declaration in thrift-ts does not justify an internally
-inconsistent new typed client. Document consumer migration separately.
-
-## P1: Angular adapter ignores cancellation and timeout
-
-Source: `packages/angular/src/http-client-fetch.ts:30-43`.
-
-The adapter ignores `init.signal` and awaits `firstValueFrom` without linking abort to
-subscription disposal. A 100 ms Observable with a 5 ms transport timeout resolved
-successfully after approximately 116 ms. A never-emitting Observable remained pending
-after both caller abort and timeout, with its teardown uncalled.
-
-Required change: connect AbortSignal to subscription disposal, reject on cancellation,
-and clean up listeners on all completion paths. Test both caller abort and timeout.
-Angular documents that unsubscribing aborts the HTTP request:
-https://angular.dev/guide/http/making-requests#http-observables
-
-## P2: Angular HTTP failures lose their public status/error contract
-
-Source: `packages/angular/src/http-client-fetch.ts:38`;
-`packages/tsthrift/src/transport/http-transport.ts:129-143`.
-
-HttpClient returns non-success HTTP responses through the Observable error channel.
-The adapter lets that rejection pass through instead of implementing fetch's Response
-semantics. An Observable error with status 503 became `ThriftConnectionError`, with
-no top-level status, instead of `ThriftHttpError(503)`. Authentication and retry logic
-cannot use the same error contract as the default fetch transport.
-
-Required change: preserve HTTP status, headers, and response body for backend errors;
-keep network errors distinguishable. Angular's error contract is documented at:
-https://angular.dev/guide/http/making-requests#handling-request-failure
-
-## P1: per-call headers do not override names case-insensitively
-
-Source: `packages/tsthrift/src/transport/http-transport.ts:78-83` and header-provider merging.
-
-Base `{ Authorization: "Bearer old" }` plus per-call
-`{ authorization: "Bearer new" }` becomes `Bearer old, Bearer new` in Headers.
-Object spreading is case-sensitive, while HTTP header names are not.
-This breaks authentication token replacement and similarly affects Content-Type.
-
-Required change: normalize names and apply explicit override order using Headers or
-an equivalent case-insensitive merge, including merged header providers.
-
-## P2: root model exports hide client namespaces
-
-Source: `packages/cli/src/compiler/generate.ts:98-105`;
-`packages/cli/src/compiler/emit-clients.ts:123-133`.
-
-The client index exports a namespace named after the module, then the package root
-explicitly exports the same name for models. The explicit export wins.
-For a root module `example`, the package root's `example` contained `ExampleClient`
-but no `createExampleClient`, whereas the client submodule contained the factory.
-Included non-root modules may expose different namespace contents.
-
-Required change: define an unambiguous public namespace/export contract and execute
-imports from the actual package root, not only internal files.
-
-## P2: valid input names overwrite generated files
-
-Source: `packages/cli/src/compiler/generate.ts:79-82,124-127`.
-
-- `index.thrift` emits `metadata/index.ts`, then the metadata loader overwrites it.
-- `service index { void ping() }` emits `clients/example/index.ts`, then the service barrel overwrites it.
-
-Generation reports success; TypeScript compilation fails in both reproduced cases.
-
-Required change: allocate non-conflicting generated paths or reject collisions before
-publishing output. Include generated helper identifiers in the collision analysis.
-
-## P2: generated package lifecycle is incomplete
-
-Source: `packages/cli/src/compiler/generate.ts:130-156`;
-`packages/cli/src/compiler/publish-output.ts:45-48`.
-
-A newly generated `--package` directory packs only `.tsthrift.json`, `generation.json`,
-`package.json`, and `tsconfig.json`: its main/types targets do not exist and TypeScript
-sources are excluded by the files list. No build or prepack script compiles them.
-Manual `tsc -p` produces JS/declarations in place, after which regeneration fails with
-`Output contains files not owned by tsthrift`. Combining `--package --no-models`
-produces a tsconfig with no source inputs and still points main/types at absent files.
-
-Required change: provide a coherent source/build/pack/regenerate workflow and distinct
-metadata-only packaging, or explicitly restrict this flag to source scaffolding and
-remove claims of a ready installable package. Test the installed generated tarball.
-
-## P2: generation accepts schemas that runtime cannot initialize
-
-Source: `packages/cli/src/compiler/validate-schema.ts:29-58`.
-
-Each of these examples generated and compiled successfully, then failed initialization:
-
-```thrift
-struct Data { 1: i32 a = "invalid" }
-service Example { Data echo(1: Data data) }
+```sh
+vp install
+vp check
+vp run build
+vp test
+vp run test:packages
+vp exec playwright install chromium
+vp run test:browser
+DAMSEL_REVISION=8d6174bddedc6d9aefa407fdc1d54877b8686ff9 vp run test:conformance
 ```
 
-```thrift
-service Example { oneway i32 ping() }
-```
+- `vp check`, build, and `git diff --check` pass. The fast suite passes 197 tests across
+  27 files, including generated source compilation/execution and isolated browser bundles,
+  malformed wire data, HTTP sockets, metadata contracts, and Angular integration.
+- Package smoke installs actual tarballs in a temporary consumer, checks ESM and Node
+  require-of-ESM imports, CLI startup, declarations, root/subpath factories, metadata
+  loading, binary constants, and repeated protocol bundling/installation. It also
+  exercises Angular DI at the declared minimum (16.2.12) and current development version (22.2.0).
+- Browser smoke runs Chromium against loopback Apache Binary Protocol HTTP, using both
+  browser fetch and Angular XHR, both i64 modes, a generated factory, Angular DI/Observable
+  calls, backend errors, timeout, and cancellation.
+- Conformance uses Damsel `8d6174bddedc6d9aefa407fdc1d54877b8686ff9`, with eleven scenarios
+  each for Apache compiler/runtime 0.24.0 and Vality compiler 0.20.1 / Java runtime 0.20.0.
+  Set `THRIFT_COMPILER`, `JAVA`, and `JAVAC` as needed; see [conformance](conformance.md).
+- Local Node verification uses Node 24.21.0. The configured CI runtime is Node 22;
+  successful hosted CI is required before publication. This is ESM output, not a separate CJS build.
 
-```thrift
-struct Data { -1: i32 a i32 b -2: i32 c }
-service Example { Data echo(1: Data data) }
-```
+## Remaining release gates
 
-Runtime errors were respectively `Invalid i32 default`, `Invalid oneway method`, and
-`Invalid or duplicate metadata field ... (-2)`.
+1. **Application acceptance for a legacy migration.** Generate a real protocol package,
+   integrate it with control-center and @vality/ng-thrift, and verify optional/empty form
+   values, auth refresh, service endpoints, lazy loading, error handling, and binary/i64
+   migration. Fixtures, a browser smoke, and Java conformance do not establish this.
+   The new DI/configuration API is not a drop-in ConnectOptions$ replacement.
+2. **Hosted release validation.** Run the updated CI on the release revision and verify
+   npm publishing credentials/trusted-publisher configuration for all three package names.
+   The checked-in patch changeset prepares versioning; no package was published and no
+   commit/tag was created during this audit.
+3. **Choose the supported release scope.** An initial metadata-client release can document
+   the following exclusions. A claim of complete legacy replacement or all-IDL support
+   requires the corresponding implementation/consumer evidence first.
 
-Required change: validate defaults, oneway/result constraints, and effective implicit
-field IDs before replacing prior output. Keep compiler and runtime validation consistent.
+## Explicit scope limits
 
-## P2: header providers are outside timeout and cancellation handling
-
-Source: `packages/tsthrift/src/transport/http-transport.ts:77-86`.
-
-An asynchronous header provider taking 75 ms completed successfully under a 5 ms
-transport timeout; total request time was approximately 77 ms. Controller creation,
-abort handling, and the timer start only after the provider resolves. A stuck provider
-also prevents an already-aborted call from rejecting promptly.
-
-Required change: bound the asynchronous preparation phase or clearly expose a separate
-contract; ensure caller cancellation can settle the operation during header resolution.
-
-## P2: malformed hex can silently change binary data
-
-Source: `packages/tsthrift/src/runtime/binary-converter.ts:24-33`.
-
-`toBinary("1g", "hex")` returns `[1]` instead of rejecting. `parseInt` accepts a valid
-prefix, so the NaN check does not validate both characters.
-
-Required change: validate the entire hex input before decoding and test malformed pairs.
-
-## Verification gaps and release metadata
-
-- `packages/cli/tests/reference/load-client.mjs:12-18` manually reconstructs clients
-  with the correct mode. The original integration tests compile factory files but never execute
-  those factories. This masks the numeric-mode defect. The new independent conformance
-  suite executes generated factories with explicit i64Mode to isolate wire behavior;
-  default factory-mode acceptance remains blocked.
-- Angular tests cover an Observable success path, not abort, timeout, or HTTP errors.
-- Live browser, real Angular/form consumers, legacy Vality complete-message
-  cross-decoding, and production server acceptance remain unverified.
-- The repository has no checked-in CI workflow; package publication currently builds
-  but does not itself enforce all release checks.
-- Package tarballs have neither README nor license text. Manifests declare MIT;
-  a license file and package-specific usage documentation should accompany publication.
-- `docs/tasks.md:17` previously marked exact large-integer IDL constants complete, but
-  `const i64 MAX = 9223372036854775807` is rejected as an unsafe numeric literal.
-  The rejection is intentional and documented elsewhere; the checkbox has been corrected.
-- `docs/tasks.md:92` previously marked installable generated packages complete despite the
-  reproduced lifecycle gap. The checkbox has been corrected; implementation remains pending.
-- Documentation and CLI help disagree about metadata output with `--no-clients`;
-  the current implementation emits models only unless metadata flags are supplied.
-- HTTP response buffering happens before BinaryReader's 16 MiB limit. The decoder
-  limit does not bound network-body allocation. This was identified by inspection;
-  no resource-exhaustion experiment was performed.
-
-## Recommended release gates
-
-1. Fix and regression-test the P1 defects; settle generated public value/export contracts.
-2. Fix remaining generator, adapter, and packaging defects above.
-3. Run tests through generated synchronous factories, asynchronous factories, service
-   descriptors, package-root imports, and installed generated tarballs.
-4. Verify supported Angular versions, a live browser, and at least one actual consumer;
-   verify legacy wire interoperation for any compatibility claim.
-5. Align documentation/task checkboxes with evidence, include package documentation
-   and license text, choose release versions, and automate the validated release checks.
-
-The current low-level binary/runtime test results are useful evidence. They do not
-establish release readiness of the generator, Angular adapter, or generated package API.
+- Unsafe integral IDL literals are rejected because the pinned legacy parser represents
+  them as numbers. Runtime bigint still preserves the complete signed i64 wire range.
+  Exact large-integer IDL constants and UUID model generation remain unsupported.
+- Generated names that conflict with TypeScript/helper identifiers are rejected rather
+  than silently renamed. Existing unowned outputs must be moved aside before regeneration.
+- Async metadata initialization itself is not governed by the HTTP timeout. Observable
+  unsubscription before initialization prevents a subsequent request; an arbitrary loader
+  owns its I/O lifetime. Direct byte transports likewise own cancellation/timeouts.
+- Angular HttpClient buffers responses before the fetch bridge sees them. Its backend or
+  interceptors must enforce network allocation limits if required.
+- Chromium and Angular 16/22 checks are targeted acceptance tests, not a comprehensive
+  cross-browser or every-Angular-version matrix. No deployed production server was called.

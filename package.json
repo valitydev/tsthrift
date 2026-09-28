@@ -5,7 +5,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
-    "ready": "vp check && vp run -r test && vp run -r build",
+    "ready": "vp check && vp run build && vp test",
     "build": "vp run -r build",
     "test": "vp test",
     "check": "vp check",
@@ -15,6 +15,7 @@
   "devDependencies": {
     "@changesets/cli": "catalog:",
     "@types/node": "catalog:",
+    "playwright": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   },

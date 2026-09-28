@@ -31,11 +31,20 @@ test("successful regeneration removes stale owned output", async () => {
   const directory = await output();
   await publishOutput(directory, (stage) => writeFile(path.join(stage, "old.ts"), "old"));
   await publishOutput(directory, (stage) => writeFile(path.join(stage, "new.ts"), "new"));
-  expect((await readdir(directory)).sort()).toEqual(["new.ts"]);
+  expect((await readdir(directory)).sort()).toEqual([".tsthrift.json", "new.ts"]);
 });
 
 test("refuses non-directory output paths", async () => {
   const directory = await output();
   await writeFile(directory, "not a directory");
   await expect(publishOutput(directory, async () => {})).rejects.toThrow("real directory");
+});
+
+test("refuses to replace unrelated files and preserves prior generated output", async () => {
+  const directory = await output();
+  await publishOutput(directory, (stage) => writeFile(path.join(stage, "old.ts"), "old"));
+  await writeFile(path.join(directory, "notes.txt"), "keep");
+  await expect(publishOutput(directory, async () => {})).rejects.toThrow("not owned");
+  expect(await readFile(path.join(directory, "old.ts"), "utf8")).toBe("old");
+  expect(await readFile(path.join(directory, "notes.txt"), "utf8")).toBe("keep");
 });

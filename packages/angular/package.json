@@ -35,6 +35,8 @@
     "@vality/tsthrift": "workspace:*"
   },
   "devDependencies": {
+    "@angular/common": "catalog:",
+    "@angular/compiler": "catalog:",
     "@angular/core": "catalog:",
     "@types/node": "catalog:",
     "rxjs": "catalog:",

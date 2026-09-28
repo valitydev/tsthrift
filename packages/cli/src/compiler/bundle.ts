@@ -1,9 +1,4 @@
-import { execFile } from "node:child_process";
-import { stat, writeFile, rm } from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
-
-const execFileAsync = promisify(execFile);
 
 export interface BundleOptions {
   entry: string | string[];
@@ -12,53 +7,36 @@ export interface BundleOptions {
   cwd?: string;
 }
 
-async function hasPackageJson(startDir: string): Promise<boolean> {
-  let current = path.resolve(startDir);
-  while (true) {
-    try {
-      await stat(path.join(current, "package.json"));
-      return true;
-    } catch {
-      // continue searching upwards
-    }
-    const parent = path.dirname(current);
-    if (parent === current) break;
-    current = parent;
-  }
-  return false;
-}
-
-/**
- * Bundles the generated TypeScript library using Vite+ Pack (vp pack).
- */
+/** Bundles only generated entries without loading or modifying the consumer's build config. */
 export async function bundleOutput(options: BundleOptions): Promise<void> {
-  const entries = Array.isArray(options.entry) ? options.entry : [options.entry];
-  const args = ["pack", ...entries, "--dts", "--minify", "--out-dir", options.outDir];
-  if (options.tsconfig) {
-    args.push("--tsconfig", options.tsconfig);
-  }
-
-  const cwd = options.cwd ?? path.dirname(entries[0]!);
-  const hasPkg = await hasPackageJson(cwd);
-  const tempPkg = path.join(cwd, "package.json");
-  let createdTempPkg = false;
-
-  if (!hasPkg) {
-    await writeFile(tempPkg, JSON.stringify({ type: "module" }, null, 2) + "\n");
-    createdTempPkg = true;
-  }
-
+  let pack: typeof import("vite-plus/pack");
   try {
-    await execFileAsync("vp", args, { cwd });
-  } catch (err: any) {
-    try {
-      await execFileAsync("npx", ["vite-plus", ...args], { cwd });
-    } catch {
-      throw new Error(`Failed to bundle output with vp pack: ${err.message}`);
-    }
-  } finally {
-    if (createdTempPkg) {
-      await rm(tempPkg, { force: true });
-    }
+    pack = await import("vite-plus/pack");
+  } catch (cause) {
+    throw new Error(
+      "--bundle requires vite-plus and typescript installed in the protocol package",
+      { cause },
+    );
   }
+  const entries = Array.isArray(options.entry) ? options.entry : [options.entry];
+  const root = path.dirname(entries[0]!);
+  await pack.build({
+    config: false,
+    exports: false,
+    entry: Object.fromEntries(
+      entries.map((entry) => [
+        path.relative(root, entry).replace(/\.ts$/, "").split(path.sep).join("/"),
+        entry,
+      ]),
+    ),
+    outDir: options.outDir,
+    cwd: options.cwd ?? root,
+    tsconfig: options.tsconfig,
+    dts: true,
+    minify: true,
+    format: "esm",
+    platform: "neutral",
+    external: ["@vality/tsthrift"],
+    outExtensions: () => ({ js: ".mjs", dts: ".d.mts" }),
+  });
 }

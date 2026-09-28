@@ -103,14 +103,18 @@ test.each(["bigint", "number"] as const)(
         ["native-client.mjs", "client"],
         ["native-http.mjs", "HTTP"],
       ]) {
-        const dynamic = await execute(process.execPath, [
-          path.join(import.meta.dirname, "reference", script),
-          compiled,
-          i64,
-          "metadata",
-        ]);
-        expect(dynamic.stdout.trim()).toBe(`metadata ${kind} checks passed`);
+        for (const backend of ["metadata", "generated", "descriptor"]) {
+          const dynamic = await execute(process.execPath, [
+            path.join(import.meta.dirname, "reference", script),
+            compiled,
+            i64,
+            backend,
+          ]);
+          expect(dynamic.stdout.trim()).toBe(`${backend} ${kind} checks passed`);
+        }
       }
+      await verifyBrowserBundle(output);
+
       const entry = path.join(directory, "metadata-entry.ts");
       await writeFile(
         entry,

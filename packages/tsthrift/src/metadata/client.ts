@@ -1,3 +1,4 @@
+import { THRIFT_METHOD_ARGUMENT_COUNT } from "../transport/method-arguments.ts";
 import { MetadataIndex } from "./index.ts";
 import type { Field, I64Mode } from "./types.ts";
 import {
@@ -49,8 +50,8 @@ export async function createMetadataClient<T extends object = DynamicThriftClien
       addService(parent.namespace, parent.name);
     }
     for (const method of Object.values(service.functions)) {
-      if (method.name === "then")
-        throw new Error("A metadata client cannot expose the Promise-reserved method then");
+      if (["then", "safe", "promise"].includes(method.name))
+        throw new Error(`A metadata client cannot expose the reserved method ${method.name}`);
       if (method.oneway && (method.type !== "void" || method.throws.length))
         throw new Error(`Invalid oneway method ${key}.${method.name}`);
       if (method.throws.some((field) => field.id === 0 || field.name === "success"))
@@ -96,19 +97,28 @@ export function createLazyMetadataClient<T extends object = DynamicThriftClient>
     if (!clientPromise) clientPromise = createMetadataClient<T>(config);
     return clientPromise;
   };
-  return new Proxy(Object.create(null) as T, {
-    get(_target, prop: string | symbol) {
-      if (typeof prop !== "string" || prop === "then") return undefined;
-      return async (...args: unknown[]) => {
-        const client = await getClient();
-        const method = (client as Record<string, unknown>)[prop];
-        if (typeof method !== "function") {
-          throw new TypeError(
-            `Method ${prop} not found on client for service ${config.serviceName}`,
-          );
-        }
-        return method.apply(client, args);
-      };
-    },
-  });
+  const proxy = (safe = false): T =>
+    new Proxy(Object.create(null) as T, {
+      get(_target, prop: string | symbol) {
+        if (typeof prop !== "string" || prop === "then") return undefined;
+        if (prop === "safe" && !safe) return proxy(true);
+        const getMethod = async () => {
+          const client = await getClient();
+          const target = safe ? (client as any).safe : client;
+          const method = target[prop];
+          if (typeof method !== "function") {
+            throw new TypeError(
+              `Method ${prop} not found on client for service ${config.serviceName}`,
+            );
+          }
+          return method;
+        };
+        const call = async (...args: unknown[]) => (await getMethod())(...args);
+        Object.defineProperty(call, THRIFT_METHOD_ARGUMENT_COUNT, {
+          get: () => getMethod().then((method) => method[THRIFT_METHOD_ARGUMENT_COUNT]),
+        });
+        return call;
+      },
+    });
+  return proxy();
 }

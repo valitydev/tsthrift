@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 import { createEnvironmentInjector, inject, Injector, runInInjectionContext } from "@angular/core";
-import { catchError, firstValueFrom, of } from "rxjs";
+import { catchError, firstValueFrom, of, Observable } from "rxjs";
 import {
   ThriftHttpError,
   ThriftServiceError,
@@ -351,15 +351,9 @@ describe("Angular Thrift DI integration", () => {
     let unsubscribed = false;
     const mockHttpClient: AngularHttpClientLike = {
       request: () => {
-        return {
-          subscribe: () => {
-            return {
-              unsubscribe: () => {
-                unsubscribed = true;
-              },
-            };
-          },
-        };
+        return new Observable(() => () => {
+          unsubscribed = true;
+        });
       },
     };
 
@@ -465,7 +459,7 @@ describe("Angular Thrift DI integration", () => {
 
       const client = inject(token);
       const res = await firstValueFrom(client.echo("reg"));
-      expect(res).toBe("[http://example.com/fallback] reg");
+      expect(res).toBe("[http://example.com/token-endpoint] reg");
     });
   });
 });

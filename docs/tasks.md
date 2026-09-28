@@ -18,7 +18,7 @@ and source revisions are in [compatibility](compatibility.md).
 - [x] Resolve public binary conversion from existing consumers (toBinary, binaryToString, isBinary).
 - [ ] Validate metadata in actual form consumers (@vality/ng-thrift and control-center).
 - [x] Support bundled and minified library output for production releases in dist/ (--bundle).
-- [x] Implement modular metadata emission (`metadata/`) and compile-time transitive dependency loader (`loadMetadata`) in TypeScript modules; emit monolithic JSON only with explicit `--metadata-json`.
+- [x] Implement modular metadata emission (`<namespace>/metadata.ts`) and compile-time transitive dependency loader (`loadMetadata`) in TypeScript modules; emit monolithic JSON only with explicit `--metadata-json`.
 
 Do not recreate thrift-parser's grammar test suite. Add cases when they expose a
 project integration defect or a consumer contract that needs protection.
@@ -44,7 +44,8 @@ project integration defect or a consumer contract that needs protection.
 - [x] Execute native metadata clients through real local HTTP, cancellation, and timeout.
 - [x] Execute a browser-targeted bundle without Node globals or Apache/Buffer imports.
 - [x] Remove Apache/Buffer runtime dependencies; retain Apache only as a test wire reference.
-- [ ] Validate native clients in live browsers and existing Angular/form consumers.
+- [x] Validate generated clients and Angular HTTP/DI in a live Chromium smoke.
+- [ ] Validate native clients in existing Angular/form applications.
 - [x] Cross-decode complete native messages with the legacy Vality runtime (valitydev/thrift C++ fork).
 
 ## Apache JS backend (removed in favor of metadata runtime)
@@ -80,8 +81,8 @@ stock generation success alone is insufficient.
 ## Angular integration (@vality/tsthrift-angular)
 
 - [x] Extract Angular integration into a dedicated standalone workspace package (`@vality/tsthrift-angular`).
-- [x] Keep CLI output completely framework-agnostic (`services/` and `services.ts` contain no Angular imports or tokens).
-- [x] Exclude the word "Client" from generated service files, service factories (`create${ServiceName}`, `createAsync${ServiceName}`), configs (`${ServiceName}Config`), and model classes (`export abstract class ${ServiceName}`).
+- [x] Keep CLI output completely framework-agnostic (`<namespace>/services/` and `services.ts` contain no Angular imports or tokens).
+- [x] Exclude the word "Client" from generated service files, service factories (`create${ServiceName}`), configs (`${ServiceName}Config`), and model classes (service interfaces and descriptors).
 - [x] Provide dynamic and cached DI tokens via `getServiceToken(descriptor)` and `createServiceToken(descriptor)`.
 - [x] Implement modern Angular environment providers (`provideThriftConfig`, `provideThriftServices`, `provideThriftService`).
 - [x] Provide Promise-based service methods (compatible with Angular Signals and Resource API) with `toObservableClient` and `deferThriftCall` RxJS helpers for Observable consumers.
@@ -94,7 +95,7 @@ stock generation success alone is insufficient.
 - [x] Support bundled protocol packages with JS, declarations, and metadata in dist/ via --bundle (repositories maintain standard package.json).
 - [x] Keep compiler output selection separate from framework adapter selection.
 - [x] Configure automated versioning, PR title linting, and continuous delivery via GitHub Actions on PR merge into main.
-- [ ] Verify ESM/CJS and optional framework entries in isolated consumers.
+- [x] Verify ESM and Node require-of-ESM package entries in isolated consumers (no separate CJS build).
 - [ ] Rebuild protocol artifacts before migrating applications that currently bundle woody_js.
 
 ## Binary runtime
@@ -117,12 +118,17 @@ reference in tests; consumer acceptance is tracked separately above.
 
 ## Release audit follow-up
 
-- [ ] Propagate generated i64 mode into client factories and prevent conflicting runtime overrides.
-- [ ] Align generated binary types and constants with the native Uint8Array contract.
-- [ ] Preserve cancellation, timeout, and HTTP error semantics in the Angular adapter.
-- [ ] Merge HTTP headers case-insensitively and bound asynchronous header resolution.
-- [ ] Resolve generated export/path collisions and validate defaults/effective field IDs before publication.
-- [ ] Verify generated-package build, installation, and regeneration as one supported workflow.
-- [ ] Reject malformed hex input without partial decoding.
+- [x] Bind generated i64 mode in service factories and exclude conflicting typed overrides.
+- [x] Align generated binary types/constants with Uint8Array.
+- [x] Preserve Angular binary body, cancellation, timeout, and HTTP status/body semantics.
+- [x] Use metadata argument positions in Observable wrappers and preserve token configuration in bulk DI registration.
+- [x] Merge HTTP headers case-insensitively and bound asynchronous preparation and streamed response reads.
+- [x] Reject generated name/path collisions, invalid defaults, oneway methods, and effective field IDs before publication.
+- [x] Protect unowned output and verify bundle/install/regenerate through an isolated consumer.
+- [x] Reject malformed hex input without partial decoding.
+- [x] Execute all Damsel conformance cases after correcting old generated import paths.
+- [x] Include package license/usage files and gate publication on the current revision's CI.
+- [ ] Complete real control-center/@vality/ng-thrift migration acceptance.
+- [ ] Confirm hosted CI and npm publisher configuration on the release revision.
 
-See [release audit](release-audit.md) for reproductions and verification gaps.
+See [release audit](release-audit.md) for current evidence and scope limits.

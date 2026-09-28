@@ -31,11 +31,20 @@ jobs:
       - name: Code formatting and type check
         run: vp check
 
-      - name: Run fast unit tests
-        run: vp test
-
       - name: Build all packages
         run: vp run build
+
+      - name: Run unit and generated-output tests
+        run: vp test
+
+      - name: Install Chromium
+        run: vp exec playwright install --with-deps chromium
+
+      - name: Verify live browser HTTP and Angular integration
+        run: vp run test:browser
+
+      - name: Verify installed package archives
+        run: vp run test:packages
 
   resolve-damsel:
     name: Resolve Damsel Revision
@@ -90,7 +99,7 @@ jobs:
           echo "$(/home/linuxbrew/.linuxbrew/bin/brew --prefix)/bin" >> "$GITHUB_PATH"
 
       - name: Verify Thrift compiler version
-        run: thrift -version
+        run: test "$(thrift -version)" = "Thrift version ${{ matrix.thrift-version }}"
 
       - name: Cache Maven repository
         uses: actions/cache@v6

@@ -104,7 +104,6 @@ test.each(["bigint", "number"] as const)(
       // Explicit mode isolates wire conformance from the separately audited factory-mode defect.
       const client = createEcho({
         endpoint: "unused",
-        i64Mode: mode,
         transport: await transport(scenario),
       });
       const value = payload(mode, empty);
@@ -138,7 +137,6 @@ test.each(["bigint", "number"] as const)(
     const { loadMetadata } = await generated(mode, "damsel/metadata.js");
     const client = createRepository({
       endpoint: "unused",
-      i64Mode: mode,
       transport: await transport(scenario),
     });
     const value = commitValues(mode);
@@ -167,12 +165,11 @@ test.each(["bigint", "number"] as const)(
     const scenario = `damsel-large-${mode}`;
     const { createRepository } = await generated(
       mode,
-      "damsel/services/domain_config_v2/Repository.js",
+      "damsel/domain_config_v2/services/Repository.js",
     );
-    const { loadMetadata } = await generated(mode, "damsel/metadata/index.js");
+    const { loadMetadata } = await generated(mode, "damsel/metadata.js");
     const client = createRepository({
       endpoint: "unused",
-      i64Mode: mode,
       transport: await transport(scenario),
     });
     const value = largeCommitValues(mode);
@@ -199,7 +196,6 @@ test.each(["bigint", "number"] as const)(
     const { loadMetadata } = await generated(mode, "metadata.js");
     const client = createEcho({
       endpoint: "unused",
-      i64Mode: mode,
       transport: await transport(scenario),
     });
     const failure = { code: 409, reason: "declared failure" };
