@@ -33,11 +33,7 @@ test("preserves the legacy form metadata contract without model or Apache genera
   expect(actual).toEqual(baseline);
   expect(result.compilerVersion).toBeUndefined();
   expect(result.modules.sort()).toEqual(["common", "example"]);
-  expect((await readdir(options.output)).sort()).toEqual([
-    ".tsthrift.json",
-    "generation.json",
-    "metadata.json",
-  ]);
+  expect((await readdir(options.output)).sort()).toEqual(["metadata.json"]);
 });
 
 test("metadata generation does not depend on supported model constant expressions", async () => {

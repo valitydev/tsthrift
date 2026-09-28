@@ -59,10 +59,6 @@ test.each([undefined, "number", "bigint"] as const)(
     const mode = i64 ?? "bigint";
     const result = await generate({ ...options, i64 });
     expect(result.i64).toBe(mode);
-    const manifest = JSON.parse(
-      await readFile(path.join(options.output, "generation.json"), "utf8"),
-    );
-    expect(manifest.i64).toBe(mode);
     const models = path.join(options.output, "models");
     const source = await readFile(path.join(models, "example.ts"), "utf8");
     expect(source).toContain(`"id": ${mode};`);

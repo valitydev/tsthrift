@@ -13,7 +13,7 @@ and source revisions are in [compatibility](compatibility.md).
 - [x] Default public i64 to bigint and provide explicit --i64 number compatibility mode.
 - [x] Compile and execute both numeric modes; keep metadata unchanged between them.
 - [x] Verify 15 complex reference IDL modules in both modes and compare legacy metadata.
-- [x] Preserve staged output, ownership checks, and rollback behavior.
+- [x] Preserve staged output, atomic publishing, and rollback behavior.
 - [ ] Support exact large-integer IDL constants without changing legacy metadata silently.
 - [x] Resolve public binary conversion from existing consumers (toBinary, binaryToString, isBinary).
 - [ ] Validate metadata in actual form consumers (@vality/ng-thrift and control-center).

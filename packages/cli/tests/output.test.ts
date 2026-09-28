@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, expect, test } from "vite-plus/test";
@@ -31,17 +31,11 @@ test("successful regeneration removes stale owned output", async () => {
   const directory = await output();
   await publishOutput(directory, (stage) => writeFile(path.join(stage, "old.ts"), "old"));
   await publishOutput(directory, (stage) => writeFile(path.join(stage, "new.ts"), "new"));
-  expect((await readdir(directory)).sort()).toEqual([".tsthrift.json", "new.ts"]);
+  expect((await readdir(directory)).sort()).toEqual(["new.ts"]);
 });
 
-test("refuses unmanaged directories and additional user files", async () => {
+test("refuses non-directory output paths", async () => {
   const directory = await output();
-  await mkdir(directory);
-  await writeFile(path.join(directory, "notes.md"), "keep");
-  await expect(publishOutput(directory, async () => {})).rejects.toThrow("unmanaged output");
-  await rm(path.join(directory, "notes.md"));
-  await publishOutput(directory, (stage) => writeFile(path.join(stage, "old.ts"), "old"));
-  await writeFile(path.join(directory, "notes.md"), "keep");
-  await expect(publishOutput(directory, async () => {})).rejects.toThrow("not owned");
-  expect(await readFile(path.join(directory, "notes.md"), "utf8")).toBe("keep");
+  await writeFile(directory, "not a directory");
+  await expect(publishOutput(directory, async () => {})).rejects.toThrow("real directory");
 });

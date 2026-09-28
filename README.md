@@ -81,9 +81,8 @@ Repeat `--include` for include roots and `--namespace` for entry filenames witho
 includes are loaded. `--i64 number` selects safe numeric values instead of bigint.
 Pass `--allow-duplicate-modules` to allow duplicate module basenames across include directories using first-wins shadowing.
 
-Use a dedicated output directory. Generation stages output, preserves previous
-artifacts on failure, and rejects unrelated/unowned files. Settings are recorded
-in `generation.json`.
+Use a dedicated output directory. Generation stages output and preserves previous
+artifacts on failure.
 
 ## Protocol package configuration (package.json)
 

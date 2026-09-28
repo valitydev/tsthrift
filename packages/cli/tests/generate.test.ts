@@ -44,28 +44,8 @@ test.each(["number", "bigint"] as const)(
     expect(result.services).toBe(true);
     expect(result.modules.sort()).toEqual(["common", "example"]);
 
-    const generation = JSON.parse(
-      await readFile(path.join(options.output, "generation.json"), "utf8"),
-    );
-    expect(generation).toEqual({
-      i64,
-      models: true,
-      services: true,
-      bundle: false,
-      metadataJson: false,
-      namespaces: ["example"],
-    });
-
     const files = await readdir(options.output);
-    expect(files.sort()).toEqual([
-      ".tsthrift.json",
-      "generation.json",
-      "index.ts",
-      "metadata",
-      "models",
-      "services",
-      "tsconfig.json",
-    ]);
+    expect(files.sort()).toEqual(["index.ts", "metadata", "models", "services", "tsconfig.json"]);
 
     const modelsDir = path.join(options.output, "models");
     const modelFiles = await readdir(modelsDir);
@@ -120,14 +100,7 @@ test("generates models without service factories when services: false is passed"
   expect(result.services).toBe(false);
 
   const files = await readdir(options.output);
-  expect(files.sort()).toEqual([
-    ".tsthrift.json",
-    "generation.json",
-    "index.ts",
-    "metadata",
-    "models",
-    "tsconfig.json",
-  ]);
+  expect(files.sort()).toEqual(["index.ts", "metadata", "models", "tsconfig.json"]);
   expect(files).not.toContain("services");
 });
 
@@ -182,18 +155,18 @@ test("generates only metadata when models is disabled via models: false", async 
   expect(result.modules.sort()).toEqual(["common", "example"]);
 
   const files = await readdir(options.output);
-  expect(files.sort()).toEqual([".tsthrift.json", "generation.json", "metadata.json"]);
+  expect(files.sort()).toEqual(["metadata.json"]);
 });
 
 test("preserves previous output when generation fails", async () => {
   const options = await setup();
   await generate(options);
-  const before = await readFile(path.join(options.output, "generation.json"), "utf8");
+  const before = await readFile(path.join(options.output, "index.ts"), "utf8");
 
   await writeFile(path.join(options.input, "broken.thrift"), "struct Broken { 1: i32 a 1: i32 b }");
 
   await expect(generate(options)).rejects.toThrow("Duplicate field ID");
-  expect(await readFile(path.join(options.output, "generation.json"), "utf8")).toBe(before);
+  expect(await readFile(path.join(options.output, "index.ts"), "utf8")).toBe(before);
 });
 
 test("CLI supports --no-services and --metadata-json", async () => {

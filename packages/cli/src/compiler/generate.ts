@@ -144,22 +144,6 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
         JSON.stringify(tsconfig, null, 2) + "\n",
       );
     }
-
-    await writeFile(
-      path.join(staging, "generation.json"),
-      JSON.stringify(
-        {
-          i64,
-          models: shouldEmitModels,
-          services: shouldEmitServices,
-          bundle: options.bundle ?? false,
-          metadataJson: shouldEmitMetadataJson,
-          namespaces: schema.roots.map((root) => root.name),
-        },
-        null,
-        2,
-      ) + "\n",
-    );
   });
 
   const isBundled = Boolean(options.bundle && shouldEmitModels);
