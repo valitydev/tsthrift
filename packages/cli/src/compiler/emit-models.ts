@@ -16,6 +16,7 @@ function tsType(type: ValueType, i64: I64Mode, binary: "string" | "Uint8Array"):
   if (["byte", "i8", "i16", "i32", "double"].includes(type)) return "number";
   if (type === "bool") return "boolean";
   if (type === "binary") return binary;
+  if (type === "uuid") return "string";
   return type;
 }
 

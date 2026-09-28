@@ -1,4 +1,5 @@
 import { assertI64, numberToI64 } from "./i64.ts";
+import { parseUuid } from "./uuid.ts";
 import { assertInteger, assertMessageType, assertValueType, WireType } from "./wire.ts";
 
 /** Writes unframed, big-endian Thrift Binary Protocol messages. */
@@ -80,6 +81,11 @@ export class BinaryWriter {
   writeString(value: string): void {
     if (typeof value !== "string") throw new TypeError("Expected string");
     this.writeBinary(new TextEncoder().encode(value));
+  }
+
+  writeUuid(value: string): void {
+    const start = this.reserve(16);
+    parseUuid(value, this.bytes, start);
   }
 
   writeMessageBegin(name: string, type: number, sequenceId: number): void {

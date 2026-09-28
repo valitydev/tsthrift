@@ -30,7 +30,7 @@ export function emitScalarConstant(
   } else if (type === "bool") {
     if (value === 0 || value === 1) return value ? "true" : "false";
     if (typeof value !== "boolean") throw invalid();
-  } else if (type === "string" || type === "binary") {
+  } else if (type === "string" || type === "binary" || type === "uuid") {
     if (typeof value !== "string") throw invalid();
   } else throw invalid();
   const literal = JSON.stringify(value);

@@ -45,7 +45,7 @@ id)` and terminate each struct with `writeFieldStop()`. `readFieldBegin()` retur
   `writeCollectionBegin`/`readCollectionBegin` handle the shared list/set header.
   Collection elements follow the header directly; there are no closing bytes.
 - `skip(type)` consumes unknown values recursively, including nested maps, lists,
-  sets, structs, and fixed-width UUID values. UUID model generation is not supported.
+  sets, structs, and fixed-width UUID values. Native `writeUuid` and `readUuid` handle 16-byte fixed-width UUIDs (WireType 16).
 
 Native generated `binary` models use Uint8Array, while legacy model declarations used
 string; existing binary consumers require acceptance testing.

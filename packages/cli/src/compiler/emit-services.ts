@@ -23,6 +23,7 @@ function serviceTsType(type: ValueType, i64: I64Mode, binary: "string" | "Uint8A
   if (type === "i64") return i64;
   if (["byte", "i8", "i16", "i32", "double"].includes(type)) return "number";
   if (type === "binary") return binary;
+  if (type === "uuid") return "string";
   return `models.${type}`;
 }
 

@@ -16,6 +16,7 @@ const PRIMITIVE_TYPES = new Set([
   "double",
   "string",
   "binary",
+  "uuid",
 ]);
 
 export class MetadataIndex {

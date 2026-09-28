@@ -69,8 +69,7 @@ use arrays. Explicit `{}` remains present, and false/zero/empty strings survive.
 integers on write and read, including nested values and map keys. Generated service
 factories bind the selected mode and exclude i64Mode from their
 config. Direct metadata clients select it once using MetadataClientConfig.i64Mode.
-The legacy parser still rejects unsafe integral IDL literals because metadata
-cannot preserve them exactly.
+The IDL parser (`thrift-parser`) tokenizes integer literals as JavaScript `Number` (IEEE-754 double precision float), and the JSON-compatible metadata AST format does not preserve 64-bit integers. Consequently, integer literals in IDL constants and defaults exceeding safe 53-bit bounds (±(2^53 - 1)) are rejected at compile time to prevent silent precision loss and rounding. The full signed 64-bit range is preserved at runtime through `bigint`.
 
 Native `binary` is Uint8Array, including constants and nested defaults. IDL
 binary string constants are UTF-8 encoded. Generated models and constants use the

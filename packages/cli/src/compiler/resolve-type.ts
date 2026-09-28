@@ -12,6 +12,7 @@ export const primitives = new Set([
   "double",
   "string",
   "binary",
+  "uuid",
 ]);
 
 export function resolveReference(program: Program, reference: string) {

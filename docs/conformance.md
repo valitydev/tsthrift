@@ -110,8 +110,8 @@ failure or completion (`actions/upload-artifact@v4`).
   by the existing schema test, instead of silently overwriting output.
 
 The nine conformance cases include both numeric modes and populated/empty value
-variants. UUID is outside current generator support; the normal schema suite
-explicitly verifies rejection rather than claiming full Thrift type coverage.
+variants. Native UUID operates with 16-byte binary wire encoding (WireType 16)
+and RFC 4122 string models.
 
 ## Limits and verification status
 

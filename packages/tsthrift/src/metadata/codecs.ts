@@ -36,6 +36,8 @@ export class MetadataCodecs {
           return scalar.string;
         case "binary":
           return scalar.binary;
+        case "uuid":
+          return scalar.uuid;
         default:
           throw new Error(`Unknown metadata type ${namespace}.${resolved.type}`);
       }

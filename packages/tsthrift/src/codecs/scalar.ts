@@ -62,3 +62,8 @@ export const binary: Codec<Uint8Array> = {
     w.writeBinary(v);
   },
 };
+export const uuid: Codec<string> = {
+  type: WireType.Uuid,
+  read: (r) => r.readUuid(),
+  write: (w, v) => w.writeUuid(v),
+};

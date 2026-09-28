@@ -114,7 +114,7 @@ export function evaluateDefault(
   }
   const scalar =
     resolved.kind === "enum" ? "i32" : resolved.kind === "primitive" ? resolved.type : "unknown";
-  if (scalar === "string" || scalar === "binary") {
+  if (scalar === "string" || scalar === "binary" || scalar === "uuid") {
     if (typeof value !== "string") throw new Error(`Invalid ${scalar} default`);
     return scalar === "binary" ? new TextEncoder().encode(value) : value;
   }

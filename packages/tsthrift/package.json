@@ -33,7 +33,8 @@
     "prepublishOnly": "vp run build"
   },
   "dependencies": {
-    "base-x": "catalog:"
+    "base-x": "catalog:",
+    "uuid": "catalog:"
   },
   "devDependencies": {
     "@types/flake-idgen": "catalog:",
@@ -41,7 +42,6 @@
     "flake-idgen": "catalog:",
     "thrift": "catalog:",
     "typescript": "catalog:",
-    "uuid": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   }

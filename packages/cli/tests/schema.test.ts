@@ -66,7 +66,7 @@ test.each([
   ["service Example { void then() }", /Reserved service method/],
   ["service Example { void safe() }", /Reserved service method/],
   ["typedef Missing ID", /Unresolved type Missing/],
-  ["struct X { 1: uuid id }", /Unresolved type uuid/],
+  ["struct X { 1: UnknownType id }", /Unresolved type UnknownType/],
   ["typedef B A typedef A B", /Circular typedef/],
   ["struct X { 1: i64 a 1: i64 b }", /Duplicate field ID/],
   ["enum X { A = 2147483647 B }", /outside i32 range/],
@@ -122,4 +122,11 @@ test("shadows duplicate module when allowDuplicateModules is true (first-wins)",
   const sharedProgram = schema.programs.find((p) => p.name === "shared");
   expect(sharedProgram?.ast.struct?.SharedA).toBeDefined();
   expect(sharedProgram?.ast.struct?.SharedB).toBeUndefined();
+});
+
+test("supports native uuid field in schema and emits string type", async () => {
+  const schema = await source("struct Record { 1: uuid id }");
+  validateSchema(schema);
+  const models = emitModels(schema.roots[0]!);
+  expect(models).toContain('"id": string;');
 });

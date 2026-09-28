@@ -805,5 +805,41 @@ describe("Apache Thrift 0.24 Wire Protocol Comparison & Verification", () => {
       expect(capturedOneway).toBe(true);
       expect(capturedMsg).toBe("heartbeat-data");
     });
+
+    test("cross-decodes and matches byte-for-byte with Apache 0.24 writeUuid and readUuid", () => {
+      const testUuid = "123e4567-e89b-12d3-a456-426614174000";
+
+      // 1. Byte-for-byte match
+      const ourWriter = new BinaryWriter();
+      ourWriter.writeFieldBegin(WireType.Uuid, 1);
+      ourWriter.writeUuid(testUuid);
+      ourWriter.writeFieldStop();
+      const ourBytes = ourWriter.finish();
+
+      const apacheBytes = encodeWithApache((proto) => {
+        proto.writeFieldBegin("id", 16, 1);
+        proto.writeUuid(testUuid);
+        proto.writeFieldStop();
+      });
+
+      expect(Array.from(ourBytes)).toEqual(Array.from(apacheBytes));
+
+      // 2. Apache decodes our bytes
+      const decodedByApache = decodeWithApache(ourBytes, (proto) => {
+        proto.readFieldBegin();
+        const value = proto.readUuid();
+        proto.readFieldBegin(); // stop
+        return value;
+      });
+      expect(decodedByApache).toBe(testUuid);
+
+      // 3. Our reader decodes Apache bytes
+      const ourReader = new BinaryReader(apacheBytes);
+      const field = ourReader.readFieldBegin();
+      expect(field).toEqual({ type: WireType.Uuid, id: 1 });
+      expect(ourReader.readUuid()).toBe(testUuid);
+      expect(ourReader.readFieldBegin().type).toBe(WireType.Stop);
+      ourReader.assertDone();
+    });
   });
 });

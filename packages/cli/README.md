@@ -12,6 +12,7 @@ Pure TypeScript compiler and code generator for Apache Thrift IDL files.
 - **Service factories & registry:** Generates typed service client factories (`create<Service>`) and registry descriptors (`SERVICES`, `SERVICES_LIST`) compatible with Angular and pure TypeScript.
 - **Standalone bundle compilation:** Compiles and bundles generated code into distribution-ready `.mjs` and `.d.mts` files with `--bundle`.
 - **Configurable `i64` representation:** Choose between `bigint` (exact signed 64-bit integers) or safe `number`.
+- **Native UUID support:** Generates TypeScript `string` types for built-in Thrift `uuid` fields, backed by 16-byte fixed-width binary encoding (`WireType.Uuid = 16`).
 - **Transitive include resolution:** Correctly handles complex include graphs and cross-namespace type references.
 
 ## Installation
@@ -174,8 +175,7 @@ when installing dependencies.
 
 ## Known Limitations
 
-- **IDL numeric constants:** Integer constants in `.thrift` files are constrained to JavaScript safe integer bounds (`Number.MIN_SAFE_INTEGER` to `Number.MAX_SAFE_INTEGER`, i.e., ±(2^53 - 1)). Unsafe integer literals exceeding 53 bits are rejected at compile time to prevent silent precision loss during AST parsing. Runtime RPC parameters, structs, and network payloads preserve the full signed 64-bit range via `bigint`.
-- **UUID representation:** Dedicated UUID classes or validator wrappers are not generated. Schemas defining UUIDs via `typedef string UUID` (or `binary`) emit standard TypeScript type aliases (`export type UUID = string;`).
+- **IDL numeric constants:** Integer constants and default values in `.thrift` files are constrained to JavaScript safe integer bounds (`Number.MIN_SAFE_INTEGER` to `Number.MAX_SAFE_INTEGER`, i.e., ±(2^53 - 1)). This constraint exists because the underlying IDL parser (`thrift-parser`) tokenizes numeric literals into standard JavaScript `Number` (IEEE-754 double precision float), and the JSON-compatible metadata AST format cannot serialize 64-bit `bigint` literals without loss of precision. Rather than silently rounding constants exceeding 53 bits (e.g., `9223372036854775807` turning into `9223372036854776000`), the compiler explicitly rejects unsafe literals at compile time. Runtime RPC parameters, structs, and network payloads preserve the full signed 64-bit range via `bigint`.
 
 ## License
 

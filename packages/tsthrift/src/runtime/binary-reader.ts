@@ -1,5 +1,6 @@
 import { i64ToNumber } from "./i64.ts";
 import { skipValue } from "./skip-value.ts";
+import { formatUuid } from "./uuid.ts";
 import { assertInteger, assertMessageType, assertValueType, WireType } from "./wire.ts";
 
 export interface BinaryReaderOptions {
@@ -79,6 +80,11 @@ export class BinaryReader {
 
   readString(): string {
     return new TextDecoder().decode(this.readBinary());
+  }
+
+  readUuid(): string {
+    const start = this.take(16);
+    return formatUuid(this.bytes, start);
   }
 
   readMessageBegin(): { name: string; type: number; sequenceId: number } {
