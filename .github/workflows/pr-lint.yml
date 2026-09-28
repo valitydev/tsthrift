@@ -1,0 +1,38 @@
+name: PR Validation
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  changeset:
+    name: Check Changeset
+    runs-on: ubuntu-latest
+    if: "!startsWith(github.head_ref, 'changeset-release/') && github.actor != 'dependabot[bot]'"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Vite+ and Node.js
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: "22"
+          cache: true
+
+      - name: Install dependencies
+        run: vp install
+
+      - name: Check changeset status
+        run: |
+          if ! pnpm changeset status --since=origin/${{ github.base_ref || 'main' }}; then
+            echo "::warning title=Missing Changeset::Packages were modified in this PR without a changeset. If this PR should trigger an npm release, please run 'pnpm changeset' to add a release note."
+          fi

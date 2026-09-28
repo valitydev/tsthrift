@@ -37,7 +37,6 @@
   "devDependencies": {
     "@angular/core": "catalog:",
     "@types/node": "catalog:",
-    "bumpp": "catalog:",
     "rxjs": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",

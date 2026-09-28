@@ -9,11 +9,12 @@
     "build": "vp run -r build",
     "test": "vp test",
     "check": "vp check",
-    "bump": "bumpp -r"
+    "changeset": "changeset",
+    "version-packages": "changeset version"
   },
   "devDependencies": {
+    "@changesets/cli": "catalog:",
     "@types/node": "catalog:",
-    "bumpp": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   },

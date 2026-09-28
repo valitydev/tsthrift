@@ -93,6 +93,7 @@ stock generation success alone is insufficient.
 
 - [ ] Emit installable protocol packages with JS, declarations, metadata, and stable exports (--package).
 - [x] Keep compiler output selection separate from framework adapter selection.
+- [x] Configure automated versioning, PR title linting, and continuous delivery via GitHub Actions on PR merge into main.
 - [ ] Verify ESM/CJS and optional framework entries in isolated consumers.
 - [ ] Rebuild protocol artifacts before migrating applications that currently bundle woody_js.
 

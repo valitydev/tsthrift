@@ -38,7 +38,6 @@
   "devDependencies": {
     "@types/flake-idgen": "catalog:",
     "@types/node": "catalog:",
-    "bumpp": "catalog:",
     "flake-idgen": "catalog:",
     "thrift": "catalog:",
     "typescript": "catalog:",
