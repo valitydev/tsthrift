@@ -13,10 +13,7 @@ export async function bundleOutput(options: BundleOptions): Promise<void> {
   try {
     pack = await import("vite-plus/pack");
   } catch (cause) {
-    throw new Error(
-      "--bundle requires vite-plus and typescript installed in the protocol package",
-      { cause },
-    );
+    throw new Error("--bundle requires vite-plus and typescript", { cause });
   }
   const entries = Array.isArray(options.entry) ? options.entry : [options.entry];
   const root = path.dirname(entries[0]!);
@@ -36,7 +33,9 @@ export async function bundleOutput(options: BundleOptions): Promise<void> {
     minify: true,
     format: "esm",
     platform: "neutral",
-    external: ["@vality/tsthrift"],
+    deps: {
+      neverBundle: ["@vality/tsthrift"],
+    },
     outExtensions: () => ({ js: ".mjs", dts: ".d.mts" }),
   });
 }

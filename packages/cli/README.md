@@ -106,12 +106,10 @@ For repositories that distribute generated TypeScript models and clients from `.
 ```json
 {
   "name": "sample-proto",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "codegen": "tsthrift-cli --input \"proto/**/*.thrift\" --bundle",
-    "build": "npm run codegen",
-    "prepack": "npm run build"
+    "build": "tsthrift-cli --input proto --bundle"
   },
   "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
@@ -130,12 +128,10 @@ For repositories that distribute generated TypeScript models and clients from `.
   },
   "files": ["dist", "proto"],
   "dependencies": {
-    "@vality/tsthrift": "^1.0.0"
+    "@vality/tsthrift": "^0.1.0"
   },
   "devDependencies": {
-    "@vality/tsthrift-cli": "^1.0.0",
-    "vite-plus": "^0.3.0",
-    "typescript": "^7.0.2"
+    "@vality/tsthrift-cli": "^0.1.0"
   }
 }
 ```
@@ -167,9 +163,7 @@ nonempty directories, symbolic links, and additional handwritten files. Outputs
 from earlier versions without a manifest must be moved aside before regeneration.
 Compile sources into a separate directory; do not emit JS beside generated TS.
 
-`--bundle` requires local `vite-plus` and `typescript` installations. It builds
-only generated entries, ignores consumer Vite configuration, and leaves the
-consumer package manifest unchanged. Source and bundle paths must not overlap.
+`--bundle` uses the integrated Vite+ build engine and TypeScript compiler provided directly by `@vality/tsthrift-cli`. It builds only generated entries, ignores consumer Vite configuration, and leaves the consumer package manifest unchanged. Source and bundle paths must not overlap.
 The package recipe uses example versions; select the published tsthrift versions
 when installing dependencies.
 

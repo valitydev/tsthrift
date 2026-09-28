@@ -36,28 +36,16 @@
     "prepublishOnly": "vp run build"
   },
   "dependencies": {
-    "thrift-parser": "catalog:"
+    "thrift-parser": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
     "@vality/tsthrift": "workspace:*",
     "thrift": "catalog:",
-    "typescript": "catalog:",
     "uuid": "catalog:",
-    "vite": "catalog:",
-    "vite-plus": "catalog:"
-  },
-  "peerDependencies": {
-    "typescript": ">=5.5.0",
-    "vite-plus": "^0.3.0"
-  },
-  "peerDependenciesMeta": {
-    "vite-plus": {
-      "optional": true
-    },
-    "typescript": {
-      "optional": true
-    }
+    "vite": "catalog:"
   },
   "engines": {
     "node": ">=22.18.0"

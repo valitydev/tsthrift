@@ -42,8 +42,6 @@ try {
     ...archives.map((file) => path.join(directory, file)),
     "@angular/core@22.2.0",
     "rxjs@7.8.2",
-    "vite-plus@0.3.0",
-    "typescript@7.0.2",
   ]);
   await run(process.execPath, [
     "--input-type=module",

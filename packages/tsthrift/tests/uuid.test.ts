@@ -41,6 +41,40 @@ describe("UUID Runtime & Codec Support", () => {
     expect(npmUuidStringify(bytes)).toBe(sampleUuid);
   });
 
+  test("handles nil and max UUIDs correctly", () => {
+    const nilUuid = "00000000-0000-0000-0000-000000000000";
+    const maxUuid = "ffffffff-ffff-ffff-ffff-ffffffffffff";
+
+    expect(isUuid(nilUuid)).toBe(true);
+    expect(isUuid(maxUuid)).toBe(true);
+
+    const nilBytes = new Uint8Array(16);
+    parseUuid(nilUuid, nilBytes);
+    expect(Array.from(nilBytes)).toEqual(Array.from({ length: 16 }, () => 0));
+    expect(formatUuid(nilBytes)).toBe(nilUuid);
+
+    const maxBytes = new Uint8Array(16);
+    parseUuid(maxUuid, maxBytes);
+    expect(Array.from(maxBytes)).toEqual(Array.from({ length: 16 }, () => 0xff));
+    expect(formatUuid(maxBytes)).toBe(maxUuid);
+  });
+
+  test("supports crypto.randomUUID() and matches npm uuid byte-for-byte across iterations", () => {
+    for (let i = 0; i < 20; i++) {
+      const generated = crypto.randomUUID();
+      expect(isUuid(generated)).toBe(true);
+
+      const nativeBytes = new Uint8Array(16);
+      parseUuid(generated, nativeBytes);
+
+      const npmBytes = npmUuidParse(generated);
+      expect(Array.from(nativeBytes)).toEqual(Array.from(npmBytes));
+
+      expect(formatUuid(nativeBytes)).toBe(generated.toLowerCase());
+      expect(npmUuidStringify(nativeBytes)).toBe(generated.toLowerCase());
+    }
+  });
+
   test("parseUuid throws on invalid input or small buffer", () => {
     const bytes = new Uint8Array(16);
     expect(() => parseUuid("invalid", bytes)).toThrow(TypeError);
