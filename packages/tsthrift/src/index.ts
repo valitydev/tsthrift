@@ -1,4 +1,10 @@
 export { createMetadataClient, createLazyMetadataClient } from "./metadata/client.ts";
+export { createMetadataLoader } from "./metadata/loader.ts";
+export type {
+  MetadataImportModule,
+  MetadataLoaderFn,
+  MetadataLoaderOptions,
+} from "./metadata/loader.ts";
 export { MetadataIndex } from "./metadata/index.ts";
 export type { DynamicThriftClient, MetadataClientConfig } from "./metadata/client.ts";
 export type {

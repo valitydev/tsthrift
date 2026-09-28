@@ -16,6 +16,7 @@ Generate metadata, TypeScript models, and service factories.
       --minify           Minify emitted metadata JSON files
       --split-metadata   Emit per-module metadata files in metadata/
       --metadata-json    Emit monolithic metadata.json in output directory
+      --bundle           Compile and bundle generated TypeScript into dist/
       --package          Emit package.json and tsconfig.json in output directory
       --package-name     Name for emitted package.json (default: root package.json or output dir basename)
       --package-version  Version for emitted package.json (default: root package.json or 0.0.0)
@@ -38,6 +39,7 @@ try {
       minify: { type: "boolean" },
       "split-metadata": { type: "boolean" },
       "metadata-json": { type: "boolean" },
+      bundle: { type: "boolean" },
       package: { type: "boolean" },
       "package-name": { type: "string" },
       "package-version": { type: "string" },
@@ -59,6 +61,7 @@ try {
       namespaces: values.namespace,
       models,
       services,
+      bundle: values.bundle,
       minify: values.minify,
       splitMetadata: values["split-metadata"],
       metadataJson: values["metadata-json"],

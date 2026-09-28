@@ -97,12 +97,12 @@ async function verifyReplyEncoding(
 test.each(["bigint", "number"] as const)(
   "all supported types and composite keys match generated Java (%s)",
   async (mode) => {
-    const { createAsyncEcho } = await generated(mode, "services/alpha/Echo.js");
+    const { createEcho } = await generated(mode, "services/alpha/Echo.js");
     const { loadMetadata } = await generated(mode, "metadata/index.js");
     for (const empty of [false, true]) {
       const scenario = `${empty ? "empty" : "all"}-${mode}`;
       // Explicit mode isolates wire conformance from the separately audited factory-mode defect.
-      const client = await createAsyncEcho({
+      const client = createEcho({
         endpoint: "unused",
         i64Mode: mode,
         transport: await transport(scenario),

@@ -51,6 +51,7 @@ test.each(["number", "bigint"] as const)(
       i64,
       models: true,
       services: true,
+      bundle: false,
       minify: false,
       splitMetadata: false,
       metadataJson: false,
@@ -95,6 +96,15 @@ test.each(["number", "bigint"] as const)(
     } catch (error: any) {
       throw new Error(`tsc failed: ${error.stdout}\n${error.stderr}`);
     }
+
+    const indexContent = await readFile(path.join(options.output, "index.ts"), "utf8");
+    expect(indexContent).toContain('export * as common from "./models/common.js";');
+    expect(indexContent).toContain('export * as example from "./models/example.js";');
+    expect(indexContent).toContain('export * as services from "./services/index.js";');
+    expect(indexContent).toContain('export * from "./services/services.js";');
+    expect(indexContent).toContain('export { loadMetadata } from "./metadata/index.js";');
+    expect(indexContent).not.toContain("generateId");
+    expect(indexContent).not.toContain("generateTraceId");
 
     const commonMeta = await readFile(path.join(options.output, "metadata/common.ts"), "utf8");
     expect(commonMeta).toContain('"path": "shared/common.thrift"');
@@ -150,7 +160,8 @@ test("splits metadata per module when splitMetadata: true", async () => {
   expect(common).toContain("export const metadata");
 
   const loader = await readFile(path.join(metadataDir, "index.ts"), "utf8");
-  expect(loader).toContain("export function loadMetadata");
+  expect(loader).toContain("export const loadMetadata");
+  expect(loader).toContain("createMetadataLoader");
   expect(loader).toContain('import("./common.js")');
 });
 
@@ -317,4 +328,81 @@ test("supports --allow-duplicate-modules in CLI and generate()", async () => {
   expect(result.stdout).toContain("generated 3 module(s)");
   const modelFiles = await readdir(path.join(options.output, "models"));
   expect(modelFiles.sort()).toEqual(["client_a.ts", "client_b.ts", "shadowed.ts"]);
+});
+
+test("bundles output into dist/ with types and updated package.json when bundle: true", async () => {
+  const options = await setup();
+  const result = await generate({
+    ...options,
+    package: true,
+    bundle: true,
+    packageName: "@vality/proto-bundled",
+  });
+
+  expect(result.bundled).toBe(true);
+
+  const files = await readdir(options.output);
+  expect(files).toContain("dist");
+  expect(files).toContain("package.json");
+
+  const distFiles = await readdir(path.join(options.output, "dist"));
+  expect(distFiles).toContain("index.mjs");
+  expect(distFiles).toContain("index.d.mts");
+
+  const pkg = JSON.parse(await readFile(path.join(options.output, "package.json"), "utf8"));
+  expect(pkg.name).toBe("@vality/proto-bundled");
+  expect(pkg.main).toBe("./dist/index.mjs");
+  expect(pkg.module).toBe("./dist/index.mjs");
+  expect(pkg.types).toBe("./dist/index.d.mts");
+  expect(pkg.files).toEqual(["dist", "**/*.json"]);
+
+  // Subsequent generation run works and atomically replaces without unmanaged file errors
+  await expect(
+    generate({
+      ...options,
+      package: true,
+      bundle: true,
+      packageName: "@vality/proto-bundled",
+    }),
+  ).resolves.toBeDefined();
+});
+
+test("bundles output with minification when bundle: true and minify: true", async () => {
+  const options = await setup();
+  await generate({
+    ...options,
+    bundle: true,
+    minify: true,
+  });
+
+  const distFiles = await readdir(path.join(options.output, "dist"));
+  expect(distFiles).toContain("index.mjs");
+
+  const indexContent = await readFile(path.join(options.output, "dist/index.mjs"), "utf8");
+  expect(indexContent.trim().split("\n")).toHaveLength(1);
+});
+
+test("CLI supports --bundle and --minify flags", async () => {
+  const options = await setup();
+  const result = await execute(process.execPath, [
+    path.resolve(import.meta.dirname, "../src/cli.ts"),
+    "--input",
+    options.input,
+    "--output",
+    options.output,
+    "--include",
+    options.includes[0]!,
+    "--namespace",
+    "example",
+    "--package",
+    "--bundle",
+    "--minify",
+  ]);
+
+  expect(result.stdout).toContain("generated 2 module(s)");
+  const files = await readdir(options.output);
+  expect(files).toContain("dist");
+  const distFiles = await readdir(path.join(options.output, "dist"));
+  expect(distFiles).toContain("index.mjs");
+  expect(distFiles).toContain("index.d.mts");
 });
