@@ -67,7 +67,7 @@ test("getTransitiveDependencies collects full transitive graph with root first",
 
 test("loadMetadata loads only reachable dependencies and memoizes result", async () => {
   const options = await setup();
-  await generate({ ...options, splitMetadata: true });
+  await generate(options);
 
   const metadataIndexPath = path.join(options.output, "metadata", "index.ts");
   const { loadMetadata } = await import(pathToFileURL(metadataIndexPath).href);

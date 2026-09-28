@@ -68,11 +68,13 @@ export class PaymentComponent {
 ```sh
 vp install
 vp run build
-node packages/cli/dist/cli.mjs --input ./proto --output ./generated
+node packages/cli/dist/cli.mjs --input ./proto
 ```
 
-By default, the CLI generates TypeScript models/interfaces (`models/`), modular metadata (`metadata/`), and universal clients (`clients/`).
-Pass `--metadata-json` to also emit monolithic `metadata.json`, `--no-models` to generate only metadata without models or clients, or `--no-clients` to skip client factories.
+By default, the CLI generates TypeScript models/interfaces (`models/`), modular metadata (`metadata/`), and universal service factories (`services/`) into `./generated` (configurable via `-o, --output`).
+
+Pass `--bundle` to compile the generated sources into an optimized, minified distribution bundle (`index.mjs` and `index.d.mts`) in `./dist` (configurable via `-d, --dist`).
+Pass `--metadata-json` to also emit monolithic `metadata.json`, `--no-models` to generate only metadata without models or services, or `--no-services` to skip service factories.
 
 Repeat `--include` for include roots and `--namespace` for entry filenames without
 `.thrift`. Without `--namespace`, all top-level IDL files are entries. Only reachable
@@ -82,6 +84,44 @@ Pass `--allow-duplicate-modules` to allow duplicate module basenames across incl
 Use a dedicated output directory. Generation stages output, preserves previous
 artifacts on failure, and rejects unrelated/unowned files. Settings are recorded
 in `generation.json`.
+
+## Protocol package configuration (package.json)
+
+For protocol repositories (such as `@vality/damsel` or service schema packages) that contain `.thrift` specifications and distribute generated TypeScript models/clients, configure `package.json` at the root of the repository:
+
+```json
+{
+  "name": "@vality/damsel",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./proto/*": "./proto/*",
+    "./package.json": "./package.json"
+  },
+  "files": ["dist", "proto"],
+  "scripts": {
+    "generate": "tsthrift --input ./proto --bundle",
+    "build": "npm run generate",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "@vality/tsthrift": "^1.0.0"
+  },
+  "devDependencies": {
+    "@vality/tsthrift-cli": "^1.0.0"
+  }
+}
+```
+
+When running `npm run build`, `tsthrift` generates clean source code in `./generated` and compiles the standalone bundle with declaration files into `./dist`, ready for publishing or referencing as a package dependency.
 
 ## Native clients and wire contracts
 

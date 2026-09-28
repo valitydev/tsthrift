@@ -17,7 +17,7 @@ and source revisions are in [compatibility](compatibility.md).
 - [ ] Support exact large-integer IDL constants without changing legacy metadata silently.
 - [x] Resolve public binary conversion from existing consumers (toBinary, binaryToString, isBinary).
 - [ ] Validate metadata in actual form consumers (@vality/ng-thrift and control-center).
-- [x] Support minified metadata artifact output for production releases while keeping formatted fixtures for tests (--minify).
+- [x] Support bundled and minified library output for production releases in dist/ (--bundle).
 - [x] Implement modular metadata emission (`metadata/`) and compile-time transitive dependency loader (`loadMetadata`) in TypeScript modules; emit monolithic JSON only with explicit `--metadata-json`.
 
 Do not recreate thrift-parser's grammar test suite. Add cases when they expose a
@@ -91,7 +91,7 @@ stock generation success alone is insufficient.
 
 ## Package output
 
-- [ ] Emit installable protocol packages with JS, declarations, metadata, and stable exports (--package).
+- [x] Support bundled protocol packages with JS, declarations, and metadata in dist/ via --bundle (repositories maintain standard package.json).
 - [x] Keep compiler output selection separate from framework adapter selection.
 - [x] Configure automated versioning, PR title linting, and continuous delivery via GitHub Actions on PR merge into main.
 - [ ] Verify ESM/CJS and optional framework entries in isolated consumers.

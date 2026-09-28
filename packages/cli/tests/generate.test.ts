@@ -52,8 +52,6 @@ test.each(["number", "bigint"] as const)(
       models: true,
       services: true,
       bundle: false,
-      minify: false,
-      splitMetadata: false,
       metadataJson: false,
       namespaces: ["example"],
     });
@@ -66,6 +64,7 @@ test.each(["number", "bigint"] as const)(
       "metadata",
       "models",
       "services",
+      "tsconfig.json",
     ]);
 
     const modelsDir = path.join(options.output, "models");
@@ -121,18 +120,15 @@ test("generates models without service factories when services: false is passed"
   expect(result.services).toBe(false);
 
   const files = await readdir(options.output);
-  expect(files.sort()).toEqual([".tsthrift.json", "generation.json", "index.ts", "models"]);
+  expect(files.sort()).toEqual([
+    ".tsthrift.json",
+    "generation.json",
+    "index.ts",
+    "metadata",
+    "models",
+    "tsconfig.json",
+  ]);
   expect(files).not.toContain("services");
-});
-
-test("generates minified metadata when minify: true", async () => {
-  const options = await setup();
-  await generate({ ...options, minify: true, metadataJson: true });
-
-  const metadataText = await readFile(path.join(options.output, "metadata.json"), "utf8");
-  // Minified JSON contains only the trailing newline
-  expect(metadataText.trim().split("\n")).toHaveLength(1);
-  expect(JSON.parse(metadataText)).toHaveLength(2);
 });
 
 test("emits monolithic metadata.json when metadataJson: true", async () => {
@@ -147,9 +143,9 @@ test("emits monolithic metadata.json when metadataJson: true", async () => {
   expect(metadata.find((entry) => entry.name === "common")?.path).toBe("shared/common.thrift");
 });
 
-test("splits metadata per module when splitMetadata: true", async () => {
+test("emits modular metadata in metadata/ by default", async () => {
   const options = await setup();
-  await generate({ ...options, splitMetadata: true });
+  await generate(options);
 
   const metadataDir = path.join(options.output, "metadata");
   const files = await readdir(metadataDir);
@@ -165,68 +161,16 @@ test("splits metadata per module when splitMetadata: true", async () => {
   expect(loader).toContain('import("./common.js")');
 });
 
-test("emits package.json and tsconfig.json when package: true", async () => {
+test("emits tsconfig.json in generated directory when bundle: true", async () => {
   const options = await setup();
-  await generate({ ...options, package: true, packageName: "@vality/proto-example" });
+  const dist = path.join(options.output, "../dist");
+  await generate({ ...options, bundle: true, dist });
 
-  const files = await readdir(options.output);
-  expect(files).toContain("package.json");
-  expect(files).toContain("tsconfig.json");
+  const generatedFiles = await readdir(options.output);
+  expect(generatedFiles).toContain("tsconfig.json");
 
-  const pkg = JSON.parse(await readFile(path.join(options.output, "package.json"), "utf8"));
-  expect(pkg.name).toBe("@vality/proto-example");
-  expect(pkg.type).toBe("module");
-  expect(pkg.main).toBe("./index.js");
-  expect(pkg.module).toBe("./index.js");
-  expect(pkg.types).toBe("./index.d.ts");
-  expect(pkg.license).toBe("Apache-2.0");
-  expect(pkg.exports["."]).toEqual({
-    types: "./index.d.ts",
-    import: "./index.js",
-    default: "./index.js",
-  });
-  expect(pkg.exports["./package.json"]).toBe("./package.json");
-  expect(pkg.peerDependencies["@vality/tsthrift"]).toBeDefined();
-});
-
-test("inherits name, version, and license from root package.json when package: true", async () => {
-  const options = await setup();
-  const projectRoot = path.dirname(options.output);
-  const rootPkg = {
-    name: "@vality/damsel",
-    version: "1.4.2",
-    license: "Apache-2.0",
-  };
-  await writeFile(path.join(projectRoot, "package.json"), JSON.stringify(rootPkg, null, 2));
-
-  await generate({ ...options, package: true });
-
-  const pkg = JSON.parse(await readFile(path.join(options.output, "package.json"), "utf8"));
-  expect(pkg.name).toBe("@vality/damsel");
-  expect(pkg.version).toBe("1.4.2");
-  expect(pkg.license).toBe("Apache-2.0");
-});
-
-test("overrides root package name and version when explicitly provided", async () => {
-  const options = await setup();
-  const projectRoot = path.dirname(options.output);
-  const rootPkg = {
-    name: "@vality/damsel",
-    version: "1.4.2",
-  };
-  await writeFile(path.join(projectRoot, "package.json"), JSON.stringify(rootPkg, null, 2));
-
-  await generate({
-    ...options,
-    package: true,
-    packageName: "@vality/custom-name",
-    packageVersion: "2.0.0",
-  });
-
-  const pkg = JSON.parse(await readFile(path.join(options.output, "package.json"), "utf8"));
-  expect(pkg.name).toBe("@vality/custom-name");
-  expect(pkg.version).toBe("2.0.0");
-  expect(pkg.license).toBe("Apache-2.0");
+  const tsconfig = JSON.parse(await readFile(path.join(options.output, "tsconfig.json"), "utf8"));
+  expect(tsconfig.compilerOptions.isolatedDeclarations).toBe(true);
 });
 
 test("generates only metadata when models is disabled via models: false", async () => {
@@ -252,7 +196,7 @@ test("preserves previous output when generation fails", async () => {
   expect(await readFile(path.join(options.output, "generation.json"), "utf8")).toBe(before);
 });
 
-test("CLI supports --no-services, --minify, --split-metadata, and --package", async () => {
+test("CLI supports --no-services and --metadata-json", async () => {
   const options = await setup();
   const result = await execute(process.execPath, [
     path.resolve(import.meta.dirname, "../src/cli.ts"),
@@ -264,12 +208,7 @@ test("CLI supports --no-services, --minify, --split-metadata, and --package", as
     options.includes[0]!,
     "--namespace",
     "example",
-    "--minify",
-    "--split-metadata",
     "--metadata-json",
-    "--package",
-    "--package-name",
-    "@custom/test-pkg",
   ]);
 
   expect(result.stdout).toContain("generated 2 module(s)");
@@ -278,11 +217,10 @@ test("CLI supports --no-services, --minify, --split-metadata, and --package", as
   expect(files).toContain("models");
   expect(files).toContain("services");
   expect(files).toContain("metadata");
-  expect(files).toContain("package.json");
-  expect(files).toContain("tsconfig.json");
+  expect(files).not.toContain("package.json");
 
   const metadataText = await readFile(path.join(options.output, "metadata.json"), "utf8");
-  expect(metadataText.trim().split("\n")).toHaveLength(1);
+  expect(JSON.parse(metadataText)).toHaveLength(2);
 });
 
 test("supports --allow-duplicate-modules in CLI and generate()", async () => {
@@ -330,60 +268,56 @@ test("supports --allow-duplicate-modules in CLI and generate()", async () => {
   expect(modelFiles.sort()).toEqual(["client_a.ts", "client_b.ts", "shadowed.ts"]);
 });
 
-test("bundles output into dist/ with types and updated package.json when bundle: true", async () => {
+test("bundles output into dist/ with types when bundle: true", async () => {
   const options = await setup();
+  const dist = path.join(options.output, "../dist");
   const result = await generate({
     ...options,
-    package: true,
     bundle: true,
-    packageName: "@vality/proto-bundled",
+    dist,
   });
 
   expect(result.bundled).toBe(true);
+  expect(result.dist).toBe(dist);
 
-  const files = await readdir(options.output);
-  expect(files).toContain("dist");
-  expect(files).toContain("package.json");
+  const outputFiles = await readdir(options.output);
+  expect(outputFiles).toContain("index.ts");
+  expect(outputFiles).toContain("tsconfig.json");
 
-  const distFiles = await readdir(path.join(options.output, "dist"));
+  const distFiles = await readdir(dist);
   expect(distFiles).toContain("index.mjs");
   expect(distFiles).toContain("index.d.mts");
-
-  const pkg = JSON.parse(await readFile(path.join(options.output, "package.json"), "utf8"));
-  expect(pkg.name).toBe("@vality/proto-bundled");
-  expect(pkg.main).toBe("./dist/index.mjs");
-  expect(pkg.module).toBe("./dist/index.mjs");
-  expect(pkg.types).toBe("./dist/index.d.mts");
-  expect(pkg.files).toEqual(["dist", "**/*.json"]);
 
   // Subsequent generation run works and atomically replaces without unmanaged file errors
   await expect(
     generate({
       ...options,
-      package: true,
       bundle: true,
-      packageName: "@vality/proto-bundled",
+      dist,
     }),
   ).resolves.toBeDefined();
 });
 
-test("bundles output with minification when bundle: true and minify: true", async () => {
+test("bundles output into dist/ with minification by default when bundle: true", async () => {
   const options = await setup();
+  const dist = path.join(options.output, "../dist");
   await generate({
     ...options,
     bundle: true,
-    minify: true,
+    dist,
   });
 
-  const distFiles = await readdir(path.join(options.output, "dist"));
+  const distFiles = await readdir(dist);
   expect(distFiles).toContain("index.mjs");
+  expect(distFiles).toContain("index.d.mts");
 
-  const indexContent = await readFile(path.join(options.output, "dist/index.mjs"), "utf8");
+  const indexContent = await readFile(path.join(dist, "index.mjs"), "utf8");
   expect(indexContent.trim().split("\n")).toHaveLength(1);
 });
 
-test("CLI supports --bundle and --minify flags", async () => {
+test("CLI supports --bundle and --dist flags", async () => {
   const options = await setup();
+  const dist = path.join(options.output, "../dist");
   const result = await execute(process.execPath, [
     path.resolve(import.meta.dirname, "../src/cli.ts"),
     "--input",
@@ -394,15 +328,47 @@ test("CLI supports --bundle and --minify flags", async () => {
     options.includes[0]!,
     "--namespace",
     "example",
-    "--package",
     "--bundle",
-    "--minify",
+    "--dist",
+    dist,
   ]);
 
   expect(result.stdout).toContain("generated 2 module(s)");
-  const files = await readdir(options.output);
-  expect(files).toContain("dist");
-  const distFiles = await readdir(path.join(options.output, "dist"));
+  expect(result.stdout).toContain(`bundled into ${dist}`);
+  const distFiles = await readdir(dist);
   expect(distFiles).toContain("index.mjs");
   expect(distFiles).toContain("index.d.mts");
+});
+
+test("CLI defaults output to generated and requires only --input", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "tsthrift-cli-default-"));
+  const input = path.join(dir, "proto");
+  await mkdir(input, { recursive: true });
+  await writeFile(path.join(input, "test.thrift"), "struct Item { 1: string id }");
+
+  // Missing --input should fail
+  await expect(
+    execute(process.execPath, [path.resolve(import.meta.dirname, "../src/cli.ts")]),
+  ).rejects.toThrow(/--input is required/);
+
+  // Omitting --output defaults to generated in cwd
+  const result = await execute(
+    process.execPath,
+    [path.resolve(import.meta.dirname, "../src/cli.ts"), "--input", input],
+    { cwd: dir },
+  );
+
+  expect(result.stdout).toContain("generated 1 module(s)");
+  expect(result.stdout).toMatch(/\/generated\b/);
+  const generatedFiles = await readdir(path.join(dir, "generated"));
+  expect(generatedFiles).toContain("index.ts");
+  expect(generatedFiles).toContain("models");
+  await rm(dir, { recursive: true, force: true });
+});
+
+test("generate() accepts options without output property", () => {
+  const options: import("../src/compiler/generate.ts").GenerateOptions = {
+    input: "proto",
+  };
+  expect(options.output).toBeUndefined();
 });

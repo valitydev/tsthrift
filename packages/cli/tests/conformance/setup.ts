@@ -219,13 +219,12 @@ export async function prepareConformance(directory: string) {
   const tsc = path.resolve(path.dirname(require.resolve("typescript")), "../bin/tsc");
   for (const i64 of ["bigint", "number"] as const) {
     const output = path.join(directory, i64);
-    await generate({ input, includes: [proto], output, i64, package: true });
+    await generate({ input, includes: [proto], output, i64 });
     await generate({
       input: proto,
       output: path.join(output, "damsel"),
       namespaces: ["domain_config_v2"],
       i64,
-      package: true,
     });
     await run(process.execPath, [tsc, "-p", path.join(output, "tsconfig.json")]);
   }
