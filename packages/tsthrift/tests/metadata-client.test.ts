@@ -198,3 +198,124 @@ test("supports pre-initialized MetadataIndex without metadata or structuredClone
   const res = await client.next(99n);
   expect(res).toBe(100n);
 });
+
+test("supports lowerCaseMethods mapping client methods to lowerFirst while preserving wireName", async () => {
+  const metadata: Metadata[] = [
+    {
+      name: "payment",
+      path: "payment.thrift",
+      ast: {
+        service: {
+          PaymentService: {
+            functions: {
+              GetPayment: {
+                name: "GetPayment",
+                type: "string",
+                args: [{ id: 1, name: "id", type: "string" }],
+                throws: [],
+                oneway: false,
+              },
+            },
+          },
+        },
+      },
+    },
+  ];
+
+  let wireMethodNameReceived = "";
+  const client = await createMetadataClient<any>({
+    endpoint: "unused",
+    namespace: "payment",
+    serviceName: "PaymentService",
+    metadata,
+    lowerCaseMethods: true,
+    transport: async (bytes) => {
+      const reader = new BinaryReader(bytes);
+      const header = reader.readMessageBegin();
+      wireMethodNameReceived = header.name;
+      reader.readFieldBegin();
+      const id = reader.readString();
+      const writer = new BinaryWriter();
+      writer.writeMessageBegin("GetPayment", MessageType.Reply, header.sequenceId);
+      writer.writeFieldBegin(11, 0);
+      writer.writeString(`payment-${id}`);
+      writer.writeFieldStop();
+      return writer.finish();
+    },
+  });
+
+  expect(typeof client.getPayment).toBe("function");
+  expect(client.GetPayment).toBeUndefined();
+
+  const result = await client.getPayment("123");
+  expect(result).toBe("payment-123");
+  expect(wireMethodNameReceived).toBe("GetPayment");
+
+  const safeResult = await client.safe.getPayment("456");
+  expect(safeResult).toEqual({ data: "payment-456", error: undefined });
+});
+
+test("scenario 1: methods differing only by initial case coexist normally, but collide under lowerCaseMethods", async () => {
+  const metadata: Metadata[] = [
+    {
+      name: "example",
+      path: "example.thrift",
+      ast: {
+        service: {
+          Example: {
+            functions: {
+              GetItem: {
+                name: "GetItem",
+                type: "string",
+                args: [],
+                throws: [],
+                oneway: false,
+              },
+              getItem: {
+                name: "getItem",
+                type: "string",
+                args: [],
+                throws: [],
+                oneway: false,
+              },
+            },
+          },
+        },
+      },
+    },
+  ];
+
+  // 1. Without lowerCaseMethods: both methods coexist independently
+  const normalClient = await createMetadataClient<any>({
+    endpoint: "unused",
+    namespace: "example",
+    serviceName: "Example",
+    metadata,
+    transport: async (bytes) => {
+      const reader = new BinaryReader(bytes);
+      const header = reader.readMessageBegin();
+      const writer = new BinaryWriter();
+      writer.writeMessageBegin(header.name, MessageType.Reply, header.sequenceId);
+      writer.writeFieldBegin(11, 0);
+      writer.writeString(`reply-for-${header.name}`);
+      writer.writeFieldStop();
+      return writer.finish();
+    },
+  });
+
+  expect(typeof normalClient.GetItem).toBe("function");
+  expect(typeof normalClient.getItem).toBe("function");
+  expect(await normalClient.GetItem()).toBe("reply-for-GetItem");
+  expect(await normalClient.getItem()).toBe("reply-for-getItem");
+
+  // 2. With lowerCaseMethods: true, collision is caught and cleanly rejected
+  await expect(
+    createMetadataClient({
+      endpoint: "unused",
+      namespace: "example",
+      serviceName: "Example",
+      metadata,
+      lowerCaseMethods: true,
+    }),
+  ).rejects.toThrow("Method name collision in example.Example: getItem");
+});

@@ -22,6 +22,7 @@ export interface MethodException {
 }
 
 export interface MethodCodec {
+  wireName?: string;
   args: Codec<Record<string, unknown>>;
   argumentNames: string[];
   result: Codec<Record<string, unknown>>;
@@ -90,14 +91,22 @@ export function createRpcClient<T extends object>(
     async (...args: unknown[]) => {
       const options = args[method.argumentNames.length] as RequestOptions | undefined;
       const callArgs = args.slice(0, method.argumentNames.length);
-      const context = { name, serviceName, namespace, args: callArgs, headers: options?.headers };
+      const wireName = method.wireName ?? name;
+      const context = {
+        name,
+        wireName,
+        serviceName,
+        namespace,
+        args: callArgs,
+        headers: options?.headers,
+      };
       try {
         config.loggingFn?.({ ...context, type: "call" });
         sequence = sequence === 2147483647 ? 1 : sequence + 1;
         const sequenceId = sequence;
         const writer = new BinaryWriter();
         writer.writeMessageBegin(
-          name,
+          wireName,
           method.oneway ? MessageType.Oneway : MessageType.Call,
           sequenceId,
         );
@@ -106,7 +115,9 @@ export function createRpcClient<T extends object>(
           Object.fromEntries(method.argumentNames.map((arg, i) => [arg, callArgs[i]])),
         );
         const bytes = await transport(writer.finish(), options);
-        const response = method.oneway ? undefined : decodeReply(bytes, name, sequenceId, method);
+        const response = method.oneway
+          ? undefined
+          : decodeReply(bytes, wireName, sequenceId, method);
         config.loggingFn?.({ ...context, type: "success", response });
         return response;
       } catch (error) {

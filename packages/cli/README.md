@@ -43,6 +43,7 @@ npx --package @vality/tsthrift-cli tsthrift-cli --input "proto/**/*.thrift" [opt
 | `--no-services`             | Generate models and metadata without service factories              | `false`     |
 | `--metadata-json`           | Emit monolithic `metadata.json` in output directory                 | `false`     |
 | `--i64 <mode>`              | Public `i64` representation: `bigint` (default) or `number`         | `bigint`    |
+| `--lower-case-methods`      | Generate service client methods starting with a lowercase letter    | `false`     |
 | `--allow-duplicate-modules` | Allow duplicate module basenames across includes (first-wins)       | `false`     |
 | `-h, --help`                | Show help and exit                                                  |             |
 

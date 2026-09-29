@@ -13,10 +13,12 @@ Generate metadata, TypeScript models, and service factories.
   -d, --dist             Bundle output directory (default: dist)
       --no-sourcemap     Disable source maps when bundling
   -I, --include          Additional include root (repeatable)
+  -m, --main             Main namespace to re-export at root (auto if single module)
       --no-models        Generate only metadata.json without models or services
       --no-services      Generate models and metadata without service factories
       --metadata-json    Emit monolithic metadata.json in output directory
       --i64              Public i64 representation: bigint (default) | number
+      --lower-case-methods Generate service methods starting with a lowercase letter
       --allow-duplicate-modules Allow duplicate module basenames across includes (first-wins)
   -h, --help             Show this help
 `;
@@ -31,10 +33,12 @@ try {
       dist: { type: "string", short: "d" },
       "no-sourcemap": { type: "boolean" },
       include: { type: "string", short: "I", multiple: true },
+      main: { type: "string", short: "m" },
       "no-models": { type: "boolean" },
       "no-services": { type: "boolean" },
       "metadata-json": { type: "boolean" },
       i64: { type: "string" },
+      "lower-case-methods": { type: "boolean" },
       "allow-duplicate-modules": { type: "boolean" },
       help: { type: "boolean", short: "h" },
     },
@@ -53,8 +57,10 @@ try {
       dist: values.dist,
       sourcemap,
       includes: values.include,
+      main: values.main,
       models,
       services,
+      lowerCaseMethods: values["lower-case-methods"],
       metadataJson: values["metadata-json"],
       i64: parseI64Mode(values.i64),
       allowDuplicateModules: values["allow-duplicate-modules"],

@@ -6,8 +6,12 @@ const reserved = new Set(
   ),
 );
 
+function lowerFirst(str: string): string {
+  return str.length > 0 ? str.charAt(0).toLowerCase() + str.slice(1) : str;
+}
+
 /** Rejects names that would overwrite generated paths or collide in public barrels. */
-export function validateOutput(schema: Schema, services: boolean): void {
+export function validateOutput(schema: Schema, services: boolean, lowerCaseMethods = false): void {
   const modules = new Set<string>();
   for (const program of schema.programs) {
     if (modules.has(program.name.toLowerCase()))
@@ -19,7 +23,15 @@ export function validateOutput(schema: Schema, services: boolean): void {
     ) {
       throw new Error(`Module name collides with generated export: ${program.name}`);
     }
-    const names = new Set<string>(["metadata", "globalThis", "TextEncoder", "Promise"]);
+    const names = new Set<string>([
+      "metadata",
+      "globalThis",
+      "TextEncoder",
+      "Promise",
+      "loadMetadata",
+      "SERVICES",
+      "SERVICES_LIST",
+    ]);
     const add = (name: string) => {
       if (reserved.has(name) || names.has(name))
         throw new Error(`Generated identifier collision: ${program.name}.${name}`);
@@ -36,8 +48,16 @@ export function validateOutput(schema: Schema, services: boolean): void {
       if (paths.has(name.toLowerCase()))
         throw new Error(`Generated service path collision: ${program.name}.${name}`);
       paths.add(name.toLowerCase());
-      for (const generated of [name, `${name}Config`, `${name}Descriptor`, `create${name}`])
+      for (const generated of [
+        name,
+        `${name}Safe`,
+        `${name}Config`,
+        `${name}Descriptor`,
+        `create${name}`,
+        `create${name}Safe`,
+      ]) {
         add(generated);
+      }
       if (
         [
           "models",
@@ -49,10 +69,24 @@ export function validateOutput(schema: Schema, services: boolean): void {
       ) {
         throw new Error(`Generated service identifier collision: ${program.name}.${name}`);
       }
+      const seenMethods = new Set<string>();
       for (const method of Object.values(service.functions)) {
-        for (const arg of method.args) {
-          if (reserved.has(arg.name))
-            throw new Error(`Unsupported argument identifier: ${arg.name}`);
+        const methodName = lowerCaseMethods ? lowerFirst(method.name) : method.name;
+        if (methodName === "safe") {
+          throw new Error(
+            `Service method name collides with reserved client property: ${program.name}.${name}.${method.name}`,
+          );
+        }
+        if (seenMethods.has(methodName)) {
+          throw new Error(
+            `Service method name collision in ${program.name}.${name}: "${methodName}"`,
+          );
+        }
+        seenMethods.add(methodName);
+        const capMethodName = method.name.charAt(0).toUpperCase() + method.name.slice(1);
+        add(`${name}${capMethodName}Error`);
+        if (method.throws && method.throws.length > 0) {
+          add(`${name}${capMethodName}ServiceError`);
         }
       }
     }

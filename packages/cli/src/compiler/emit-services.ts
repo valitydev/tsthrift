@@ -28,10 +28,29 @@ function serviceTsType(type: ValueType, i64: I64Mode, binary: BinaryTargetType):
   return `models.${type}`;
 }
 
+const reservedWords = new Set(
+  "await break case catch class const continue debugger default delete do else enum export extends false finally for function if import in instanceof new null return super switch this throw true try typeof var void while with yield let static implements interface package private protected public".split(
+    " ",
+  ),
+);
+
+function safeParamName(name: string): string {
+  let safe = name;
+  while (reservedWords.has(safe)) {
+    safe = `_${safe}`;
+  }
+  return safe;
+}
+
+function lowerFirst(str: string): string {
+  return str.length > 0 ? str.charAt(0).toLowerCase() + str.slice(1) : str;
+}
+
 export function emitProgramServices(
   program: Program,
   i64: I64Mode = "bigint",
   binary: BinaryTargetType = "Uint8Array",
+  lowerCaseMethods = false,
 ): EmittedServiceFile[] {
   const files: EmittedServiceFile[] = [];
   const services = program.ast.service ?? {};
@@ -58,12 +77,22 @@ export function emitProgramServices(
     const methods: string[] = [];
     const safeMethods: string[] = [];
 
+    const seenMethodNames = new Set<string>();
     for (const method of Object.values(service.functions)) {
-      const names = new Set(method.args.map((field) => field.name));
+      const methodName = lowerCaseMethods ? lowerFirst(method.name) : method.name;
+      if (seenMethodNames.has(methodName)) {
+        throw new Error(
+          `Method name collision in service ${program.name}.${serviceName}: "${methodName}"`,
+        );
+      }
+      seenMethodNames.add(methodName);
+      const paramNames = new Set(method.args.map((field) => safeParamName(field.name)));
       let optionsName = "options";
-      while (names.has(optionsName)) optionsName = `_${optionsName}`;
+      while (paramNames.has(optionsName)) optionsName = `_${optionsName}`;
       const parameters = [
-        ...method.args.map((field) => `${field.name}: ${serviceTsType(field.type, i64, binary)}`),
+        ...method.args.map(
+          (field) => `${safeParamName(field.name)}: ${serviceTsType(field.type, i64, binary)}`,
+        ),
         `${optionsName}?: models.RequestOptions`,
       ].join(", ");
 
@@ -87,9 +116,9 @@ export function emitProgramServices(
       }
 
       const returnType = serviceTsType(method.type, i64, binary);
-      methods.push(`  ${JSON.stringify(method.name)}(${parameters}): Promise<${returnType}>;`);
+      methods.push(`  ${JSON.stringify(methodName)}(${parameters}): Promise<${returnType}>;`);
       safeMethods.push(
-        `  ${JSON.stringify(method.name)}(${parameters}): Promise<ThriftResult<${returnType}, ${errorTypeName}>>;`,
+        `  ${JSON.stringify(methodName)}(${parameters}): Promise<ThriftResult<${returnType}, ${errorTypeName}>>;`,
       );
     }
 
@@ -141,6 +170,7 @@ export function emitProgramServices(
       `    i64Mode: ${JSON.stringify(i64)},`,
       `    serviceName: ${JSON.stringify(serviceName)},`,
       `    namespace: ${JSON.stringify(program.name)},`,
+      ...(lowerCaseMethods ? [`    lowerCaseMethods: true,`] : []),
       `    metadata: config.metadata ?? defaultMetadata,`,
       `  });`,
       `}`,

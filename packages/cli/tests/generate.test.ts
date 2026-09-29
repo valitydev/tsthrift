@@ -85,8 +85,8 @@ test.each(["number", "bigint"] as const)(
     }
 
     const indexContent = await readFile(path.join(options.output, "index.ts"), "utf8");
-    expect(indexContent).toContain('export * as common from "./common/index.js";');
-    expect(indexContent).toContain('export * as example from "./example/index.js";');
+    expect(indexContent).not.toContain("export * as common");
+    expect(indexContent).not.toContain("export * as example");
     expect(indexContent).toContain('export { SERVICES, SERVICES_LIST } from "./services.js";');
     expect(indexContent).toContain('export { loadMetadata } from "./metadata.js";');
     expect(indexContent).not.toContain("generateId");
@@ -461,4 +461,141 @@ test("rejects overlapping bundle paths and refuses unrelated output", async () =
   await writeFile(path.join(options.output, "keep.txt"), "keep");
   await expect(generate(options)).rejects.toThrow("unowned");
   expect(await readFile(path.join(options.output, "keep.txt"), "utf8")).toBe("keep");
+});
+
+test("re-exports main module at root when specified", async () => {
+  const options = await setup();
+  await generate({ ...options, main: "example" });
+
+  const indexContent = await readFile(path.join(options.output, "index.ts"), "utf8");
+  expect(indexContent).toContain('export * from "./example/index.js";');
+  expect(indexContent).toContain('export { SERVICES, SERVICES_LIST } from "./services.js";');
+});
+
+test("throws when specified main module does not exist in schema", async () => {
+  const options = await setup();
+  await expect(generate({ ...options, main: "nonexistent" })).rejects.toThrow(
+    'Main module "nonexistent" not found in schema',
+  );
+});
+
+test("automatically re-exports single module at root index", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "tsthrift-single-"));
+  directories.push(dir);
+  const input = path.join(dir, "proto");
+  const output = path.join(dir, "generated");
+  await mkdir(input, { recursive: true });
+  await writeFile(path.join(input, "single.thrift"), "struct Item { 1: string id }");
+
+  await generate({ input, output });
+
+  const indexContent = await readFile(path.join(output, "index.ts"), "utf8");
+  expect(indexContent).toContain('export * from "./single/index.js";');
+});
+
+test("sanitizes reserved parameter names in service method signatures", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "tsthrift-reserved-param-"));
+  directories.push(dir);
+  const input = path.join(dir, "proto");
+  const output = path.join(dir, "generated");
+  await mkdir(input, { recursive: true });
+  await writeFile(
+    path.join(input, "test.thrift"),
+    "service TestService { void remove(1: string default, 2: i32 delete) }",
+  );
+
+  await generate({ input, output });
+
+  const serviceContent = await readFile(path.join(output, "test/services/TestService.ts"), "utf8");
+  expect(serviceContent).toContain(
+    '"remove"(_default: string, _delete: number, options?: models.RequestOptions): Promise<void>;',
+  );
+});
+
+test("rejects service method named safe colliding with reserved property", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "tsthrift-safe-collision-"));
+  directories.push(dir);
+  const input = path.join(dir, "proto");
+  const output = path.join(dir, "generated");
+  await mkdir(input, { recursive: true });
+  await writeFile(path.join(input, "test.thrift"), "service TestService { void safe() }");
+
+  await expect(generate({ input, output })).rejects.toThrow(
+    "Reserved service method: TestService.safe",
+  );
+});
+
+test("supports lowerCaseMethods: true in code generator and cli", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "tsthrift-lowercase-methods-"));
+  directories.push(dir);
+  const input = path.join(dir, "proto");
+  const output = path.join(dir, "generated");
+  await mkdir(input, { recursive: true });
+  await writeFile(
+    path.join(input, "test.thrift"),
+    "service PaymentProcessing { string GetPayment(1: string id) }",
+  );
+
+  const result = await generate({ input, output, lowerCaseMethods: true });
+  expect(result.lowerCaseMethods).toBe(true);
+
+  const serviceContent = await readFile(
+    path.join(output, "test/services/PaymentProcessing.ts"),
+    "utf8",
+  );
+  expect(serviceContent).toContain(
+    '"getPayment"(id: string, options?: models.RequestOptions): Promise<string>;',
+  );
+  expect(serviceContent).toContain("lowerCaseMethods: true,");
+
+  // CLI execution test
+  const cliOutput = path.join(dir, "cli-generated");
+  const cliBin = path.resolve(import.meta.dirname, "../dist/cli.mjs");
+  await execute(process.execPath, [
+    cliBin,
+    "--input",
+    input,
+    "--output",
+    cliOutput,
+    "--lower-case-methods",
+  ]);
+
+  const cliServiceContent = await readFile(
+    path.join(cliOutput, "test/services/PaymentProcessing.ts"),
+    "utf8",
+  );
+  expect(cliServiceContent).toContain(
+    '"getPayment"(id: string, options?: models.RequestOptions): Promise<string>;',
+  );
+  expect(cliServiceContent).toContain("lowerCaseMethods: true,");
+});
+
+test("scenario 1: methods differing only by initial case collide under lowerCaseMethods (API & CLI)", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "tsthrift-lowercase-collision-"));
+  directories.push(dir);
+  const input = path.join(dir, "proto");
+  const outputLowerCase = path.join(dir, "generated-lowercase");
+  await mkdir(input, { recursive: true });
+  await writeFile(
+    path.join(input, "test.thrift"),
+    "service TestService { void GetPayment(), void getPayment() }",
+  );
+
+  // 1. Programmatic generate() with lowerCaseMethods: true rejects collision
+  await expect(
+    generate({ input, output: outputLowerCase, lowerCaseMethods: true }),
+  ).rejects.toThrow('Service method name collision in test.TestService: "getPayment"');
+
+  // 2. CLI command with --lower-case-methods also exits with error
+  const cliBin = path.resolve(import.meta.dirname, "../dist/cli.mjs");
+  await expect(
+    execute(process.execPath, [
+      cliBin,
+      "--input",
+      input,
+      "--output",
+      path.join(dir, "cli-out"),
+      "--lower-case-methods",
+    ]),
+  ).rejects.toThrow('Service method name collision in test.TestService: "getPayment"');
 });

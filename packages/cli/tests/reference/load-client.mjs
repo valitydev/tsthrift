@@ -5,12 +5,20 @@ import { createMetadataClient } from "@vality/tsthrift";
 export async function loadClient(directory, mode, backend = "metadata") {
   if (backend === "generated" || backend === "descriptor") {
     const root = await import(pathToFileURL(`${directory}/index.js`));
+    let exampleModule = root.example;
+    if (!exampleModule) {
+      try {
+        exampleModule = await import(pathToFileURL(`${directory}/example/index.js`));
+      } catch {
+        exampleModule = root;
+      }
+    }
     return {
       createExampleClient:
         backend === "descriptor"
           ? root.SERVICES["example.Example"].createService
-          : root.example.createExample,
-      model: root.example,
+          : (exampleModule.createExample ?? root.createExample),
+      model: exampleModule,
       SERVICES: root.SERVICES,
     };
   }

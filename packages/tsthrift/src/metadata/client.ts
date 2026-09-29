@@ -16,9 +16,14 @@ export interface MetadataClientConfig extends RpcClientConfig {
   namespace: string;
   serviceName: string;
   i64Mode?: I64Mode;
+  lowerCaseMethods?: boolean;
 }
 
 export type DynamicThriftClient = Record<string, (...args: unknown[]) => Promise<unknown>>;
+
+function lowerFirst(str: string): string {
+  return str.length > 0 ? str.charAt(0).toLowerCase() + str.slice(1) : str;
+}
 
 /** Builds a client entirely from metadata, without generated modules or eval. */
 export async function createMetadataClient<T extends object = DynamicThriftClient>(
@@ -49,9 +54,15 @@ export async function createMetadataClient<T extends object = DynamicThriftClien
       const parent = index.resolveName(service.extends, namespace);
       addService(parent.namespace, parent.name);
     }
+    const seenInService = new Set<string>();
     for (const method of Object.values(service.functions)) {
-      if (["then", "safe", "promise"].includes(method.name))
-        throw new Error(`A metadata client cannot expose the reserved method ${method.name}`);
+      const methodName = config.lowerCaseMethods ? lowerFirst(method.name) : method.name;
+      if (seenInService.has(methodName)) {
+        throw new Error(`Method name collision in ${key}: ${methodName}`);
+      }
+      seenInService.add(methodName);
+      if (["then", "safe", "promise"].includes(methodName))
+        throw new Error(`A metadata client cannot expose the reserved method ${methodName}`);
       if (method.oneway && (method.type !== "void" || method.throws.length))
         throw new Error(`Invalid oneway method ${key}.${method.name}`);
       if (method.throws.some((field) => field.id === 0 || field.name === "success"))
@@ -67,7 +78,8 @@ export async function createMetadataClient<T extends object = DynamicThriftClien
       );
       const args = codecs.fields(method.args, namespace);
       const reply = codecs.fields(result, namespace);
-      methods[method.name] = {
+      methods[methodName] = {
+        wireName: method.name,
         args: struct(`${key}.${method.name}.args`, () => args),
         argumentNames: method.args.map((field) => field.name),
         result: struct(`${key}.${method.name}.result`, () => reply),

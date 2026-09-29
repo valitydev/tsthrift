@@ -97,6 +97,7 @@ test.each(["bigint", "number"] as const)(
         "--outDir",
         compiled,
         path.join(output, "index.ts"),
+        path.join(output, "example/index.ts"),
       ]);
       await copyFile(path.join(output, "metadata.json"), path.join(compiled, "metadata.json"));
       for (const [script, kind] of [

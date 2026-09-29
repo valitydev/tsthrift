@@ -123,7 +123,7 @@ By default, the CLI generates TypeScript models/interfaces (`<namespace>/models.
 Pass `--bundle` to compile the generated sources into an optimized, minified distribution bundle with subpath exports (`index.mjs`, `<namespace>/index.mjs`, and `.d.mts` declarations) in `./dist` (configurable via `-d, --dist`).
 Pass `--metadata-json` to also emit monolithic `metadata.json`, `--no-models` to generate only metadata without models or services, or `--no-services` to skip service factories.
 
-Input (`-i, --input`) supports directories, specific files, or glob patterns (e.g. `--input "proto/**/*.thrift"`). Repeat `--include` for additional include roots. `--i64 number` selects safe numeric values instead of bigint.
+Input (`-i, --input`) supports directories, specific files, or glob patterns (e.g. `--input "proto/**/*.thrift"`). Repeat `--include` for additional include roots. `--i64 number` selects safe numeric values instead of bigint. Pass `--lower-case-methods` to generate service methods starting with a lowercase letter in TypeScript while preserving wire message names.
 Pass `--allow-duplicate-modules` to allow duplicate module basenames across include directories using first-wins shadowing.
 
 Use a dedicated output directory. Generation stages output and preserves previous
