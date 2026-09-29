@@ -27,11 +27,20 @@ export type ThriftServiceTarget<TService extends object = object> =
 
 /**
  * Provides global Thrift client configuration in Angular DI.
+ * Accepts either a static configuration object or a factory function (which can use inject()).
  */
-export function provideThriftConfig(config: HttpTransportConfig): Provider {
+export function provideThriftConfig(
+  configOrFactory: HttpTransportConfig | (() => HttpTransportConfig),
+): Provider {
+  if (typeof configOrFactory === "function") {
+    return {
+      provide: THRIFT_CONFIG,
+      useFactory: configOrFactory,
+    };
+  }
   return {
     provide: THRIFT_CONFIG,
-    useValue: config,
+    useValue: configOrFactory,
   };
 }
 
@@ -61,14 +70,30 @@ export function provideThriftService<TService extends object>(
               ...config,
               headers: mergeHeaderProviders(targetConfig.headers, config.headers),
             };
-      const rawClient = !effectiveOverride
+
+      const serviceHeaderSetting = effectiveOverride?.serviceHeader ?? baseConfig?.serviceHeader;
+      let serviceHeaderObj: Record<string, string> | undefined;
+      if (serviceHeaderSetting) {
+        const headerName =
+          typeof serviceHeaderSetting === "string" ? serviceHeaderSetting : "service";
+        serviceHeaderObj = { [headerName]: descriptor.serviceName };
+      }
+
+      const withServiceHeaders = serviceHeaderObj
+        ? {
+            ...effectiveOverride,
+            headers: mergeHeaderProviders(serviceHeaderObj, effectiveOverride?.headers),
+          }
+        : effectiveOverride;
+
+      const rawClient = !withServiceHeaders
         ? factory(baseConfig)
         : !baseConfig
-          ? factory(effectiveOverride)
+          ? factory(withServiceHeaders)
           : factory({
               ...baseConfig,
-              ...effectiveOverride,
-              headers: mergeHeaderProviders(baseConfig.headers, effectiveOverride.headers),
+              ...withServiceHeaders,
+              headers: mergeHeaderProviders(baseConfig.headers, withServiceHeaders.headers),
             });
       return toObservableClient(rawClient);
     },

@@ -99,6 +99,12 @@ test.each(["number", "bigint"] as const)(
     expect(exampleEntry).toContain('export * from "./models.js";');
     expect(exampleEntry).toContain('export * from "./services/index.js";');
 
+    const exampleService = await readFile(path.join(exampleDir, "services/Example.ts"), "utf8");
+    expect(exampleService).toContain("readonly safe: ExampleSafe;");
+    expect(exampleService).toContain("export function createExampleSafe(");
+    expect(exampleService).toContain("export type ExampleEchoError =");
+    expect(exampleService).toContain("export type ExampleEchoServiceError =");
+
     const commonMeta = await readFile(path.join(options.output, "common/metadata.ts"), "utf8");
     expect(commonMeta).toContain('"path": "shared/common.thrift"');
     const exampleMeta = await readFile(path.join(options.output, "example/metadata.ts"), "utf8");
@@ -305,9 +311,30 @@ test("bundles output into dist/ with minification by default when bundle: true",
   const distFiles = await readdir(dist);
   expect(distFiles).toContain("index.mjs");
   expect(distFiles).toContain("index.d.mts");
+  expect(distFiles).toContain("index.mjs.map");
 
   const indexContent = await readFile(path.join(dist, "index.mjs"), "utf8");
-  expect(indexContent.trim().split("\n")).toHaveLength(1);
+  const codeLines = indexContent
+    .trim()
+    .split("\n")
+    .filter((line) => !line.startsWith("//# sourceMappingURL="));
+  expect(codeLines).toHaveLength(1);
+});
+
+test("supports sourcemap: false to disable source map generation", async () => {
+  const options = await setup();
+  const dist = path.join(options.output, "../dist");
+  await generate({
+    ...options,
+    bundle: true,
+    dist,
+    sourcemap: false,
+  });
+
+  const distFiles = await readdir(dist);
+  expect(distFiles).toContain("index.mjs");
+  expect(distFiles).toContain("index.d.mts");
+  expect(distFiles).not.toContain("index.mjs.map");
 });
 
 test("CLI supports --bundle and --dist flags with subpath exports", async () => {
@@ -336,6 +363,29 @@ test("CLI supports --bundle and --dist flags with subpath exports", async () => 
   const commonDist = await readdir(path.join(dist, "common"));
   expect(commonDist).toContain("index.mjs");
   expect(commonDist).toContain("index.d.mts");
+});
+
+test("CLI supports --bundle with --no-sourcemap flag", async () => {
+  const options = await setup();
+  const dist = path.join(options.output, "../dist");
+  await execute(process.execPath, [
+    path.resolve(import.meta.dirname, "../src/cli.ts"),
+    "--input",
+    options.input,
+    "--output",
+    options.output,
+    "--include",
+    options.includes[0]!,
+    "--bundle",
+    "--dist",
+    dist,
+    "--no-sourcemap",
+  ]);
+
+  const distFiles = await readdir(dist);
+  expect(distFiles).toContain("index.mjs");
+  expect(distFiles).toContain("index.d.mts");
+  expect(distFiles).not.toContain("index.mjs.map");
 });
 
 test("CLI and generate() support glob patterns for input", async () => {

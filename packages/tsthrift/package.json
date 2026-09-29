@@ -26,8 +26,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "vp pack",
-    "dev": "vp pack --watch",
+    "build": "vp pack --sourcemap",
+    "dev": "vp pack --watch --sourcemap",
     "test": "vp test",
     "check": "vp check",
     "prepublishOnly": "vp run build"

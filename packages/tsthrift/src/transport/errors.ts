@@ -1,5 +1,8 @@
 /** Base error for all Thrift transport and RPC failures. */
 export class ThriftError extends Error {
+  public readonly isSystem: boolean = false;
+  public readonly isService: boolean = false;
+
   constructor(message: string) {
     super(message);
     this.name = this.constructor.name;
@@ -8,6 +11,9 @@ export class ThriftError extends Error {
 
 /** Error raised when the server responds with a non-200 HTTP status code (e.g. 4xx or 5xx). */
 export class ThriftHttpError extends ThriftError {
+  public override readonly isSystem = true as const;
+  public override readonly isService = false as const;
+
   constructor(
     public readonly status: number,
     public readonly statusText: string,
@@ -19,6 +25,9 @@ export class ThriftHttpError extends ThriftError {
 
 /** Error raised when a request exceeds its configured timeout duration. */
 export class ThriftTimeoutError extends ThriftError {
+  public override readonly isSystem = true as const;
+  public override readonly isService = false as const;
+
   constructor(
     public readonly timeoutMs: number,
     message?: string,
@@ -29,6 +38,9 @@ export class ThriftTimeoutError extends ThriftError {
 
 /** Error raised when network connectivity fails (DNS lookup, connection refused, reset). */
 export class ThriftConnectionError extends ThriftError {
+  public override readonly isSystem = true as const;
+  public override readonly isService = false as const;
+
   constructor(
     message: string,
     public readonly cause?: unknown,
@@ -39,6 +51,9 @@ export class ThriftConnectionError extends ThriftError {
 
 /** Error raised when the response format violates protocol expectations (e.g. HTML returned). */
 export class ThriftProtocolError extends ThriftError {
+  public override readonly isSystem = true as const;
+  public override readonly isService = false as const;
+
   constructor(message: string) {
     super(message);
   }
@@ -62,6 +77,9 @@ export function getThriftExceptionInfo(error: unknown): ThriftExceptionMeta | un
 
 /** Error raised when the Thrift server returns a TApplicationException. */
 export class ThriftApplicationError extends ThriftError {
+  public override readonly isSystem = true as const;
+  public override readonly isService = false as const;
+
   constructor(
     message: string,
     public readonly code: number,
@@ -107,6 +125,8 @@ export class ThriftServiceError<
   TType extends string = string,
   TData extends object = object,
 > extends ThriftError {
+  public override readonly isSystem = false as const;
+  public override readonly isService = true as const;
   public readonly type: TType;
   public readonly fieldName: string;
   public readonly data: TData;

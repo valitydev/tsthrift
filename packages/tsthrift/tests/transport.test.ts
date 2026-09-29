@@ -275,5 +275,78 @@ describe("HTTP transport", () => {
       const ignoredGeneric = catchSystemError(genericError, () => "not-thrift");
       expect(ignoredGeneric).toBeUndefined();
     });
+
+    test("isSystem and isService flags discriminate error categories", () => {
+      expect(serviceError.isService).toBe(true);
+      expect(serviceError.isSystem).toBe(false);
+
+      expect(httpError.isService).toBe(false);
+      expect(httpError.isSystem).toBe(true);
+
+      expect(timeoutError.isService).toBe(false);
+      expect(timeoutError.isSystem).toBe(true);
+
+      expect(connError.isService).toBe(false);
+      expect(connError.isSystem).toBe(true);
+
+      expect(protoError.isService).toBe(false);
+      expect(protoError.isSystem).toBe(true);
+
+      expect(appError.isService).toBe(false);
+      expect(appError.isSystem).toBe(true);
+    });
+  });
+
+  describe("dynamic endpoint and serviceHeader", () => {
+    test("resolves dynamic endpoint factory", async () => {
+      let fetchCalledWith = "";
+      const customFetch = (async (url: string) => {
+        fetchCalledWith = url;
+        return new Response(new Uint8Array([0, 0, 0, 0]), {
+          status: 200,
+          headers: { "Content-Type": "application/x-thrift" },
+        });
+      }) as unknown as typeof fetch;
+
+      const transport = createHttpTransport({
+        endpoint: async () => "https://api.example.com/dynamic-path",
+        fetch: customFetch,
+      });
+
+      await transport(new Uint8Array([1, 2, 3]));
+      expect(fetchCalledWith).toBe("https://api.example.com/dynamic-path");
+    });
+
+    test("adds service header when serviceHeader is enabled", async () => {
+      let sentHeaders: Record<string, string> = {};
+      const customFetch = (async (_url: string, init: any) => {
+        sentHeaders = init.headers;
+        return new Response(new Uint8Array([0, 0, 0, 0]), {
+          status: 200,
+          headers: { "Content-Type": "application/x-thrift" },
+        });
+      }) as unknown as typeof fetch;
+
+      const transport = createHttpTransport({
+        endpoint: "https://api.example.com/wachter",
+        serviceName: "PaymentProcessing",
+        serviceHeader: true,
+        fetch: customFetch,
+      });
+
+      await transport(new Uint8Array([1, 2, 3]));
+      expect(sentHeaders["service"]).toBe("PaymentProcessing");
+
+      // Custom header name
+      const transportCustom = createHttpTransport({
+        endpoint: "https://api.example.com/wachter",
+        serviceName: "PaymentProcessing",
+        serviceHeader: "x-custom-service",
+        fetch: customFetch,
+      });
+
+      await transportCustom(new Uint8Array([1, 2, 3]));
+      expect(sentHeaders["x-custom-service"]).toBe("PaymentProcessing");
+    });
   });
 });

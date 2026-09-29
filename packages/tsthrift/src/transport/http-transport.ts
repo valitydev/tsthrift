@@ -8,7 +8,7 @@ import {
 import type { RequestOptions, HttpTransportConfig, TransportFunction } from "./types.ts";
 import { mergeHeaders, resolveHeaders } from "./headers.ts";
 import { readResponseBody } from "./response-body.ts";
-import { createWoodyHeaders, WOODY_HEADERS } from "./woody.ts";
+import { resolveWoodyHeaders, WOODY_HEADERS } from "./woody.ts";
 
 export { mergeHeaderProviders } from "./headers.ts";
 
@@ -46,20 +46,31 @@ export function createHttpTransport(config: HttpTransportConfig): TransportFunct
       controller.signal.throwIfAborted();
       let woodyHeaders: Record<string, string> | undefined;
       if (config.woody) {
-        woodyHeaders = createWoodyHeaders(
+        woodyHeaders = await resolveWoodyHeaders(
           typeof config.woody === "object" ? config.woody : undefined,
         );
         if (!woodyHeaders[WOODY_HEADERS.DEADLINE]) {
           woodyHeaders[WOODY_HEADERS.DEADLINE] = new Date(startedAt + timeoutMs).toISOString();
         }
       }
+      let serviceHeaders: Record<string, string> | undefined;
+      const serviceHeaderSetting = options?.serviceHeader ?? config.serviceHeader;
+      const targetServiceName = options?.serviceName ?? config.serviceName;
+      if (serviceHeaderSetting && targetServiceName) {
+        const headerName =
+          typeof serviceHeaderSetting === "string" ? serviceHeaderSetting : "service";
+        serviceHeaders = { [headerName]: targetServiceName };
+      }
       const headers = mergeHeaders(
         { Accept: THRIFT_CONTENT_TYPE, "Content-Type": THRIFT_CONTENT_TYPE },
+        serviceHeaders,
         woodyHeaders,
         baseHeaders,
         options?.headers,
       );
-      const response = await fetchFn(config.endpoint, {
+      targetEndpoint =
+        typeof config.endpoint === "function" ? await config.endpoint() : config.endpoint;
+      const response = await fetchFn(targetEndpoint, {
         method: "POST",
         headers,
         body: payload as BodyInit,
@@ -88,6 +99,8 @@ export function createHttpTransport(config: HttpTransportConfig): TransportFunct
       return readResponseBody(response, controller.signal);
     };
     const startedAt = Date.now();
+    let targetEndpoint =
+      typeof config.endpoint === "string" ? config.endpoint : "[dynamic endpoint]";
     try {
       return await Promise.race([send(), aborted]);
     } catch (error: unknown) {
@@ -95,7 +108,7 @@ export function createHttpTransport(config: HttpTransportConfig): TransportFunct
       if (error instanceof ThriftError) throw error;
       const message = error instanceof Error ? error.message : String(error);
       throw new ThriftConnectionError(
-        `Thrift HTTP request to ${config.endpoint} failed: ${message}`,
+        `Thrift HTTP request to ${targetEndpoint} failed: ${message}`,
         error,
       );
     } finally {

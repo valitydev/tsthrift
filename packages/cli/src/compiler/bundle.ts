@@ -5,6 +5,7 @@ export interface BundleOptions {
   outDir: string;
   tsconfig?: string;
   cwd?: string;
+  sourcemap?: boolean;
 }
 
 /** Bundles only generated entries without loading or modifying the consumer's build config. */
@@ -31,6 +32,7 @@ export async function bundleOutput(options: BundleOptions): Promise<void> {
     tsconfig: options.tsconfig,
     dts: true,
     minify: true,
+    sourcemap: options.sourcemap ?? true,
     format: "esm",
     platform: "neutral",
     deps: {

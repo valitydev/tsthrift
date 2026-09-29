@@ -10,6 +10,15 @@ export const WOODY_HEADERS = {
   META_PREFIX: "x-woody-meta-",
 } as const;
 
+export type WoodyMetaScalar = string | number | boolean;
+export type WoodyMetaValue = WoodyMetaScalar | null | undefined;
+
+export interface WoodyMetaMap {
+  [key: string]: WoodyMetaValue | WoodyMetaMap;
+}
+
+export type WoodyMetaProvider = WoodyMetaMap | (() => WoodyMetaMap | Promise<WoodyMetaMap>);
+
 /**
  * Configuration options for generating Woody RPC tracing headers.
  */
@@ -24,14 +33,35 @@ export interface WoodyHeadersConfig {
   flags?: number | string;
   /** Absolute deadline (Date, epoch timestamp in ms, or RFC3339 string). */
   deadline?: Date | number | string;
-  /** Custom woody metadata (values prefixed with 'x-woody-meta-'). Undefined and null values are omitted. */
-  meta?: Record<string, string | number | boolean | undefined | null>;
+  /** Prefix for metadata headers. Defaults to 'x-woody-meta-'. */
+  metaPrefix?: string;
+  /** Custom woody metadata (values prefixed with metaPrefix). Supports nested maps and async factories. */
+  meta?: WoodyMetaProvider;
 }
 
 import { generateTraceId } from "./generate-id.ts";
 
 export { BASE64_ALPHABET, FlakeId, bs64, generateId, generateTraceId } from "./generate-id.ts";
 export type { FlakeIdOptions } from "./generate-id.ts";
+
+/**
+ * Flattens a nested metadata map into prefixed header entries, skipping null and undefined values.
+ */
+export function flattenMeta(
+  map: WoodyMetaMap,
+  prefix: string,
+  out: Record<string, string> = {},
+): Record<string, string> {
+  for (const [key, value] of Object.entries(map)) {
+    if (value === undefined || value === null) continue;
+    if (typeof value === "object") {
+      flattenMeta(value as WoodyMetaMap, `${prefix}${key}-`, out);
+    } else {
+      out[`${prefix}${key}`] = String(value);
+    }
+  }
+  return out;
+}
 
 /**
  * Creates a record of Woody HTTP headers safe for browser fetch and Node.js.
@@ -70,13 +100,34 @@ export function createWoodyHeaders(config?: WoodyHeadersConfig): Record<string, 
   }
 
   if (config?.meta) {
-    for (const [key, value] of Object.entries(config.meta)) {
-      if (value !== undefined && value !== null) {
-        headers[`${WOODY_HEADERS.META_PREFIX}${key}`] = String(value);
+    const prefix = config.metaPrefix ?? WOODY_HEADERS.META_PREFIX;
+    if (typeof config.meta === "function") {
+      const result = config.meta();
+      if (result && typeof result === "object" && !("then" in result)) {
+        flattenMeta(result as WoodyMetaMap, prefix, headers);
       }
+    } else if (typeof config.meta === "object") {
+      flattenMeta(config.meta, prefix, headers);
     }
   }
 
+  return headers;
+}
+
+/**
+ * Asynchronously resolves Woody headers, supporting async meta providers.
+ */
+export async function resolveWoodyHeaders(
+  config?: WoodyHeadersConfig,
+): Promise<Record<string, string>> {
+  const headers = createWoodyHeaders(config);
+  if (typeof config?.meta === "function") {
+    const result = await config.meta();
+    if (result && typeof result === "object") {
+      const prefix = config.metaPrefix ?? WOODY_HEADERS.META_PREFIX;
+      flattenMeta(result, prefix, headers);
+    }
+  }
   return headers;
 }
 
@@ -85,9 +136,9 @@ export function createWoodyHeaders(config?: WoodyHeadersConfig): Record<string, 
  */
 export function createWoodyHeaderProvider(
   config?: WoodyHeadersConfig,
-): (baseHeaders?: Record<string, string>) => Record<string, string> {
-  return (baseHeaders = {}) => {
-    const woody = createWoodyHeaders(config);
+): (baseHeaders?: Record<string, string>) => Promise<Record<string, string>> {
+  return async (baseHeaders = {}) => {
+    const woody = await resolveWoodyHeaders(config);
     return {
       ...woody,
       ...baseHeaders,

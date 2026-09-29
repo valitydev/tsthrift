@@ -37,6 +37,7 @@ npx --package @vality/tsthrift-cli tsthrift-cli --input "proto/**/*.thrift" [opt
 | `-o, --output <dir>`        | Directory for generated TypeScript sources                          | `generated` |
 | `--bundle`                  | Compile and bundle generated TypeScript into distribution directory | `false`     |
 | `-d, --dist <dir>`          | Bundle distribution output directory                                | `dist`      |
+| `--no-sourcemap`            | Disable source map generation when bundling                         | `false`     |
 | `-I, --include <dir>`       | Additional include root directory (repeatable)                      | `[]`        |
 | `--no-models`               | Generate only `metadata.json` without models or services            | `false`     |
 | `--no-services`             | Generate models and metadata without service factories              | `false`     |

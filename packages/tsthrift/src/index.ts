@@ -36,10 +36,19 @@ export {
   WOODY_HEADERS,
   bs64,
   createWoodyHeaders,
+  resolveWoodyHeaders,
   createWoodyHeaderProvider,
+  flattenMeta,
   generateId,
   generateTraceId,
 } from "./transport/woody.ts";
-export type { FlakeIdOptions, WoodyHeadersConfig } from "./transport/woody.ts";
+export type {
+  FlakeIdOptions,
+  WoodyHeadersConfig,
+  WoodyMetaMap,
+  WoodyMetaProvider,
+  WoodyMetaScalar,
+  WoodyMetaValue,
+} from "./transport/woody.ts";
 export * from "./runtime.ts";
 export { THRIFT_METHOD_ARGUMENT_COUNT } from "./transport/method-arguments.ts";

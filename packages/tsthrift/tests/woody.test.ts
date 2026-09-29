@@ -111,16 +111,38 @@ describe("Woody headers", () => {
     expect(headers["x-woody-meta-null-field"]).toBeUndefined();
   });
 
-  test("createWoodyHeaderProvider creates fresh headers and merges base headers", () => {
+  test("createWoodyHeaders supports custom metaPrefix and nested meta maps", () => {
+    const headers = createWoodyHeaders({
+      metaPrefix: "x-woody-meta-custom-",
+      meta: {
+        "user-identity": {
+          id: "usr-456",
+          nested: {
+            flag: true,
+          },
+        },
+        simple: "value",
+      },
+    });
+    expect(headers["x-woody-meta-custom-user-identity-id"]).toBe("usr-456");
+    expect(headers["x-woody-meta-custom-user-identity-nested-flag"]).toBe("true");
+    expect(headers["x-woody-meta-custom-simple"]).toBe("value");
+  });
+
+  test("createWoodyHeaderProvider creates fresh headers and merges base headers", async () => {
     const provider = createWoodyHeaderProvider({
       parentId: "root-parent",
+      meta: async () => ({
+        user: { id: "async-user-1" },
+      }),
     });
 
-    const call1 = provider({ authorization: "Bearer token1" });
-    const call2 = provider({ authorization: "Bearer token2" });
+    const call1 = await provider({ authorization: "Bearer token1" });
+    const call2 = await provider({ authorization: "Bearer token2" });
 
     expect(call1.authorization).toBe("Bearer token1");
     expect(call2.authorization).toBe("Bearer token2");
+    expect(call1["x-woody-meta-user-id"]).toBe("async-user-1");
     expect(call1[WOODY_HEADERS.PARENT_ID]).toBe("root-parent");
     expect(call2[WOODY_HEADERS.PARENT_ID]).toBe("root-parent");
     expect(call1[WOODY_HEADERS.TRACE_ID]).toBeDefined();

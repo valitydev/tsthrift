@@ -83,7 +83,7 @@ export function createRpcClient<T extends object>(
   serviceName: string,
   namespace: string,
 ): T {
-  const transport = config.transport ?? createHttpTransport(config);
+  const transport = config.transport ?? createHttpTransport({ serviceName, ...config });
   let sequence = 0;
   const entries = Object.entries(methods).map(([name, method]) => [
     name,

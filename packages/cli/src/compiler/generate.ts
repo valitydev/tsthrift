@@ -18,6 +18,7 @@ export interface GenerateOptions {
   output?: string;
   bundle?: boolean;
   dist?: string;
+  sourcemap?: boolean;
   includes?: string[];
   models?: boolean;
   services?: boolean;
@@ -177,6 +178,7 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
           outDir: stagingDist,
           tsconfig: path.join(staging, "tsconfig.json"),
           cwd: path.dirname(output),
+          sourcemap: options.sourcemap,
         });
       });
     }

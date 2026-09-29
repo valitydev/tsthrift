@@ -28,8 +28,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "vp pack",
-    "dev": "vp pack --watch",
+    "build": "vp pack --sourcemap",
+    "dev": "vp pack --watch --sourcemap",
     "test": "vp test",
     "test:conformance": "vp test --config conformance.config.ts",
     "check": "vp check",

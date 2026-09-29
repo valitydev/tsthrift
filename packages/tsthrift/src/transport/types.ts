@@ -35,8 +35,8 @@ import type { WoodyHeadersConfig } from "./woody.ts";
 
 /** Declarative client connection and transport configuration. */
 export interface HttpTransportConfig {
-  /** Target service endpoint URL. */
-  endpoint: string;
+  /** Target service endpoint URL or dynamic factory. */
+  endpoint: string | (() => string | Promise<string>);
   /** Static headers or dynamic provider invoked before each request. */
   headers?: HeaderProvider;
   /** Request timeout in milliseconds (defaults to 60_000). */
@@ -47,6 +47,10 @@ export interface HttpTransportConfig {
   fetch?: typeof fetch;
   /** Optional logging callback invoked on RPC call lifecycle (call, success, error). */
   loggingFn?: (params: ThriftLogParams) => void;
+  /** Automatically add service routing header (e.g. 'service: <ServiceName>' if true or custom header name). */
+  serviceHeader?: boolean | string;
+  /** Target service name for serviceHeader routing. */
+  serviceName?: string;
 }
 
 /** Parameters passed to the logging callback on RPC call lifecycle events. */
@@ -69,6 +73,10 @@ export interface RequestOptions {
   timeoutMs?: number;
   /** Optional headers for this specific call. */
   headers?: Record<string, string>;
+  /** Optional service name override for this call. */
+  serviceName?: string;
+  /** Automatically add service routing header for this call. */
+  serviceHeader?: boolean | string;
 }
 
 /** Low-level transport function sending raw bytes and receiving response bytes. */

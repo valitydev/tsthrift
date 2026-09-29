@@ -81,6 +81,23 @@ describe("Angular Thrift DI integration", () => {
     });
   });
 
+  test("provideThriftConfig accepts a factory function with inject() support", () => {
+    let callCount = 0;
+    const injector = Injector.create({
+      providers: [
+        provideThriftConfig(() => {
+          callCount++;
+          return { endpoint: `http://example.com/factory-${callCount}` };
+        }),
+      ],
+    });
+
+    runInInjectionContext(injector, () => {
+      const config = inject(THRIFT_CONFIG);
+      expect(config?.endpoint).toBe("http://example.com/factory-1");
+    });
+  });
+
   test("provideThriftServices registers service registry and client instances using createService", async () => {
     const envInjector = createEnvironmentInjector(
       [
@@ -150,6 +167,30 @@ describe("Angular Thrift DI integration", () => {
         "x-service": "test-service",
         "x-auth-copy": "Bearer global-token",
       });
+    });
+  });
+
+  test("provideThriftService automatically adds service header when serviceHeader: true", async () => {
+    const envInjector = createEnvironmentInjector(
+      [
+        provideThriftConfig({
+          endpoint: "http://example.com/base",
+          serviceHeader: true,
+        }),
+        provideThriftService(dummyDescriptor),
+      ],
+      null as unknown as any,
+    );
+
+    await runInInjectionContext(envInjector, async () => {
+      const client = inject(getServiceToken(dummyDescriptor));
+      const headersProvider = client.config?.headers;
+      expect(headersProvider).toBeDefined();
+
+      const resolved =
+        typeof headersProvider === "function" ? await headersProvider({}) : headersProvider;
+
+      expect(resolved?.["service"]).toBe("TestService");
     });
   });
 
