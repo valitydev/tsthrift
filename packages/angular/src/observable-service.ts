@@ -51,7 +51,7 @@ export function getObservableServiceConfig(
  * Self-provides in "any" injector by default, resolving THRIFT_CONFIG and merging per-service options.
  *
  * @param descriptor The Thrift service descriptor.
- * @param config Optional per-service transport configuration (endpoint, headers, timeout, woody, fetch).
+ * @param config Optional per-service transport configuration (endpoint, headers, timeout, fetch).
  */
 export function createObservableService<TClient extends object>(
   descriptor: ThriftServiceDescriptor<TClient>,

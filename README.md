@@ -48,14 +48,19 @@ Core and Angular bundles target ES2023 for modern Chrome, Firefox, and Safari. T
 Generated service clients and runtime clients are pure TypeScript and work in any environment (Node.js, browsers, React, Vue, Web Workers) using standard Web APIs (`fetch`, `AbortSignal`, Promises):
 
 ```ts
-import { isThriftServiceError, isThriftSystemError, normalizeThriftError } from "@vality/tsthrift";
+import {
+  createWoodyHeaders,
+  isThriftServiceError,
+  isThriftSystemError,
+  normalizeThriftError,
+} from "@vality/tsthrift";
 import { createPaymentProcessing } from "./generated/payment_processing/index.js";
 
 // 1. Initialize client with tracing and default timeout
 const client = createPaymentProcessing({
   endpoint: "https://api.example.com/rpc/payment",
   timeoutMs: 15_000,
-  woody: true, // auto-generates x-woody-trace-id, span-id, parent-id
+  headers: () => createWoodyHeaders(), // auto-generates x-woody-trace-id, span-id
 });
 
 // 2. Request cancellation via standard AbortController

@@ -53,6 +53,12 @@ export type {
   WoodyMetaScalar,
   WoodyMetaValue,
 } from "./transport/woody.ts";
+export { createWachterHeaders } from "./transport/wachter.ts";
+export type {
+  WachterHeadersConfig,
+  WachterUserClaimValue,
+  WachterUserIdentity,
+} from "./transport/wachter.ts";
 export * from "./runtime.ts";
 export {
   THRIFT_METHOD_ARGUMENT_COUNT,

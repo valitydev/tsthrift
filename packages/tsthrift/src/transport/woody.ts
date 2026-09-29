@@ -33,7 +33,9 @@ export interface WoodyHeadersConfig {
   flags?: number | string;
   /** Absolute deadline (Date, epoch timestamp in ms, or RFC3339 string). */
   deadline?: Date | number | string;
-  /** Prefix for metadata headers. Defaults to 'x-woody-meta-'. */
+  /** Base prefix for standard Woody headers (defaults to 'x-woody-'). */
+  prefix?: string;
+  /** Prefix for metadata headers. Defaults to '${prefix}meta-' (e.g. 'x-woody-meta-'). */
   metaPrefix?: string;
   /** Custom woody metadata (values prefixed with metaPrefix). Supports nested maps and async factories. */
   meta?: WoodyMetaProvider;
@@ -70,46 +72,47 @@ export function createWoodyHeaders(
   config?: Omit<WoodyHeadersConfig, "meta"> & { meta?: WoodyMetaMap | (() => WoodyMetaMap) },
 ): Record<string, string> {
   const headers: Record<string, string> = {};
+  const prefix = config?.prefix ?? "x-woody-";
+  const metaPrefix = config?.metaPrefix ?? `${prefix}meta-`;
 
   const traceId =
     typeof config?.traceId === "function"
       ? config.traceId()
       : (config?.traceId ?? generateTraceId());
 
-  headers[WOODY_HEADERS.TRACE_ID] = traceId;
+  headers[`${prefix}trace-id`] = traceId;
 
   const spanId =
     typeof config?.spanId === "function" ? config.spanId() : (config?.spanId ?? traceId);
 
-  headers[WOODY_HEADERS.SPAN_ID] = spanId;
+  headers[`${prefix}span-id`] = spanId;
 
   if (config?.parentId) {
-    headers[WOODY_HEADERS.PARENT_ID] = config.parentId;
+    headers[`${prefix}parent-id`] = config.parentId;
   }
 
   if (config?.flags !== undefined && config.flags !== null) {
-    headers[WOODY_HEADERS.FLAGS] = String(config.flags);
+    headers[`${prefix}flags`] = String(config.flags);
   }
 
   if (config?.deadline !== undefined && config.deadline !== null) {
     if (config.deadline instanceof Date) {
-      headers[WOODY_HEADERS.DEADLINE] = config.deadline.toISOString();
+      headers[`${prefix}deadline`] = config.deadline.toISOString();
     } else if (typeof config.deadline === "number") {
-      headers[WOODY_HEADERS.DEADLINE] = new Date(config.deadline).toISOString();
+      headers[`${prefix}deadline`] = new Date(config.deadline).toISOString();
     } else {
-      headers[WOODY_HEADERS.DEADLINE] = String(config.deadline);
+      headers[`${prefix}deadline`] = String(config.deadline);
     }
   }
 
   if (config?.meta) {
-    const prefix = config.metaPrefix ?? WOODY_HEADERS.META_PREFIX;
     if (typeof config.meta === "function") {
       const result = config.meta();
       if (result && typeof result === "object" && !("then" in result)) {
-        flattenMeta(result as WoodyMetaMap, prefix, headers);
+        flattenMeta(result as WoodyMetaMap, metaPrefix, headers);
       }
     } else if (typeof config.meta === "object") {
-      flattenMeta(config.meta, prefix, headers);
+      flattenMeta(config.meta, metaPrefix, headers);
     }
   }
 

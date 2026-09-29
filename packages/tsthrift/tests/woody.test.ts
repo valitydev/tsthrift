@@ -4,6 +4,7 @@ import {
   WOODY_HEADERS,
   bs64,
   createHttpTransport,
+  createWachterHeaders,
   createWoodyHeaderProvider,
   createWoodyHeaders,
   generateId,
@@ -130,6 +131,22 @@ describe("Woody headers", () => {
     expect(headers["x-woody-meta-custom-simple"]).toBe("value");
   });
 
+  test("createWoodyHeaders supports custom prefix and metaPrefix", () => {
+    const headers = createWoodyHeaders({
+      prefix: "x-custom-woody-",
+      metaPrefix: "x-custom-meta-",
+      parentId: "parent-99",
+      flags: 1,
+      meta: { key: "val" },
+    });
+    expect(headers["x-custom-woody-trace-id"]).toBeDefined();
+    expect(headers["x-custom-woody-span-id"]).toBe(headers["x-custom-woody-trace-id"]);
+    expect(headers["x-custom-woody-parent-id"]).toBe("parent-99");
+    expect(headers["x-custom-woody-flags"]).toBe("1");
+    expect(headers["x-custom-meta-key"]).toBe("val");
+    expect(headers[WOODY_HEADERS.TRACE_ID]).toBeUndefined();
+  });
+
   test("createWoodyHeaderProvider creates fresh headers and merges base headers", async () => {
     const provider = createWoodyHeaderProvider({
       parentId: "root-parent",
@@ -151,7 +168,7 @@ describe("Woody headers", () => {
     expect(call1[WOODY_HEADERS.TRACE_ID]).not.toBe(call2[WOODY_HEADERS.TRACE_ID]);
   });
 
-  test("createHttpTransport automatically injects Woody headers when woody: true", async () => {
+  test("createHttpTransport integrates with createWoodyHeaders in headers provider", async () => {
     let capturedHeaders: Record<string, string> = {};
     const mockFetch = vi.fn(async (_url: string, init?: RequestInit) => {
       capturedHeaders = init?.headers as Record<string, string>;
@@ -164,7 +181,7 @@ describe("Woody headers", () => {
 
     const transport = createHttpTransport({
       endpoint: "http://localhost:8080/rpc",
-      woody: true,
+      headers: () => createWoodyHeaders(),
       timeoutMs: 5000,
       fetch: mockFetch as unknown as typeof fetch,
     });
@@ -173,11 +190,65 @@ describe("Woody headers", () => {
 
     expect(capturedHeaders[WOODY_HEADERS.TRACE_ID]).toBeDefined();
     expect(capturedHeaders[WOODY_HEADERS.SPAN_ID]).toBe(capturedHeaders[WOODY_HEADERS.TRACE_ID]);
-    expect(capturedHeaders[WOODY_HEADERS.DEADLINE]).toBeDefined();
     expect(capturedHeaders["Content-Type"]).toBe("application/x-thrift");
   });
+});
 
-  test("createHttpTransport preserves user-provided trace-id when woody is enabled", async () => {
+describe("Wachter headers", () => {
+  test("createWachterHeaders returns empty object when no config provided", () => {
+    const headers = createWachterHeaders();
+    expect(headers).toEqual({});
+  });
+
+  test("createWachterHeaders adds service, token, and user identity metadata", () => {
+    const headers = createWachterHeaders({
+      service: "Repository",
+      token: "secret-token",
+      user: {
+        id: "usr-42",
+        email: "alice@example.com",
+        username: "alice",
+      },
+    });
+
+    expect(headers.service).toBe("Repository");
+    expect(headers.authorization).toBe("Bearer secret-token");
+    expect(headers["x-woody-meta-user-identity-id"]).toBe("usr-42");
+    expect(headers["x-woody-meta-user-identity-email"]).toBe("alice@example.com");
+    expect(headers["x-woody-meta-user-identity-username"]).toBe("alice");
+    expect(headers["x-woody-meta-user-identity-realm"]).toBe("internal");
+  });
+
+  test("createWachterHeaders preserves existing Bearer prefix in token and custom realm", () => {
+    const headers = createWachterHeaders({
+      token: "Bearer existing-bearer-token",
+      user: {
+        id: "usr-99",
+        realm: "external-sso",
+      },
+    });
+    expect(headers.authorization).toBe("Bearer existing-bearer-token");
+    expect(headers["x-woody-meta-user-identity-realm"]).toBe("external-sso");
+  });
+
+  test("createWachterHeaders supports custom serviceHeader and userPrefix", () => {
+    const headers = createWachterHeaders({
+      service: "BillingService",
+      serviceHeader: "x-target-service",
+      userPrefix: "x-custom-identity-",
+      user: {
+        id: "usr-1",
+        customProp: "special",
+      },
+    });
+
+    expect(headers["x-target-service"]).toBe("BillingService");
+    expect(headers["x-custom-identity-id"]).toBe("usr-1");
+    expect(headers["x-custom-identity-realm"]).toBe("internal");
+    expect(headers["x-custom-identity-customProp"]).toBe("special");
+  });
+
+  test("createHttpTransport integrates with combined createWoodyHeaders and createWachterHeaders", async () => {
     let capturedHeaders: Record<string, string> = {};
     const mockFetch = vi.fn(async (_url: string, init?: RequestInit) => {
       capturedHeaders = init?.headers as Record<string, string>;
@@ -190,20 +261,24 @@ describe("Woody headers", () => {
 
     const transport = createHttpTransport({
       endpoint: "http://localhost:8080/rpc",
-      woody: {
-        meta: { "user-identity-id": "123" },
-      },
+      headers: () => ({
+        ...createWoodyHeaders(),
+        ...createWachterHeaders({
+          service: "TestService",
+          token: "jwt-token",
+          user: { id: "u-1" },
+        }),
+      }),
       fetch: mockFetch as unknown as typeof fetch,
     });
 
-    await transport(new Uint8Array([1, 2, 3]), {
-      headers: {
-        [WOODY_HEADERS.TRACE_ID]: "explicit-trace-id",
-      },
-    });
+    await transport(new Uint8Array([1, 2, 3]));
 
-    expect(capturedHeaders[WOODY_HEADERS.TRACE_ID]).toBe("explicit-trace-id");
-    expect(capturedHeaders["x-woody-meta-user-identity-id"]).toBe("123");
+    expect(capturedHeaders.service).toBe("TestService");
+    expect(capturedHeaders.authorization).toBe("Bearer jwt-token");
+    expect(capturedHeaders[WOODY_HEADERS.TRACE_ID]).toBeDefined();
+    expect(capturedHeaders[WOODY_HEADERS.SPAN_ID]).toBe(capturedHeaders[WOODY_HEADERS.TRACE_ID]);
+    expect(capturedHeaders["x-woody-meta-user-identity-id"]).toBe("u-1");
   });
 });
 

@@ -35,6 +35,7 @@ Import `provideThriftConfig` and `provideThriftServices` in your standalone appl
 ```ts
 import { ApplicationConfig } from "@angular/core";
 import { provideHttpClient } from "@angular/common/http";
+import { createWoodyHeaders } from "@vality/tsthrift";
 import { provideThriftConfig, provideThriftServices } from "@vality/tsthrift-angular";
 import { THRIFT_SERVICES_LIST } from "./generated/services.js";
 
@@ -44,7 +45,7 @@ export const appConfig: ApplicationConfig = {
     provideThriftConfig({
       endpoint: "/api/rpc",
       timeoutMs: 15_000,
-      woody: true, // enables distributed tracing headers
+      headers: () => createWoodyHeaders(), // enables distributed tracing headers
     }),
     provideThriftServices(THRIFT_SERVICES_LIST),
   ],

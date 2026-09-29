@@ -8,8 +8,6 @@ import {
 import type { HttpTransportConfig, RequestOptions, TransportFunction } from "./types.ts";
 import { mergeHeaders, resolveHeaders } from "./headers.ts";
 import { readResponseBody } from "./response-body.ts";
-import { WOODY_HEADERS, resolveWoodyHeaders } from "./woody.ts";
-
 export { mergeHeaderProviders } from "./headers.ts";
 
 const THRIFT_CONTENT_TYPE = "application/x-thrift";
@@ -44,15 +42,6 @@ export function createHttpTransport(config: HttpTransportConfig): TransportFunct
     const send = async () => {
       const baseHeaders = await resolveHeaders(config.headers);
       controller.signal.throwIfAborted();
-      let woodyHeaders: Record<string, string> | undefined;
-      if (config.woody) {
-        woodyHeaders = await resolveWoodyHeaders(
-          typeof config.woody === "object" ? config.woody : undefined,
-        );
-        if (!woodyHeaders[WOODY_HEADERS.DEADLINE]) {
-          woodyHeaders[WOODY_HEADERS.DEADLINE] = new Date(startedAt + timeoutMs).toISOString();
-        }
-      }
       let serviceHeaders: Record<string, string> | undefined;
       const serviceHeaderSetting = options?.serviceHeader ?? config.serviceHeader;
       const targetServiceName = options?.serviceName ?? config.serviceName;
@@ -64,7 +53,6 @@ export function createHttpTransport(config: HttpTransportConfig): TransportFunct
       const headers = mergeHeaders(
         { Accept: THRIFT_CONTENT_TYPE, "Content-Type": THRIFT_CONTENT_TYPE },
         serviceHeaders,
-        woodyHeaders,
         baseHeaders,
         options?.headers,
       );
@@ -98,7 +86,6 @@ export function createHttpTransport(config: HttpTransportConfig): TransportFunct
       }
       return readResponseBody(response, controller.signal);
     };
-    const startedAt = Date.now();
     let targetEndpoint =
       typeof config.endpoint === "string" ? config.endpoint : "[dynamic endpoint]";
     try {

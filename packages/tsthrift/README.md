@@ -135,7 +135,6 @@ try {
 | `endpoint`  | `string \| (() => string \| Promise<string>)` | Target endpoint URL or sync/async URL factory.                  |
 | `headers`   | `HeaderProvider`                              | Static header object or async factory receiving base headers.   |
 | `timeoutMs` | `number`                                      | Request timeout in milliseconds (default: `60_000`).            |
-| `woody`     | `boolean \| WoodyHeadersConfig`               | Enables automatic Woody distributed tracing headers generation. |
 | `fetch`     | `typeof fetch`                                | Custom fetch implementation or framework bridge.                |
 | `loggingFn` | `(params: ThriftLogParams) => void`           | Lifecycle logging callback for call, success, and error events. |
 
@@ -151,19 +150,33 @@ const result = await client.process(data, {
 });
 ```
 
-## Woody Tracing
+## Woody & Wachter Headers
 
-The package includes built-in support for Woody tracing headers (`x-woody-trace-id`, `x-woody-span-id`, `x-woody-parent-id`):
+The package includes built-in helpers for Woody RPC tracing and Vality Wachter Gateway headers:
 
 ```ts
-import { createWoodyHeaderProvider, generateTraceId } from "@vality/tsthrift";
+import { createWoodyHeaders, createWachterHeaders } from "@vality/tsthrift";
 
+// Standalone Woody headers with customizable prefixes
+const woodyHeaders = createWoodyHeaders({
+  prefix: "x-woody-",
+  meta: { "client-app": "admin-panel" },
+});
+
+// Compose both in client headers provider:
 const client = await createMetadataClient({
   endpoint: "/rpc",
   namespace: "example",
   serviceName: "Example",
   metadata,
-  woody: true, // auto-generates unique trace and span IDs per request
+  headers: () => ({
+    ...createWoodyHeaders(),
+    ...createWachterHeaders({
+      service: "Example",
+      token: auth.getToken(),
+      user: { id: user.id, email: user.email },
+    }),
+  }),
 });
 ```
 
