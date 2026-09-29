@@ -54,4 +54,7 @@ export type {
   WoodyMetaValue,
 } from "./transport/woody.ts";
 export * from "./runtime.ts";
-export { THRIFT_METHOD_ARGUMENT_COUNT } from "./transport/method-arguments.ts";
+export {
+  THRIFT_METHOD_ARGUMENT_COUNT,
+  THRIFT_METHOD_RESULT,
+} from "./transport/method-arguments.ts";

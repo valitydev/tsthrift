@@ -39,7 +39,7 @@ export class MetadataIndex {
   resolveType(
     rawType: ValueType,
     currentNamespace: string,
-    seen = new Set<string>(),
+    seen: Set<string> = new Set<string>(),
   ): ResolvedEntity {
     if (typeof rawType === "object") {
       return { kind: "complex", type: rawType, namespace: currentNamespace };
@@ -127,7 +127,7 @@ export class MetadataIndex {
     namespace: string,
     serviceName: string,
     methodName: string,
-    seen = new Set<string>(),
+    seen: Set<string> = new Set<string>(),
   ): { method: Method; namespace: string } | undefined {
     const key = `${namespace}.${serviceName}`;
     if (seen.has(key)) {

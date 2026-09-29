@@ -49,7 +49,6 @@ const result = await client.getPayment(123456789n);
 When schemas are compiled using `@vality/tsthrift-cli`, service definitions provide typed client factories and descriptors:
 
 ```ts
-import { createHttpTransport } from "@vality/tsthrift";
 import { createPaymentProcessing } from "./generated/payment_processing/index.js";
 
 const client = createPaymentProcessing({
@@ -83,7 +82,10 @@ if (error) {
 
 ## Error Handling
 
-`@vality/tsthrift` provides a structured error hierarchy:
+`ThriftSystemError` is a TypeScript union of the system error classes below,
+not a runtime constructor. Direct RPC clients reject declared exceptions as tagged
+plain payloads. `normalizeThriftError`, `catchServiceError`, and `toThriftResult`
+wrap these as `ThriftServiceError`; `isThriftServiceError` only matches wrappers.
 
 ```
 ThriftError (base class)
@@ -128,14 +130,14 @@ try {
 
 `HttpTransportConfig` options:
 
-| Option      | Type                                | Description                                                     |
-| ----------- | ----------------------------------- | --------------------------------------------------------------- |
-| `endpoint`  | `string`                            | Target service endpoint URL.                                    |
-| `headers`   | `HeaderProvider`                    | Static header object or async factory receiving base headers.   |
-| `timeoutMs` | `number`                            | Request timeout in milliseconds (default: `60_000`).            |
-| `woody`     | `boolean \| WoodyHeadersConfig`     | Enables automatic Woody distributed tracing headers generation. |
-| `fetch`     | `typeof fetch`                      | Custom fetch implementation or framework bridge.                |
-| `loggingFn` | `(params: ThriftLogParams) => void` | Lifecycle logging callback for call, success, and error events. |
+| Option      | Type                                          | Description                                                     |
+| ----------- | --------------------------------------------- | --------------------------------------------------------------- |
+| `endpoint`  | `string \| (() => string \| Promise<string>)` | Target endpoint URL or sync/async URL factory.                  |
+| `headers`   | `HeaderProvider`                              | Static header object or async factory receiving base headers.   |
+| `timeoutMs` | `number`                                      | Request timeout in milliseconds (default: `60_000`).            |
+| `woody`     | `boolean \| WoodyHeadersConfig`               | Enables automatic Woody distributed tracing headers generation. |
+| `fetch`     | `typeof fetch`                                | Custom fetch implementation or framework bridge.                |
+| `loggingFn` | `(params: ThriftLogParams) => void`           | Lifecycle logging callback for call, success, and error events. |
 
 ### Per-call options
 
@@ -192,7 +194,7 @@ const reader = new BinaryReader(bytes);
 const header = reader.readMessageBegin(); // { name: "ping", type: MessageType.Call, sequenceId: 1 }
 const field = reader.readFieldBegin(); // { type: WireType.String, id: 1 }
 const value = reader.readString(); // "hello"
-reader.skip(reader.readFieldBegin().type); // WireType.Stop
+reader.readFieldBegin(); // Consume WireType.Stop; it has no value to skip.
 reader.assertDone();
 ```
 

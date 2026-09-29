@@ -1,4 +1,5 @@
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "target": "esnext",
     "lib": ["es2023"],
@@ -8,6 +9,9 @@
     "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "outDir": "./dist"
-  }
+    "outDir": "./dist",
+    "declaration": true,
+    "isolatedDeclarations": true
+  },
+  "include": ["src/**/*.ts"]
 }

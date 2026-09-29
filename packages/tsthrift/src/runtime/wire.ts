@@ -30,7 +30,7 @@ export const BINARY_VERSION_MASK = -65536;
 export const DEFAULT_MAX_DEPTH = 64;
 
 /** Default maximum message size in bytes (16 MB). */
-export const DEFAULT_MAX_BYTES = 16 * 1024 * 1024;
+export const DEFAULT_MAX_BYTES: number = 16 * 1024 * 1024;
 
 /** Default maximum collection item count (1,000,000). */
 export const DEFAULT_MAX_COLLECTION_SIZE = 1_000_000;

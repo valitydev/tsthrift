@@ -242,3 +242,28 @@ describe("external namespaces code generation", () => {
     expect(allBundleContents.join("\n")).toContain("@vality/base-proto/base");
   });
 });
+
+test("rejects external mappings that are not reachable from the inputs", async () => {
+  const { protoDir, depDir, output } = await createFixture();
+  await expect(
+    generate({
+      input: protoDir,
+      includes: [depDir],
+      output,
+      external: { typo: "base-proto/base" },
+    }),
+  ).rejects.toThrow("not reachable");
+});
+
+test("keeps external dependencies in standalone JSON metadata", async () => {
+  const { protoDir, depDir, output } = await createFixture();
+  await generate({
+    input: protoDir,
+    includes: [depDir],
+    output,
+    models: false,
+    external: { base: "base-proto/base" },
+  });
+  const metadata = JSON.parse(await readFile(path.join(output, "metadata.json"), "utf8"));
+  expect(metadata.map((entry: { name: string }) => entry.name).sort()).toEqual(["base", "child"]);
+});

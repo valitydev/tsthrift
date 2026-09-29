@@ -11,8 +11,8 @@ export function emitConstant(
   type: ValueType,
   value: unknown,
   i64: I64Mode,
-  scope = program,
-  seen = new Set<string>(),
+  scope: Program = program,
+  seen: Set<string> = new Set<string>(),
   binary: BinaryTargetType = "string",
 ): string {
   const reference = referenceName(value);

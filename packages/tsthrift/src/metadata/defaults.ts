@@ -18,8 +18,8 @@ export function evaluateDefault(
   type: ValueType,
   namespace: string,
   value: unknown,
-  scope = namespace,
-  seen = new Set<string>(),
+  scope: string = namespace,
+  seen: Set<string> = new Set<string>(),
   depth = 0,
 ): unknown {
   if (depth >= DEFAULT_MAX_DEPTH) throw new Error("Metadata default exceeds nesting limit");

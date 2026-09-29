@@ -2,7 +2,10 @@ import type { ThriftAst } from "@vality/tsthrift";
 
 type Enumeration = NonNullable<ThriftAst["enum"]>[string];
 
-export function enumMembers(enumeration: Enumeration, location: string) {
+export function enumMembers(
+  enumeration: Enumeration,
+  location: string,
+): { name: string; value: number }[] {
   let value = -1;
   const names = new Set<string>();
   return enumeration.items.map((item) => {

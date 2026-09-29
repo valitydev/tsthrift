@@ -1,7 +1,7 @@
 import type { ValueType } from "@vality/tsthrift";
 import type { Program } from "./load-schema.ts";
 
-export const primitives = new Set([
+export const primitives: Set<string> = new Set([
   "void",
   "bool",
   "byte",
@@ -15,7 +15,10 @@ export const primitives = new Set([
   "uuid",
 ]);
 
-export function resolveReference(program: Program, reference: string) {
+export function resolveReference(
+  program: Program,
+  reference: string,
+): { program: Program; name: string } {
   const parts = reference.split(".");
   if (parts.length === 1) return { program, name: reference };
   const included = program.includes.get(parts[0]!);
@@ -28,7 +31,7 @@ export function resolveReference(program: Program, reference: string) {
 export function resolveType(
   program: Program,
   type: ValueType,
-  seen = new Set<string>(),
+  seen: Set<string> = new Set<string>(),
 ): { program: Program; type: ValueType; kind?: "enum" | "struct" | "union" | "exception" } {
   if (typeof type !== "string" || primitives.has(type)) return { program, type };
   const resolved = resolveReference(program, type);

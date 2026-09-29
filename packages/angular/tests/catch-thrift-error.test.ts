@@ -8,7 +8,7 @@ import {
   ThriftServiceError,
   createMetadataClient,
 } from "@vality/tsthrift";
-import { catchThriftError, toObservableClient } from "../src/index.ts";
+import { catchThriftError, catchThriftResult, toObservableClient } from "../src/index.ts";
 
 const metadata: Metadata[] = [
   {
@@ -52,6 +52,10 @@ test("normalizes decoded RPC exceptions for all handler overloads", async () => 
     },
   });
   const observable = toObservableClient(client);
+  const result = await firstValueFrom(observable.get().pipe(catchThriftResult()));
+  expect(result.error).toBeInstanceOf(ThriftServiceError);
+  expect((result.error as ThriftServiceError).data).toEqual({ reason: "gone" });
+
   const handler = (error: ThriftServiceError<"Missing", { reason: string }>) => {
     expect(error).toBeInstanceOf(ThriftServiceError);
     expect(error.type).toBe("Missing");

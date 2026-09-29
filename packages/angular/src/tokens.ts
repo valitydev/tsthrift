@@ -3,12 +3,12 @@ import type { HttpTransportConfig, ThriftServiceDescriptor } from "@vality/tsthr
 import type { ObservableClient } from "./rxjs.ts";
 
 /** Injection token for global Thrift client configuration. */
-export const THRIFT_CONFIG = new InjectionToken<HttpTransportConfig>("THRIFT_CONFIG");
+export const THRIFT_CONFIG: InjectionToken<HttpTransportConfig> =
+  new InjectionToken<HttpTransportConfig>("THRIFT_CONFIG");
 
 /** Injection token for the registry map of all provided Thrift services. */
-export const THRIFT_SERVICES_REGISTRY = new InjectionToken<Map<string, ThriftServiceDescriptor>>(
-  "THRIFT_SERVICES_REGISTRY",
-);
+export const THRIFT_SERVICES_REGISTRY: InjectionToken<Map<string, ThriftServiceDescriptor>> =
+  new InjectionToken<Map<string, ThriftServiceDescriptor>>("THRIFT_SERVICES_REGISTRY");
 
 const serviceTokens = new WeakMap<ThriftServiceDescriptor<any>, InjectionToken<any>>();
 

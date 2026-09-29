@@ -5,6 +5,7 @@ import {
   BinaryWriter,
   MessageType,
   type Metadata,
+  THRIFT_RESULT,
   createLazyMetadataClient,
   createMetadataClient,
 } from "@vality/tsthrift";
@@ -69,6 +70,15 @@ for (const lazy of [false, true]) {
       ? createLazyMetadataClient<any>(config)
       : await createMetadataClient<any>(config);
     const client = toObservableClient(raw);
+    const resultClient = toObservableClient(raw[THRIFT_RESULT]);
+    expect(
+      await firstValueFrom(
+        resultClient.echo(
+          { headers: "IDL headers", data: "IDL data" },
+          { headers: { authorization: "call" } },
+        ),
+      ),
+    ).toEqual({ data: "result" });
     expect(
       await firstValueFrom(
         client.echo(
@@ -112,3 +122,41 @@ test("unsubscription before metadata loads prevents transport execution", async 
   await new Promise((r) => setTimeout(r, 0));
   expect(requests).toBe(0);
 });
+
+for (const lazy of [false, true]) {
+  test(`Result client preserves IDL headers and cancels transport (lazy=${lazy})`, async () => {
+    let signal: AbortSignal | undefined;
+    let started!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const config = {
+      metadata,
+      namespace: "example",
+      serviceName: "Example",
+      endpoint: "unused",
+      transport: (bytes: Uint8Array, options?: { signal?: AbortSignal }) => {
+        const reader = new BinaryReader(bytes);
+        reader.readMessageBegin();
+        reader.readFieldBegin();
+        reader.readFieldBegin();
+        expect(reader.readString()).toBe("IDL headers");
+        signal = options?.signal;
+        started();
+        return new Promise<Uint8Array>((_resolve, reject) => {
+          signal?.addEventListener("abort", () => reject(signal?.reason), { once: true });
+        });
+      },
+    };
+    const raw = lazy
+      ? createLazyMetadataClient<any>(config)
+      : await createMetadataClient<any>(config);
+    const subscription = toObservableClient(raw[THRIFT_RESULT])
+      .echo({ headers: "IDL headers" })
+      .subscribe();
+    await pending;
+    expect(signal).toBeInstanceOf(AbortSignal);
+    subscription.unsubscribe();
+    expect(signal?.aborted).toBe(true);
+  });
+}

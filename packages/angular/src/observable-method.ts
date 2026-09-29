@@ -1,12 +1,16 @@
 import { Observable } from "rxjs";
-import { type RequestOptions, THRIFT_METHOD_ARGUMENT_COUNT } from "@vality/tsthrift";
+import {
+  type RequestOptions,
+  THRIFT_METHOD_ARGUMENT_COUNT,
+  THRIFT_METHOD_RESULT,
+} from "@vality/tsthrift";
 
 /** Wraps one invocation, preserving IDL argument positions and cancellation lifetime. */
 export function createObservableMethod(
   target: any,
   method: (...args: unknown[]) => Promise<unknown>,
   unwrap: boolean,
-) {
+): (...args: unknown[]) => Observable<unknown> {
   return (...args: unknown[]) =>
     new Observable((subscriber) => {
       const controller = new AbortController();
@@ -34,7 +38,7 @@ export function createObservableMethod(
       const succeed = (result: any) => {
         if (
           unwrap &&
-          !(THRIFT_METHOD_ARGUMENT_COUNT in method) &&
+          (THRIFT_METHOD_RESULT in method || !(THRIFT_METHOD_ARGUMENT_COUNT in method)) &&
           result !== null &&
           typeof result === "object" &&
           "data" in result &&

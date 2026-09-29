@@ -82,8 +82,8 @@ export class FlakeId {
   }
 }
 
-export const bs64 = baseX(BASE64_ALPHABET);
-export const defaultFlake = new FlakeId();
+export const bs64: ReturnType<typeof baseX> = baseX(BASE64_ALPHABET);
+export const defaultFlake: FlakeId = new FlakeId();
 
 /**
  * Generates a unique ID using FlakeId and encodes it in base64.
@@ -98,4 +98,4 @@ export const generateId = (): string => bs64.encode(defaultFlake.next());
 /**
  * Alias for generateId for Woody RPC tracing.
  */
-export const generateTraceId = generateId;
+export const generateTraceId: typeof generateId = generateId;

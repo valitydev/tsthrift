@@ -56,7 +56,7 @@ consumer acceptance. Native binary is Uint8Array, whereas legacy model generatio
 declares string and the inspected Woody readBinary implementation returns Buffer.
 No implicit string/Buffer migration is claimed.
 
-## Callback collision
+## Historical Apache callback collision
 
 The Vality patch makes the generated callback parameter name distinct from IDL
 argument names. It modifies the C++ JS generator; applying that patch to Apache
@@ -124,8 +124,10 @@ a deployed Damsel server or the full legacy application API.
 Native struct decoding validates explicit required fields and skips unknown
 fields. Duplicate known fields, mismatched container element types, and multiple
 known union alternatives are rejected. These checks are stricter than some legacy
-paths. Declared exceptions are rejected as decoded public objects rather than
-Apache class instances. Consumers relying on instanceof need adaptation.
+paths. Declared exceptions are rejected as tagged public objects rather than Apache class
+instances. Result APIs and explicit normalization wrap them in `ThriftServiceError`.
+`isThriftServiceError` checks wrappers; raw payload inspection uses
+`getThriftExceptionInfo`. Consumers relying on Apache instanceof need adaptation.
 
 ## Runtime metadata verification
 

@@ -1,8 +1,8 @@
 # Binary Protocol runtime
 
-The native generator uses this runtime for serialization. The low-level entry is
-also available independently of generated codecs; it is not an Apache protocol
-object. See [architecture](architecture.md) for the generated client contract.
+Metadata clients use this runtime for serialization. The low-level entry is also
+available independently of metadata clients; it is not an Apache protocol object.
+See [architecture](architecture.md) for the client contract.
 
 Import from `@vality/tsthrift/runtime` after building the package. This entry has no Node,
 parser, Apache, Angular, or RxJS imports. The implementation uses Uint8Array,
@@ -50,7 +50,7 @@ id)` and terminate each struct with `writeFieldStop()`. `readFieldBegin()` retur
 Native generated `binary` models use Uint8Array, while legacy model declarations used
 string; existing binary consumers require acceptance testing.
 Empty structs have a STOP byte; deciding whether an optional struct is absent
-belongs to the public conversion layer, which must preserve explicitly present `{}`.
+belongs to the metadata codec, which preserves explicitly present `{}`.
 
 ## Envelopes and resource limits
 

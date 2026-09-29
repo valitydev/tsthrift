@@ -6,6 +6,7 @@ import {
   type ThriftError,
   type ThriftMethodError,
   type ThriftResult,
+  normalizeThriftError,
 } from "@vality/tsthrift";
 
 /**
@@ -53,7 +54,7 @@ export function catchThriftResult<TData, TError>(): any {
   return (source$: Observable<TData>) =>
     source$.pipe(
       map((data) => ({ data, error: undefined }) as ThriftResult<TData, TError>),
-      catchError((error) => of({ data: undefined, error: error as TError })),
+      catchError((error) => of({ data: undefined, error: normalizeThriftError(error) as TError })),
     );
 }
 

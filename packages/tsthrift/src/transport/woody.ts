@@ -23,7 +23,7 @@ export type WoodyMetaProvider = WoodyMetaMap | (() => WoodyMetaMap | Promise<Woo
  * Configuration options for generating Woody RPC tracing headers.
  */
 export interface WoodyHeadersConfig {
-  /** Trace ID or generator function. Defaults to a random UUID. */
+  /** Trace ID or generator function. Defaults to a base64-encoded Flake ID. */
   traceId?: string | (() => string);
   /** Span ID or generator function. Defaults to traceId if omitted. */
   spanId?: string | (() => string);
@@ -66,7 +66,9 @@ export function flattenMeta(
 /**
  * Creates a record of Woody HTTP headers safe for browser fetch and Node.js.
  */
-export function createWoodyHeaders(config?: WoodyHeadersConfig): Record<string, string> {
+export function createWoodyHeaders(
+  config?: Omit<WoodyHeadersConfig, "meta"> & { meta?: WoodyMetaMap | (() => WoodyMetaMap) },
+): Record<string, string> {
   const headers: Record<string, string> = {};
 
   const traceId =
@@ -120,15 +122,8 @@ export function createWoodyHeaders(config?: WoodyHeadersConfig): Record<string, 
 export async function resolveWoodyHeaders(
   config?: WoodyHeadersConfig,
 ): Promise<Record<string, string>> {
-  const headers = createWoodyHeaders(config);
-  if (typeof config?.meta === "function") {
-    const result = await config.meta();
-    if (result && typeof result === "object") {
-      const prefix = config.metaPrefix ?? WOODY_HEADERS.META_PREFIX;
-      flattenMeta(result, prefix, headers);
-    }
-  }
-  return headers;
+  const meta = typeof config?.meta === "function" ? await config.meta() : config?.meta;
+  return createWoodyHeaders({ ...config, meta });
 }
 
 /**

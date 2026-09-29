@@ -32,6 +32,7 @@ try {
   for (const archive of archives) {
     const { stdout } = await run("tar", ["-tf", path.join(directory, archive)]);
     assert.match(stdout, /package\/README.md/);
+    assert.match(stdout, /package\/LICENSE/);
   }
   await json(path.join(directory, "package.json"), { private: true, type: "module" });
   await run("npm", [
@@ -106,15 +107,22 @@ try {
     import { createExample } from "tsthrift-smoke-proto/example";
     const bytes: Uint8Array = BYTES;
     const promise: Promise<number> = createExample({ endpoint: "unused" }).echo(42);
+    // @ts-expect-error Generated method names cannot be overridden at runtime.
+    createExample({ endpoint: "unused", lowerCaseMethods: true });
     // @ts-expect-error The factory mode is bound to its generated models.
     createExample({ endpoint: "unused", i64Mode: "bigint" });
-    void [bytes, promise, THRIFT_SERVICES, example];
+    import type { ThriftMethodError, MetadataClientConfig } from "@vality/tsthrift";
+    import { loadThriftMetadata } from "tsthrift-smoke-proto";
+    const metadataConfig: MetadataClientConfig = { endpoint: "unused", namespace: "example", serviceName: "Example", metadata: loadThriftMetadata };
+    declare const failure: ThriftMethodError<typeof THRIFT_SERVICES["example.Example"], "echo">;
+    // @ts-expect-error Registry errors must not be any.
+    const invalid: boolean = failure;
+    void [bytes, promise, THRIFT_SERVICES, example, metadataConfig, invalid];
   `,
   );
   await run(path.join(directory, "node_modules/.bin/tsc"), [
     "--noEmit",
     "--strict",
-    "--skipLibCheck",
     "--module",
     "nodenext",
     "--target",

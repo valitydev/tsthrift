@@ -31,22 +31,23 @@ npx --package @vality/tsthrift-cli tsthrift-cli --input "proto/**/*.thrift" [opt
 
 ### Options
 
-| Flag                         | Description                                                         | Default     |
-| ---------------------------- | ------------------------------------------------------------------- | ----------- |
-| `-i, --input <path/glob>`    | Thrift file, directory, or glob pattern (repeatable)                | _Required_  |
-| `-o, --output <dir>`         | Directory for generated TypeScript sources                          | `generated` |
-| `--bundle`                   | Compile and bundle generated TypeScript into distribution directory | `false`     |
-| `-d, --dist <dir>`           | Bundle distribution output directory                                | `dist`      |
-| `--no-sourcemap`             | Disable source map generation when bundling                         | `false`     |
-| `-I, --include <dir>`        | Additional include root directory (repeatable)                      | `[]`        |
-| `-e, --external <ns>=<path>` | External package namespace mapping (repeatable)                     | `[]`        |
-| `--no-models`                | Generate only `metadata.json` without models or services            | `false`     |
-| `--no-services`              | Generate models and metadata without service factories              | `false`     |
-| `--metadata-json`            | Emit monolithic `metadata.json` in output directory                 | `false`     |
-| `--i64 <mode>`               | Public `i64` representation: `bigint` (default) or `number`         | `bigint`    |
-| `--lower-case-methods`       | Generate service client methods starting with a lowercase letter    | `false`     |
-| `--allow-duplicate-modules`  | Allow duplicate module basenames across includes (first-wins)       | `false`     |
-| `-h, --help`                 | Show help and exit                                                  |             |
+| Flag                         | Description                                                                       | Default     |
+| ---------------------------- | --------------------------------------------------------------------------------- | ----------- |
+| `-i, --input <path/glob>`    | Thrift file, directory, or glob pattern (repeatable)                              | _Required_  |
+| `-o, --output <dir>`         | Directory for generated TypeScript sources                                        | `generated` |
+| `--bundle`                   | Compile and bundle generated TypeScript into distribution directory               | `false`     |
+| `-d, --dist <dir>`           | Bundle distribution output directory                                              | `dist`      |
+| `--no-sourcemap`             | Disable source map generation when bundling                                       | `false`     |
+| `-I, --include <dir>`        | Additional include root directory (repeatable)                                    | `[]`        |
+| `-e, --external <ns>=<path>` | External package namespace mapping (repeatable)                                   | `[]`        |
+| `-m, --main <namespace>`     | Re-export one local namespace from the root (automatic for a single local module) | _Unset_     |
+| `--no-models`                | Generate only `metadata.json` without models or services                          | `false`     |
+| `--no-services`              | Generate models and metadata without service factories                            | `false`     |
+| `--metadata-json`            | Emit monolithic `metadata.json` in output directory                               | `false`     |
+| `--i64 <mode>`               | Public `i64` representation: `bigint` (default) or `number`                       | `bigint`    |
+| `--lower-case-methods`       | Generate service client methods starting with a lowercase letter                  | `false`     |
+| `--allow-duplicate-modules`  | Allow duplicate module basenames across includes (first-wins)                     | `false`     |
+| `-h, --help`                 | Show help and exit                                                                |             |
 
 ### Examples
 
@@ -82,6 +83,24 @@ When generating or bundling:
 - Root `metadata.ts` emits an `EXTERNAL_NAMESPACES` dictionary descriptor.
 - The external package (`@vality/base-proto`) is automatically excluded from the bundle output (`neverBundle`), including its subpath imports.
 
+External mappings use the `.thrift` file basename, not a language-specific namespace.
+Each mapping applies to one module; map transitive modules explicitly when they are
+also owned by external packages. The original IDL must remain available through the input/include paths. Unknown mappings
+are rejected. Install the referenced npm package and declare it as a dependency of the
+published protocol package; generation does not edit package manifests.
+
+External and local packages must use compatible IDL revisions and the same `--i64`
+mode. Inherited service interfaces must also use the same `--lower-case-methods`
+setting. The CLI does not infer these settings from installed declarations or convert
+between number and bigint models. A package-root mapping must export the referenced
+models/services; use namespace subpaths for multi-module packages.
+
+Generated TypeScript omits external modules and loads their metadata from the package.
+Standalone `metadata.json` includes the complete IDL closure, including external modules,
+so `--no-models` output remains usable without an npm loader. The programmatic
+`metadataPath` option can select a separate metadata entry exporting `loadThriftMetadata`,
+`thriftMetadata`, `metadata`, or a default metadata object/array.
+
 #### With multiple include roots
 
 ```sh
@@ -103,7 +122,7 @@ When compiling a schema (for example, with namespaces `base` and `payment`), the
 
 ```text
 generated/
-├── index.ts                     # Root re-exports of all namespaces and services
+├── index.ts                     # Metadata loader, service registry, and optional main namespace
 ├── metadata.ts                  # Root loadThriftMetadata(namespace) lazy loader
 ├── services.ts                  # Global THRIFT_SERVICES and THRIFT_SERVICES_LIST registry
 ├── base/                        # Namespace directory for `base`

@@ -5,7 +5,7 @@ Hello and welcome! This folder has been setup by `@changesets/cli` to help manag
 When making a change that should be released in `@vality/tsthrift`, `@vality/tsthrift-cli`, or `@vality/tsthrift-angular`, run:
 
 ```bash
-pnpm changeset
+vp run changeset
 ```
 
 and follow the prompts to choose the packages affected and the bump type (patch, minor, major).

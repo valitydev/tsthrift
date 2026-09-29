@@ -73,7 +73,7 @@ export function createHttpTransport(config: HttpTransportConfig): TransportFunct
       const response = await fetchFn(targetEndpoint, {
         method: "POST",
         headers,
-        body: payload as BodyInit,
+        body: payload as RequestInit["body"],
         signal: controller.signal,
       });
       if (controller.signal.aborted) {

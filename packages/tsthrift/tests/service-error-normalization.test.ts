@@ -3,6 +3,7 @@ import {
   THRIFT_EXCEPTION_INFO,
   ThriftServiceError,
   catchServiceError,
+  isThriftServiceError,
   normalizeThriftError,
   toThriftResult,
 } from "../src/index.ts";
@@ -17,8 +18,10 @@ test("normalizes tagged payloads without overwriting wrapper fields", async () =
   Object.defineProperty(payload, THRIFT_EXCEPTION_INFO, {
     value: { type: "Missing", fieldName: "missing" },
   });
+  expect(isThriftServiceError(payload)).toBe(false);
   const error = normalizeThriftError(payload) as ThriftServiceError;
   expect(error).toBeInstanceOf(ThriftServiceError);
+  expect(isThriftServiceError(error, "Missing")).toBe(true);
   expect(error.name).toBe("Missing");
   expect(error.type).toBe("Missing");
   expect(error.isService).toBe(true);

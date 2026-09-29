@@ -8,7 +8,10 @@ export function referenceName(value: unknown): string | undefined {
   return parts.join(".");
 }
 
-export function constantReference(scope: Program, name: string) {
+export function constantReference(
+  scope: Program,
+  name: string,
+): { scope: Program; value: unknown; identity: string } {
   const parts = name.split(".");
   const included = scope.includes.get(parts[0]!);
   if (included) {

@@ -12,9 +12,14 @@ afterEach(async () => {
   await Promise.all(directories.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
 });
 
-test.each(["base-proto", "base-proto/base"])(
-  "executes generated external package imports through %s without inlining",
-  async (importPath) => {
+test.each([
+  ["base-proto", "bigint"],
+  ["base-proto/base", "bigint"],
+  ["base-proto", "number"],
+  ["base-proto/base", "number"],
+] as const)(
+  "executes generated external imports through %s in %s mode without inlining",
+  async (importPath, i64) => {
     const dir = await mkdtemp(path.join(tmpdir(), "tsthrift-external-package-"));
     directories.push(dir);
     await writeFile(path.join(dir, "package.json"), '{"type":"module"}');
@@ -24,11 +29,12 @@ test.each(["base-proto", "base-proto/base"])(
       path.join(dir, "node_modules/@vality/tsthrift"),
       "dir",
     );
+    await writeFile(path.join(dir, "common.thrift"), "struct Data { 1: required i64 value }");
     const base = path.join(dir, "base.thrift");
     const child = path.join(dir, "child.thrift");
     await writeFile(
       base,
-      'const string MARKER = "EXTERNAL_PACKAGE_ONLY"\nservice Base { i64 get(1: i64 value) }',
+      'include "common.thrift"\nconst string MARKER = "EXTERNAL_PACKAGE_ONLY"\nservice Base { i64 get(1: i64 value) }',
     );
     await writeFile(
       child,
@@ -37,6 +43,8 @@ test.each(["base-proto", "base-proto/base"])(
     const pkg = path.join(dir, "node_modules/base-proto");
     await generate({
       input: base,
+      i64,
+      main: "base",
       output: path.join(dir, "base-src"),
       bundle: true,
       dist: path.join(pkg, "dist"),
@@ -46,16 +54,21 @@ test.each(["base-proto", "base-proto/base"])(
       JSON.stringify({
         name: "base-proto",
         type: "module",
-        exports: { ".": "./dist/index.mjs", "./base": "./dist/base/index.mjs" },
+        exports: {
+          ".": "./dist/index.mjs",
+          "./base": "./dist/base/index.mjs",
+          "./common": "./dist/common/index.mjs",
+        },
       }),
     );
     const dist = path.join(dir, "dist");
     await generate({
       input: child,
+      i64,
       output: path.join(dir, "generated"),
       bundle: true,
       dist,
-      external: { base: importPath },
+      external: { base: importPath, common: "base-proto/common" },
     });
     const chunks = await Promise.all(
       (await readdir(dist))
@@ -71,8 +84,8 @@ test.each(["base-proto", "base-proto/base"])(
       import { createChild, base, loadThriftMetadata } from "./dist/child/index.mjs";
       import { loadThriftMetadata as loadRoot } from "./dist/index.mjs";
       assert.equal(base.MARKER, "EXTERNAL_PACKAGE_ONLY");
-      assert.deepEqual((await loadThriftMetadata()).map(m => m.name), ["child", "base"]);
-      assert.deepEqual((await loadRoot("base")).map(m => m.name), ["base"]);
+      assert.deepEqual((await loadThriftMetadata()).map(m => m.name), ["child", "base", "common"]);
+      assert.deepEqual((await loadRoot("base")).map(m => m.name), ["base", "common"]);
       const client = createChild({ endpoint: "unused", transport: async bytes => {
         const reader = new BinaryReader(bytes);
         const header = reader.readMessageBegin();
@@ -83,8 +96,9 @@ test.each(["base-proto", "base-proto/base"])(
         writer.writeFieldBegin(10, 0); writer.writeI64(42n); writer.writeFieldStop();
         return writer.finish();
       }});
-      assert.equal(await client.get(42n), 42n);
-      assert.equal(await client.echo(42n), 42n);
+      const value = ${i64 === "bigint" ? "42n" : "42"};
+      assert.equal(await client.get(value), value);
+      assert.equal(await client.echo(value), value);
     `,
     );
     await execute(process.execPath, [path.join(dir, "verify.mjs")]);

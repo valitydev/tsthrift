@@ -1,3 +1,4 @@
+import { THRIFT_METHOD_ARGUMENT_COUNT, THRIFT_METHOD_RESULT } from "./method-arguments.ts";
 import type { Metadata } from "../metadata/types.ts";
 import { type ThriftError, normalizeThriftError } from "./errors.ts";
 
@@ -29,7 +30,7 @@ export type MetadataModule = Metadata[] | { default: Metadata[] };
 export type MetadataSource =
   | Metadata[]
   | Promise<MetadataModule>
-  | ((namespace?: string) => Promise<MetadataModule> | MetadataModule);
+  | ((namespace: string) => Promise<MetadataModule> | MetadataModule);
 
 import type { WoodyHeadersConfig } from "./woody.ts";
 
@@ -145,7 +146,14 @@ export function toThriftResult(target: any): any {
     get(client, prop, receiver) {
       const orig = Reflect.get(client, prop, receiver);
       if (typeof orig === "function") {
-        return (...args: unknown[]) => toThriftResultPromise(orig.apply(client, args));
+        const call = (...args: unknown[]) => toThriftResultPromise(orig.apply(client, args));
+        if (THRIFT_METHOD_ARGUMENT_COUNT in orig) {
+          Object.defineProperty(call, THRIFT_METHOD_ARGUMENT_COUNT, {
+            get: () => orig[THRIFT_METHOD_ARGUMENT_COUNT],
+          });
+        }
+        Object.defineProperty(call, THRIFT_METHOD_RESULT, { value: true });
+        return call;
       }
       return orig;
     },
@@ -159,7 +167,10 @@ export type TransportFunction = (
 ) => Promise<Uint8Array>;
 
 /** Descriptor of a generated Thrift service containing metadata and service factory. */
-export interface ThriftServiceDescriptor<TService = unknown, TErrors = any> {
+export interface ThriftServiceDescriptor<
+  TService = unknown,
+  TErrors = Record<string, ThriftError>,
+> {
   /** Service name in IDL (e.g. "Repository" or "UserService"). */
   serviceName: string;
   /** IDL namespace or module name. */

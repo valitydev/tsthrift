@@ -56,7 +56,7 @@ export const appConfig: ApplicationConfig = {
 Use `inject` with `getServiceToken` and the service descriptor from generated `THRIFT_SERVICES`:
 
 ```ts
-import { Component, inject, OnInit } from "@angular/core";
+import { Component, inject } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { getServiceToken } from "@vality/tsthrift-angular";
 import { THRIFT_SERVICES } from "./generated/services.js";
@@ -72,7 +72,7 @@ import { THRIFT_SERVICES } from "./generated/services.js";
     </div>
   `,
 })
-export class PaymentDetailsComponent implements OnInit {
+export class PaymentDetailsComponent {
   private paymentService = inject(
     getServiceToken(THRIFT_SERVICES["payment_processing.PaymentProcessing"]),
   );
@@ -132,22 +132,17 @@ Any global settings from `provideThriftConfig` (e.g. auth headers, Woody tracing
 By default, `@vality/tsthrift` uses the global `fetch`. To route requests through Angular's HTTP pipeline (including Angular HTTP interceptors for auth tokens, telemetry, etc.), bridge `HttpClient` using `createHttpClientFetch`:
 
 ```ts
-import { HttpClient } from "@angular/common/http";
+import { inject } from "@angular/core";
+import { HttpClient, provideHttpClient } from "@angular/common/http";
 import { createHttpClientFetch, provideThriftConfig } from "@vality/tsthrift-angular";
 
-export function provideConfiguredThrift() {
-  return [
-    {
-      provide: "THRIFT_FETCH_CONFIG",
-      useFactory: (http: HttpClient) =>
-        provideThriftConfig({
-          endpoint: "/api/rpc",
-          fetch: createHttpClientFetch(http),
-        }),
-      deps: [HttpClient],
-    },
-  ];
-}
+export const providers = [
+  provideHttpClient(),
+  provideThriftConfig(() => ({
+    endpoint: "/api/rpc",
+    fetch: createHttpClientFetch(inject(HttpClient)),
+  })),
+];
 ```
 
 ### Per-Service Configuration Overrides
@@ -182,6 +177,10 @@ const observable$ = deferThriftCall((options) => client.calculate(param, options
 
 ### Error Handling in Observables
 
+`catchThriftResult()` normalizes declared exception payloads into `ThriftServiceError`,
+matching the Promise Result API. Direct clients still reject tagged plain payloads;
+normalize them before using wrapper guards.
+
 Use `catchThriftError` (or `catchTypedError`) to catch declared Thrift errors and rethrow unmatched errors. Matching handlers receive a `ThriftServiceError` wrapper, including when the RPC client rejects with a tagged plain payload. The original payload is available as `error.data`; dictionary keys match the declared exception type. Recovery values are included in the resulting Observable type:
 
 ```ts
@@ -209,10 +208,11 @@ Or inspect all errors manually with standard RxJS `catchError` and `@vality/tsth
 
 ```ts
 import { catchError, of } from "rxjs";
-import { isThriftServiceError, isThriftSystemError } from "@vality/tsthrift";
+import { isThriftServiceError, isThriftSystemError, normalizeThriftError } from "@vality/tsthrift";
 
 this.paymentService.getPayment(id).pipe(
-  catchError((err) => {
+  catchError((cause) => {
+    const err = normalizeThriftError(cause);
     if (isThriftServiceError(err, "PaymentNotFound")) {
       console.warn("Payment was not found:", err.data);
       return of(null);
@@ -230,7 +230,7 @@ this.paymentService.getPayment(id).pipe(
 ### DI Providers & Tokens
 
 - `createObservableService(descriptor, config?): ObservableServiceToken<TClient>`: Creates an injectable token self-providing the observable client in DI with optional unique per-service configuration.
-- `provideThriftConfig(config: HttpTransportConfig): Provider`: Configures global Thrift settings.
+- `provideThriftConfig(config: HttpTransportConfig | (() => HttpTransportConfig)): Provider`: Configures global Thrift settings.
 - `provideThriftServices(...serviceLists): EnvironmentProviders`: Registers all generated service descriptors or tokens into Angular DI.
 - `provideThriftService(target, config?): Provider`: Registers a single service descriptor or token with optional overrides.
 - `getServiceToken(descriptor)` / `createServiceToken(descriptor)`: Returns the `InjectionToken<ObservableClient<TService>>` for the given service descriptor.

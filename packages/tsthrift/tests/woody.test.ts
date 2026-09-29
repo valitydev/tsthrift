@@ -8,6 +8,7 @@ import {
   createWoodyHeaders,
   generateId,
   generateTraceId,
+  resolveWoodyHeaders,
 } from "../src/index.ts";
 
 describe("Woody headers", () => {
@@ -204,4 +205,21 @@ describe("Woody headers", () => {
     expect(capturedHeaders[WOODY_HEADERS.TRACE_ID]).toBe("explicit-trace-id");
     expect(capturedHeaders["x-woody-meta-user-identity-id"]).toBe("123");
   });
+});
+
+test("resolves a metadata provider once and propagates its rejection", async () => {
+  let calls = 0;
+  const headers = await resolveWoodyHeaders({ meta: async () => ({ attempt: ++calls }) });
+  expect(calls).toBe(1);
+  expect(headers["x-woody-meta-attempt"]).toBe("1");
+  const failure = new Error("metadata unavailable");
+  await expect(
+    resolveWoodyHeaders({
+      meta: async () => {
+        calls++;
+        throw failure;
+      },
+    }),
+  ).rejects.toBe(failure);
+  expect(calls).toBe(2);
 });

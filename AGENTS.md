@@ -20,7 +20,7 @@ release. Add a tool name to select part of the graph. For example, run
 ## Review Checklist
 
 - [ ] Run `vp install` after pulling remote changes and before getting started.
-- [ ] Run `vp check` and `vp test` to format, lint, type check and test changes.
+- [ ] Run `vp run build` before `vp check` and `vp test`; consumers resolve public package exports from `dist`.
 - [ ] Check if there are `vite.config.ts` tasks or `package.json` scripts necessary for validation, run via `vp run <script>`.
 - [ ] If setup, runtime, or package-manager behavior looks wrong, run `vp env doctor` and include its output when asking for help.
 
@@ -47,3 +47,13 @@ Consult the source revisions in `docs/compatibility.md` when changing compatibil
 - Distinguish verified artifacts from transport, browser, and consumer acceptance.
 - Maintain Web Standards First purity in `@vality/tsthrift`: zero Node-specific runtime imports or globals (`Buffer`, `node:*`), relying solely on standard ECMAScript and Web standards (`Uint8Array`, `fetch`, `AbortSignal`).
 - Align configurations and emitted models with modern TypeScript standards: strict ESM, `NodeNext` module resolution, and `isolatedDeclarations` compatibility for native toolchains (`tsgo`, `oxc`).
+
+### Public contracts and release checks
+
+- Package TypeScript configurations inherit the root strict settings and enable `isolatedDeclarations` for source declarations.
+- Validate generated models and public package declarations with a strict consumer. Do not use `skipLibCheck` to suppress declaration errors in consumer acceptance checks.
+- Keep README examples aligned with public exports, DI registration, metadata loader signatures, and error wrapper semantics.
+- Verify external namespaces with installed packages, root/subpath imports, transitive metadata, and matching i64/method-name modes.
+- `vp run ready` covers build, static checks, and unit/integration tests. Release acceptance additionally requires `vp run test:packages`, `vp run test:browser`, and both Java conformance variants on the exact candidate revision.
+- Check that published archives contain README and LICENSE, and preserve third-party notices.
+- If verification is intentionally deferred, report precisely what was and was not executed; earlier green runs do not verify later edits.

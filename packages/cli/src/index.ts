@@ -1,9 +1,6 @@
 export { generate } from "./compiler/generate.ts";
-export {
-  emitProgramServices,
-  emitProgramIndex,
-  emitServicesRegistry,
-} from "./compiler/emit-services.ts";
+export { emitProgramServices } from "./compiler/emit-services.ts";
+export { emitProgramIndex, emitServicesRegistry } from "./compiler/emit-service-registry.ts";
 export { emitModels, type BinaryTargetType } from "./compiler/emit-models.ts";
 export { loadSchema, type Program, type Schema } from "./compiler/load-schema.ts";
 export { parseI64Mode } from "./compiler/i64-mode.ts";

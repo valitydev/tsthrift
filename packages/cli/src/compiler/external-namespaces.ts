@@ -58,15 +58,20 @@ export function normalizeExternalNamespaces(
     if (!/^[A-Za-z_]\w*$/.test(name)) {
       throw new Error(`Invalid namespace identifier in external configuration: "${name}"`);
     }
-    if (typeof value === "string") {
-      map.set(name, { importPath: value, package: inferPackageName(value) });
-    } else {
-      map.set(name, {
-        importPath: value.importPath,
-        package: value.package ?? inferPackageName(value.importPath),
-        metadataPath: value.metadataPath,
-      });
+    const [, config] = parseExternalArgument(
+      `${name}=${typeof value === "string" ? value : value.importPath}`,
+    );
+    if (typeof value !== "string") {
+      if (value.package !== undefined && !value.package.trim()) {
+        throw new Error(`Empty package in external configuration for "${name}"`);
+      }
+      if (value.metadataPath !== undefined && !value.metadataPath.trim()) {
+        throw new Error(`Empty metadata path in external configuration for "${name}"`);
+      }
+      config.package = value.package?.trim() ?? config.package;
+      config.metadataPath = value.metadataPath?.trim();
     }
+    map.set(name, config);
   }
   return map;
 }

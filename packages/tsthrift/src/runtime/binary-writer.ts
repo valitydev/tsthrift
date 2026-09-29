@@ -15,7 +15,7 @@ export class BinaryWriter {
   private view: DataView;
   private offset = 0;
 
-  constructor(private readonly maxBytes = DEFAULT_MAX_BYTES) {
+  constructor(private readonly maxBytes: number = DEFAULT_MAX_BYTES) {
     assertInteger(maxBytes, 1, 2147483647);
     this.bytes = new Uint8Array(Math.min(256, maxBytes));
     this.view = new DataView(this.bytes.buffer);

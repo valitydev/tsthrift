@@ -164,6 +164,11 @@ export async function loadSchema(
   }
   roots.sort((a, b) => a.name.localeCompare(b.name));
   const allPrograms = [...programs.values()].sort((a, b) => a.path.localeCompare(b.path));
+  for (const name of externalNamespaces?.keys() ?? []) {
+    if (!allPrograms.some((program) => program.name === name)) {
+      throw new Error(`External namespace "${name}" is not reachable from the inputs`);
+    }
+  }
   const localPrograms = allPrograms.filter((p) => !p.external);
   const externalPrograms = allPrograms.filter((p) => Boolean(p.external));
   return {

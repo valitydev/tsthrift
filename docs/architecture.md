@@ -17,11 +17,12 @@ Duplicate modules, invalid fields, unknown types/services, and inheritance cycle
 fail during initialization before transport execution. The factory requires an
 explicit namespace, so same-named services cannot select the wrong module.
 
-Clients keep an immutable schema snapshot. A new schema requires a new client.
+Clients snapshot metadata arrays and loader results. A supplied `MetadataIndex` is reused
+by reference and must remain unchanged. A new schema requires a new client.
 Types/default expansion is bounded, and wire limits match the generated backend.
 The default public type is a dynamic method map returning Promise<unknown>; callers
 may provide a matching existing TS client type. The asynchronous factory rejects
-an IDL method named `then`, which would otherwise trigger Promise assimilation.
+IDL methods named `then` or `promise`, which would otherwise trigger Promise assimilation.
 
 ```text
 metadata/ (or metadata.json) -> runtime schema resolution -> cached codecs -> Promise methods
@@ -44,7 +45,10 @@ Thrift IDL
 
 The CLI generates TypeScript models, modular metadata modules (`load-metadata.ts` per namespace) with a
 `loadThriftMetadata(namespace)` loader resolving full transitive include closures, and optional
-monolithic `metadata.json` (when `--metadata-json` is provided). Native RPC clients are
+monolithic `metadata.json` (when `--metadata-json` is provided).
+Metadata callbacks receive the requested namespace; both namespace-local and
+root loaders can be passed to `createMetadataClient`. External npm modules are
+excluded from generated source/bundles, while standalone JSON retains the full IDL closure. Native RPC clients are
 constructed directly at runtime via `createMetadataClient` using either `loadThriftMetadata` or `metadata.json`.
 
 ## Compiler responsibilities
@@ -52,7 +56,7 @@ constructed directly at runtime via `createMetadataClient` using either `loadThr
 - Schema loading selects entry files and reachable includes.
 - Shared validation and constant evaluation preserve the metadata contract.
 - Model emission selects bigint/number i64 and generates TypeScript models.
-- Output publication stages files and preserves prior output on failure.
+- Output publication stages and replaces each owned directory separately. Source and bundle publication are not a single transaction.
 
 These are source artifacts, not an automatically published protocol package.
 Compile them as ESM with standard TypeScript/JavaScript tooling (`NodeNext` module resolution,
@@ -97,7 +101,11 @@ Inherited service methods share the same client connection configuration.
 
 Replies must match method and sequence ID, use REPLY or EXCEPTION, and contain
 no trailing bytes. Non-void replies require a success field or declared exception.
-Declared exceptions reject with decoded plain objects. Application exceptions
+Declared exceptions reject with decoded plain objects tagged by `THRIFT_EXCEPTION_INFO`.
+`normalizeThriftError`, `catchServiceError`, and the Promise/Observable Result APIs
+produce `ThriftServiceError` wrappers with the original payload in `data`.
+`isThriftServiceError` only narrows wrappers; use normalization before testing raw rejections.
+Application exceptions
 use `ThriftApplicationError` with the server's numeric code. Oneway methods send
 ONEWAY and resolve after the transport completes without decoding a reply.
 
@@ -149,7 +157,7 @@ modes; all 14 client descriptors instantiated and SystemAccountSet maps with two
 CurrencyRef keys round-tripped. This establishes generated-artifact behavior,
 not production server, Angular application, or dynamic-form acceptance.
 
-Run `vp install`, `vp check`, `vp run build`, then `vp test`. No external Thrift
+Run `vp install`, `vp run build`, `vp check`, then `vp test`. No external Thrift
 compiler is required; tests execute directly against the native runtime and wire
 verifiers. Native HTTP tests require permission to bind loopback sockets. See
 [compatibility](compatibility.md) for compatibility verification details.

@@ -29,7 +29,7 @@ THRIFT_COMPILER=/path/to/thrift JAVA=/path/to/java JAVAC=/path/to/javac MVN=/pat
 The verbose output identifies the exact Damsel commit and temporary directory.
 `provenance.json`, generated Java/TypeScript, compiled code, and binary request and
 reply files are preserved when `KEEP_CONFORMANCE_OUTPUT=1`; otherwise the directory
-is removed after the run. Missing tools, changed checksums, generation failures,
+is removed after the run. Missing tools, dependency resolution errors, generation failures,
 and mismatches fail the suite rather than skipping it.
 
 ## Independent reference
@@ -79,14 +79,14 @@ The conformance runner honors the following environment variables:
   fetch (`--depth 1`) of the exact commit. In CI, a dedicated `resolve-damsel` job resolves
   the current HEAD once and passes the identical SHA to all matrix jobs.
 - `CONFORMANCE_OUTPUT_DIR`: Fixed directory for test output. When unset, a temporary directory
-  under `.tmp/conformance-*` is used.
+  under the system temporary directory (`os.tmpdir()`) is used.
 - `KEEP_CONFORMANCE_OUTPUT`: If set to `1`, prevents cleanup of the output directory on success.
   If any test fails (`suiteFailed`), the output directory is always preserved regardless of this flag.
 - `THRIFT_CLASSPATH`: Optional explicit Java classpath. Must contain matching variant jars and validate before compilation.
 
 CI runs both variants in a matrix (`vality-0.20.1` and `apache-0.24.0`) on GitHub Actions
-with Maven caching (`actions/cache@v4` on `~/.m2/repository`) and automated artifact upload on
-failure or completion (`actions/upload-artifact@v4`).
+with Maven caching (`actions/cache@v6` on `~/.m2/repository`) and automated artifact upload on
+failure or completion (`actions/upload-artifact@v7`).
 
 ## Coverage
 
@@ -109,7 +109,7 @@ failure or completion (`actions/upload-artifact@v4`).
   its module name. Duplicate source-file basenames remain explicitly rejected
   by the existing schema test, instead of silently overwriting output.
 
-The nine conformance cases include both numeric modes and populated/empty value
+The eleven conformance cases include both numeric modes and populated/empty value
 variants. Native UUID operates with 16-byte binary wire encoding (WireType 16)
 and RFC 4122 string models.
 
@@ -117,7 +117,7 @@ and RFC 4122 string models.
 
 Generated models and runtime values use `Uint8Array` for binary data and bind the selected `i64Mode` into generated factories. Conformance tests verify serialization fidelity, processor argument decoding, and reply roundtrips against Java reference implementations. These tests focus on wire and protocol conformance, leaving production server deployment and end-to-end frontend integration to downstream consumer verification.
 
-Both reference variants have been executed and verified:
+Historical baseline (nine cases before the large-Commit scenarios were added):
 
 - **Damsel revision**: `8d6174bddedc6d9aefa407fdc1d54877b8686ff9` (pinned across both runs).
 - **Vality variant (`vality-0.20.1`)**: Tested with Vality compiler 0.20.1 + Java libthrift 0.20.0

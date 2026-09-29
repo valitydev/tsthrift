@@ -336,3 +336,17 @@ test("scenario 1: methods differing only by initial case coexist normally, but c
     }),
   ).rejects.toThrow("Method name collision in example.Example: getItem");
 });
+
+test("passes the requested namespace to root metadata loaders", async () => {
+  const loader = vi.fn(async (namespace: string) => {
+    expect(namespace).toBe("example");
+    return schema();
+  });
+  await createMetadataClient({
+    metadata: loader,
+    namespace: "example",
+    serviceName: "Example",
+    endpoint: "unused",
+  });
+  expect(loader).toHaveBeenCalledExactlyOnceWith("example");
+});

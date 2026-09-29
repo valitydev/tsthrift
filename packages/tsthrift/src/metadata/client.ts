@@ -40,7 +40,7 @@ export async function createMetadataClient<T extends object = DynamicThriftClien
   if (!index) {
     if (!config.metadata) throw new TypeError("Expected metadata or index in config");
     const loaded = await (typeof config.metadata === "function"
-      ? config.metadata()
+      ? config.metadata(config.namespace)
       : config.metadata);
     const metadata = Array.isArray(loaded) ? loaded : loaded.default;
     if (!Array.isArray(metadata)) throw new TypeError("Expected metadata array");
