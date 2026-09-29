@@ -167,10 +167,7 @@ export type TransportFunction = (
 ) => Promise<Uint8Array>;
 
 /** Descriptor of a generated Thrift service containing metadata and service factory. */
-export interface ThriftServiceDescriptor<
-  TService = unknown,
-  TErrors = Record<string, ThriftError>,
-> {
+export interface ThriftServiceDescriptor<TService = unknown, TErrors = any> {
   /** Service name in IDL (e.g. "Repository" or "UserService"). */
   serviceName: string;
   /** IDL namespace or module name. */

@@ -34,7 +34,11 @@ describe("Angular Thrift DI integration", () => {
     config?: any;
   }
 
-  const dummyDescriptor: ThriftServiceDescriptor<TestServiceClient> = {
+  interface TestServiceErrors {
+    echo: ThriftServiceError<"TestServiceError", { code: number }>;
+  }
+
+  const dummyDescriptor: ThriftServiceDescriptor<TestServiceClient, TestServiceErrors> = {
     serviceName: "TestService",
     namespace: "test",
     createService: (config?: any) => ({
