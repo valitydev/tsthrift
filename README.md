@@ -43,6 +43,8 @@ The factory reserves the method names `then` and `promise` to avoid Promise assi
 
 ## Framework-agnostic Promise client
 
+Core and Angular bundles target ES2023 for modern Chrome, Firefox, and Safari. TypeScript checks use ES2023 APIs plus DOM types for browser packages; polyfills are not included. The CLI requires Node.js 24 or newer. Published modules use strict ESM with NodeNext resolution.
+
 Generated service clients and runtime clients are pure TypeScript and work in any environment (Node.js, browsers, React, Vue, Web Workers) using standard Web APIs (`fetch`, `AbortSignal`, Promises):
 
 ```ts

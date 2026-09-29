@@ -1,14 +1,6 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "target": "esnext",
-    "lib": ["es2023"],
-    "noEmit": true,
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
-    "allowImportingTsExtensions": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
     "outDir": "./dist",
     "declaration": true,
     "isolatedDeclarations": true
