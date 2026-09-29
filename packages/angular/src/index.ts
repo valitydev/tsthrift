@@ -18,6 +18,7 @@ export {
 } from "./providers.ts";
 export { createHttpClientFetch, type AngularHttpClientLike } from "./http-client-fetch.ts";
 export {
+  catchThriftResult,
   deferThriftCall,
   toObservableClient,
   unwrapResult,

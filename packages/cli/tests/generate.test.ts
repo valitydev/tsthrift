@@ -86,22 +86,29 @@ test.each(["number", "bigint"] as const)(
 
     const indexContent = await readFile(path.join(options.output, "index.ts"), "utf8");
     expect(indexContent).not.toContain("export * as common");
-    expect(indexContent).not.toContain("export * as example");
-    expect(indexContent).toContain('export { SERVICES, SERVICES_LIST } from "./services.js";');
-    expect(indexContent).toContain('export { loadMetadata } from "./metadata.js";');
+    expect(indexContent).toContain(
+      'export { THRIFT_SERVICES, THRIFT_SERVICES_LIST, SERVICES, SERVICES_LIST } from "./services.js";',
+    );
+    expect(indexContent).toContain(
+      'export { loadThriftMetadata, loadMetadata } from "./metadata.js";',
+    );
     expect(indexContent).not.toContain("generateId");
     expect(indexContent).not.toContain("generateTraceId");
 
     const commonEntry = await readFile(path.join(options.output, "common/index.ts"), "utf8");
     expect(commonEntry).toContain('export * from "./models.js";');
+    expect(commonEntry).toContain(
+      'export { metadata as thriftMetadata, metadata } from "./metadata.js";',
+    );
 
     const exampleEntry = await readFile(path.join(options.output, "example/index.ts"), "utf8");
     expect(exampleEntry).toContain('export * from "./models.js";');
     expect(exampleEntry).toContain('export * from "./services/index.js";');
 
     const exampleService = await readFile(path.join(exampleDir, "services/Example.ts"), "utf8");
-    expect(exampleService).toContain("readonly safe: ExampleSafe;");
-    expect(exampleService).toContain("export function createExampleSafe(");
+    expect(exampleService).not.toContain("readonly safe");
+    expect(exampleService).not.toContain("createExampleSafe");
+    expect(exampleService).toContain("export interface ExampleErrors {");
     expect(exampleService).toContain("export type ExampleEchoError =");
     expect(exampleService).toContain("export type ExampleEchoServiceError =");
 
@@ -436,7 +443,7 @@ test("generate() accepts options without output property", () => {
 
 test.each([
   ["service index { void ping() }", "path collision"],
-  ["struct metadata {}", "identifier collision"],
+  ["struct Promise {}", "identifier collision"],
   ["struct ExampleConfig {} service Example { void ping() }", "identifier collision"],
   ["service Example { oneway i32 ping() }", "Invalid oneway"],
   ['struct Data { 1: i32 a = "invalid" }', "Invalid i32 constant"],
@@ -469,7 +476,7 @@ test("re-exports main module at root when specified", async () => {
 
   const indexContent = await readFile(path.join(options.output, "index.ts"), "utf8");
   expect(indexContent).toContain('export * from "./example/index.js";');
-  expect(indexContent).toContain('export { SERVICES, SERVICES_LIST } from "./services.js";');
+  expect(indexContent).toContain("THRIFT_SERVICES");
 });
 
 test("throws when specified main module does not exist in schema", async () => {
@@ -508,21 +515,22 @@ test("sanitizes reserved parameter names in service method signatures", async ()
 
   const serviceContent = await readFile(path.join(output, "test/services/TestService.ts"), "utf8");
   expect(serviceContent).toContain(
-    '"remove"(_default: string, _delete: number, options?: models.RequestOptions): Promise<void>;',
+    '"remove"(_default: string, _delete: number, options?: ThriftRequestOptions): Promise<void>;',
   );
 });
 
-test("rejects service method named safe colliding with reserved property", async () => {
-  const dir = await mkdtemp(path.join(tmpdir(), "tsthrift-safe-collision-"));
+test("allows service method named safe without collision", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "tsthrift-safe-method-"));
   directories.push(dir);
   const input = path.join(dir, "proto");
   const output = path.join(dir, "generated");
   await mkdir(input, { recursive: true });
   await writeFile(path.join(input, "test.thrift"), "service TestService { void safe() }");
 
-  await expect(generate({ input, output })).rejects.toThrow(
-    "Reserved service method: TestService.safe",
-  );
+  await generate({ input, output });
+
+  const serviceContent = await readFile(path.join(output, "test/services/TestService.ts"), "utf8");
+  expect(serviceContent).toContain('"safe"(options?: ThriftRequestOptions): Promise<void>;');
 });
 
 test("supports lowerCaseMethods: true in code generator and cli", async () => {
@@ -544,7 +552,7 @@ test("supports lowerCaseMethods: true in code generator and cli", async () => {
     "utf8",
   );
   expect(serviceContent).toContain(
-    '"getPayment"(id: string, options?: models.RequestOptions): Promise<string>;',
+    '"getPayment"(id: string, options?: ThriftRequestOptions): Promise<string>;',
   );
   expect(serviceContent).toContain("lowerCaseMethods: true,");
 
@@ -565,7 +573,7 @@ test("supports lowerCaseMethods: true in code generator and cli", async () => {
     "utf8",
   );
   expect(cliServiceContent).toContain(
-    '"getPayment"(id: string, options?: models.RequestOptions): Promise<string>;',
+    '"getPayment"(id: string, options?: ThriftRequestOptions): Promise<string>;',
   );
   expect(cliServiceContent).toContain("lowerCaseMethods: true,");
 });
@@ -598,4 +606,34 @@ test("scenario 1: methods differing only by initial case collide under lowerCase
       "--lower-case-methods",
     ]),
   ).rejects.toThrow('Service method name collision in test.TestService: "getPayment"');
+});
+
+test("allows Thrift struct named Metadata and RequestOptions without collision", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "tsthrift-business-names-"));
+  directories.push(dir);
+  const input = path.join(dir, "proto");
+  const output = path.join(dir, "generated");
+  await mkdir(input, { recursive: true });
+  await writeFile(
+    path.join(input, "business.thrift"),
+    `
+    struct Metadata { 1: string key }
+    struct RequestOptions { 1: string token }
+    service BusinessService { Metadata getMeta(1: RequestOptions opts) }
+    `,
+  );
+
+  const result = await generate({ input, output });
+  expect(result.modules).toEqual(["business"]);
+
+  const modelsContent = await readFile(path.join(output, "business/models.ts"), "utf8");
+  expect(modelsContent).toContain("export interface Metadata {");
+  expect(modelsContent).toContain("export interface RequestOptions {");
+
+  const serviceContent = await readFile(
+    path.join(output, "business/services/BusinessService.ts"),
+    "utf8",
+  );
+  expect(serviceContent).toContain("export interface BusinessServiceErrors {");
+  expect(serviceContent).toContain('"getMeta": BusinessServiceGetMetaError;');
 });

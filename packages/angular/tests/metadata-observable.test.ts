@@ -8,7 +8,7 @@ import {
   createLazyMetadataClient,
   createMetadataClient,
 } from "@vality/tsthrift";
-import { toObservableClient } from "../src/rxjs.ts";
+import { catchThriftResult, toObservableClient } from "../src/rxjs.ts";
 
 const metadata: Metadata[] = [
   {
@@ -79,10 +79,12 @@ for (const lazy of [false, true]) {
     ).toEqual({ data: "result" });
     expect(
       await firstValueFrom(
-        client.safe.echo(
-          { headers: "IDL headers", data: "IDL data" },
-          { headers: { authorization: "call" } },
-        ),
+        client
+          .echo(
+            { headers: "IDL headers", data: "IDL data" },
+            { headers: { authorization: "call" } },
+          )
+          .pipe(catchThriftResult()),
       ),
     ).toEqual({ data: { data: "result" }, error: undefined });
   });

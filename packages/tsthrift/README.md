@@ -65,12 +65,14 @@ const payment = await client.getPayment(123456789n, {
 });
 ```
 
-### Safe calls (`ThriftResult`)
+### Non-throwing calls (`toThriftResult`)
 
-Each client also provides a `.safe` sub-client returning a `{ data, error }` object instead of throwing:
+Wrap any call in `toThriftResult` to receive a `{ data, error }` object instead of throwing:
 
 ```ts
-const { data, error } = await client.safe.getPayment(123456789n);
+import { toThriftResult } from "@vality/tsthrift";
+
+const { data, error } = await toThriftResult(client.getPayment(123456789n));
 
 if (error) {
   console.error("Call failed:", error);

@@ -79,8 +79,10 @@ try {
   }
 }
 
-// 3. Alternative: non-throwing execution via .safe
-const { data, error } = await client.safe.getPayment(123456789n);
+// 3. Alternative: non-throwing execution via toThriftResult
+import { toThriftResult } from "@vality/tsthrift";
+
+const { data, error } = await toThriftResult(client.getPayment(123456789n));
 if (error) {
   console.error("Call failed:", error.message);
 } else {

@@ -18,14 +18,16 @@ export type {
 } from "./metadata/types.ts";
 export * from "./transport/errors.ts";
 export { createHttpTransport, mergeHeaderProviders } from "./transport/http-transport.ts";
-export { unwrapResult } from "./transport/types.ts";
+export { toThriftResult, unwrapResult } from "./transport/types.ts";
 export type {
   HeaderProvider,
   MetadataModule,
   MetadataSource,
   RequestOptions,
+  ThriftRequestOptions,
   HttpTransportConfig,
   ThriftLogParams,
+  ThriftMethodError,
   ThriftResult,
   ThriftServiceDescriptor,
   TransportFunction,

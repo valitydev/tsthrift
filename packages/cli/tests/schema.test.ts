@@ -54,7 +54,7 @@ test("loads only selected inputs and reachable includes, preserving legacy metad
   const services = emitProgramServices(program);
   expect(services[0]!.content).toContain("extends common_Base");
   expect(services[0]!.content).toContain(
-    '"next"(id: bigint, options?: models.RequestOptions): Promise<bigint>',
+    '"next"(id: bigint, options?: ThriftRequestOptions): Promise<bigint>',
   );
 });
 
@@ -64,7 +64,6 @@ test.each([
   ["service Example { oneway i32 ping() }", /Invalid oneway/],
   ["struct Data { -1: i32 a i32 b -2: i32 c }", /Duplicate field ID/],
   ["service Example { void then() }", /Reserved service method/],
-  ["service Example { void safe() }", /Reserved service method/],
   ["typedef Missing ID", /Unresolved type Missing/],
   ["struct X { 1: UnknownType id }", /Unresolved type UnknownType/],
   ["typedef B A typedef A B", /Circular typedef/],

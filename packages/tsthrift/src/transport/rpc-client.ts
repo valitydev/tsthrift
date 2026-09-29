@@ -2,13 +2,7 @@ import { THRIFT_METHOD_ARGUMENT_COUNT } from "./method-arguments.ts";
 import { BinaryReader } from "../runtime/binary-reader.ts";
 import { BinaryWriter } from "../runtime/binary-writer.ts";
 import { MessageType } from "../runtime/wire.ts";
-import {
-  THRIFT_EXCEPTION_INFO,
-  ThriftApplicationError,
-  ThriftProtocolError,
-  ThriftServiceError,
-  getThriftExceptionInfo,
-} from "./errors.ts";
+import { THRIFT_EXCEPTION_INFO, ThriftApplicationError, ThriftProtocolError } from "./errors.ts";
 import { createHttpTransport } from "./http-transport.ts";
 import type { HttpTransportConfig, RequestOptions, TransportFunction } from "./types.ts";
 import { type Codec, i32, string } from "../codecs/scalar.ts";
@@ -131,37 +125,5 @@ export function createRpcClient<T extends object>(
       value: methods[name as string]!.argumentNames.length,
     });
   }
-  const client = Object.fromEntries(entries) as T;
-  const safeEntries = Object.entries(methods).map(([name]) => [
-    name,
-    async (...args: unknown[]) => {
-      try {
-        const data = await (client as Record<string, (...args: unknown[]) => Promise<unknown>>)[
-          name
-        ](...args);
-        return { data, error: undefined };
-      } catch (error) {
-        const info = getThriftExceptionInfo(error);
-        if (info && error && typeof error === "object") {
-          return {
-            data: undefined,
-            error: new ThriftServiceError(info.type, info.fieldName, error),
-          };
-        }
-        return { data: undefined, error };
-      }
-    },
-  ]);
-  for (const [name, call] of safeEntries) {
-    Object.defineProperty(call, THRIFT_METHOD_ARGUMENT_COUNT, {
-      value: methods[name as string]!.argumentNames.length,
-    });
-  }
-  Object.defineProperty(client, "safe", {
-    value: Object.fromEntries(safeEntries),
-    enumerable: false,
-    writable: false,
-    configurable: true,
-  });
-  return client;
+  return Object.fromEntries(entries) as T;
 }

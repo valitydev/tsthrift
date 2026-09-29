@@ -58,7 +58,7 @@ function validateService(program: Program, name: string, seen = new Set<string>(
     validateService(parent.program, parent.name, new Set([...seen, id]));
   }
   for (const method of Object.values(service.functions)) {
-    if (["then", "safe", "promise"].includes(method.name))
+    if (["then", "promise"].includes(method.name))
       throw new Error(`Reserved service method: ${name}.${method.name}`);
     if (method.oneway && (method.type !== "void" || method.throws.length))
       throw new Error(`Invalid oneway method ${name}.${method.name}`);

@@ -47,14 +47,7 @@ export function emitModels(
     lines.push(`import * as ${alias} from ${JSON.stringify(`../${included.name}/models.js`)};`);
     lines.push(`export { ${alias} };`);
   }
-  const hasServices = Object.keys(program.ast.service ?? {}).length > 0;
-  if (hasServices) {
-    lines.push(`export interface RequestOptions {
-  signal?: AbortSignal;
-  headers?: Record<string, string>;
-  timeoutMs?: number;
-}`);
-  }
+
   for (const [name, alias] of Object.entries(program.ast.typedef ?? {})) {
     lines.push(`export type ${name} = ${tsType(alias.type, i64, binary)};`);
   }

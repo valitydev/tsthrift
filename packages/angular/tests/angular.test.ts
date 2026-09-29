@@ -12,6 +12,7 @@ import {
   type AngularHttpClientLike,
   THRIFT_CONFIG,
   THRIFT_SERVICES_REGISTRY,
+  catchThriftResult,
   createHttpClientFetch,
   createObservableService,
   createServiceToken,
@@ -265,16 +266,20 @@ describe("Angular Thrift DI integration", () => {
     expect(result).toBe("echo:angular-test");
   });
 
-  test("toObservableClient wraps nested .safe methods and returns safe Observable results", async () => {
+  test("catchThriftResult operator wraps Observable emissions and errors into ThriftResult", async () => {
     const mockClient = {
       echo: async (msg: string) => `echo:${msg}`,
-      safe: {
-        echo: async (msg: string) => ({ data: `echo:${msg}`, error: undefined }),
+      fail: async () => {
+        throw new Error("failed");
       },
     };
     const obsClient = toObservableClient(mockClient);
-    const res = await firstValueFrom(obsClient.safe.echo("safe-test"));
+    const res = await firstValueFrom(obsClient.echo("safe-test").pipe(catchThriftResult()));
     expect(res).toEqual({ data: "echo:safe-test", error: undefined });
+
+    const failRes = await firstValueFrom(obsClient.fail().pipe(catchThriftResult()));
+    expect(failRes.data).toBeUndefined();
+    expect((failRes.error as Error).message).toBe("failed");
   });
 
   test("toObservableClient unwraps ThriftResult success and emits data", async () => {

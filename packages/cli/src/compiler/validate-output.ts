@@ -19,16 +19,25 @@ export function validateOutput(schema: Schema, services: boolean, lowerCaseMetho
     modules.add(program.name.toLowerCase());
     if (
       reserved.has(program.name) ||
-      ["loadMetadata", "SERVICES", "SERVICES_LIST"].includes(program.name)
+      [
+        "loadThriftMetadata",
+        "loadMetadata",
+        "THRIFT_SERVICES",
+        "THRIFT_SERVICES_LIST",
+        "SERVICES",
+        "SERVICES_LIST",
+      ].includes(program.name)
     ) {
       throw new Error(`Module name collides with generated export: ${program.name}`);
     }
     const names = new Set<string>([
-      "metadata",
       "globalThis",
       "TextEncoder",
       "Promise",
+      "loadThriftMetadata",
       "loadMetadata",
+      "THRIFT_SERVICES",
+      "THRIFT_SERVICES_LIST",
       "SERVICES",
       "SERVICES_LIST",
     ]);
@@ -41,7 +50,6 @@ export function validateOutput(schema: Schema, services: boolean, lowerCaseMetho
     for (const kind of ["typedef", "enum", "struct", "union", "exception", "const"] as const) {
       for (const name of Object.keys(program.ast[kind] ?? {})) add(name);
     }
-    if (Object.keys(program.ast.service ?? {}).length) add("RequestOptions");
     if (!services) continue;
     const paths = new Set(["index"]);
     for (const [name, service] of Object.entries(program.ast.service ?? {})) {
@@ -50,11 +58,10 @@ export function validateOutput(schema: Schema, services: boolean, lowerCaseMetho
       paths.add(name.toLowerCase());
       for (const generated of [
         name,
-        `${name}Safe`,
+        `${name}Errors`,
         `${name}Config`,
         `${name}Descriptor`,
         `create${name}`,
-        `create${name}Safe`,
       ]) {
         add(generated);
       }
@@ -72,11 +79,6 @@ export function validateOutput(schema: Schema, services: boolean, lowerCaseMetho
       const seenMethods = new Set<string>();
       for (const method of Object.values(service.functions)) {
         const methodName = lowerCaseMethods ? lowerFirst(method.name) : method.name;
-        if (methodName === "safe") {
-          throw new Error(
-            `Service method name collides with reserved client property: ${program.name}.${name}.${method.name}`,
-          );
-        }
         if (seenMethods.has(methodName)) {
           throw new Error(
             `Service method name collision in ${program.name}.${name}: "${methodName}"`,

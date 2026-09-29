@@ -1,4 +1,4 @@
-import { Observable, type OperatorFunction, map } from "rxjs";
+import { Observable, type OperatorFunction, catchError, map, of } from "rxjs";
 import { createObservableMethod } from "./observable-method.ts";
 import type { RequestOptions, ThriftResult } from "@vality/tsthrift";
 
@@ -19,6 +19,21 @@ export function unwrapResult<TData, TError = unknown>(): OperatorFunction<
         }
         return (result as { data: TData }).data;
       }),
+    );
+}
+
+/**
+ * RxJS operator that catches errors from an Observable and wraps into a ThriftResult { data, error }.
+ * Emits { data, error: undefined } on success, or { data: undefined, error } on error, then completes.
+ */
+export function catchThriftResult<TData, TError = unknown>(): OperatorFunction<
+  TData,
+  ThriftResult<TData, TError>
+> {
+  return (source$) =>
+    source$.pipe(
+      map((data) => ({ data, error: undefined }) as ThriftResult<TData, TError>),
+      catchError((error) => of({ data: undefined, error: error as TError })),
     );
 }
 
@@ -64,30 +79,19 @@ export function deferThriftCall<T>(
   });
 }
 
-export type ObservableSafeClient<TClient extends object> = {
-  [K in keyof TClient]: TClient[K] extends (...args: infer Args) => Promise<infer R>
-    ? (...args: Args) => Observable<R>
-    : TClient[K] extends object
-      ? ObservableSafeClient<TClient[K]>
-      : TClient[K];
-};
-
 /**
  * Type mapping Promise-based client methods to Observable-based client methods.
  * Unwraps ThriftResult into plain data in Observables and emits declared exceptions
  * or system errors into the error channel (real throw).
- * Preserves nested .safe sub-clients returning ThriftResult without throwing.
  */
 export type ObservableClient<TClient extends object> = {
-  [K in keyof TClient]: K extends "safe"
-    ? TClient[K] extends object
-      ? ObservableSafeClient<TClient[K]>
-      : TClient[K]
-    : TClient[K] extends (...args: infer Args) => Promise<ThriftResult<infer TData, any>>
-      ? (...args: Args) => Observable<TData>
-      : TClient[K] extends (...args: infer Args) => Promise<infer R>
-        ? (...args: Args) => Observable<R>
-        : TClient[K];
+  [K in keyof TClient]: TClient[K] extends (
+    ...args: infer Args
+  ) => Promise<ThriftResult<infer TData, any>>
+    ? (...args: Args) => Observable<TData>
+    : TClient[K] extends (...args: infer Args) => Promise<infer R>
+      ? (...args: Args) => Observable<R>
+      : TClient[K];
 } & {
   /** Access to the underlying raw Promise-based client instance. */
   promise: TClient;

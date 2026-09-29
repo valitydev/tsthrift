@@ -56,7 +56,7 @@ export function emitMetadataLoader(schema: Schema): string {
     "/**",
     " * Loads the full metadata closure for the specified namespace including all transitive dependencies.",
     " */",
-    "export const loadMetadata: (namespace: string) => Promise<Metadata[]> = createMetadataLoader({",
+    "export const loadThriftMetadata: (namespace: string) => Promise<Metadata[]> = createMetadataLoader({",
   ];
 
   for (const program of schema.programs) {
@@ -70,6 +70,10 @@ export function emitMetadataLoader(schema: Schema): string {
   }
 
   lines.push("});");
+  lines.push("");
+  lines.push(
+    "export const loadMetadata: (namespace: string) => Promise<Metadata[]> = loadThriftMetadata;",
+  );
   lines.push("");
 
   return lines.join("\n");

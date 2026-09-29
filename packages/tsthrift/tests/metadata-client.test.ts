@@ -1,5 +1,6 @@
 import { expect, test, vi } from "vite-plus/test";
 import { createLazyMetadataClient, createMetadataClient } from "../src/metadata/client.ts";
+import { toThriftResult } from "../src/index.ts";
 import { MetadataIndex } from "../src/metadata/index.ts";
 import { MetadataCodecs } from "../src/metadata/codecs.ts";
 import { BinaryReader, BinaryWriter, MessageType } from "../src/runtime.ts";
@@ -251,8 +252,9 @@ test("supports lowerCaseMethods mapping client methods to lowerFirst while prese
   expect(result).toBe("payment-123");
   expect(wireMethodNameReceived).toBe("GetPayment");
 
-  const safeResult = await client.safe.getPayment("456");
+  const safeResult = await toThriftResult(client.getPayment("456"));
   expect(safeResult).toEqual({ data: "payment-456", error: undefined });
+  expect((client as any).safe).toBeUndefined();
 });
 
 test("scenario 1: methods differing only by initial case coexist normally, but collide under lowerCaseMethods", async () => {

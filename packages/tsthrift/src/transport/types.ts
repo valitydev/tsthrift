@@ -1,5 +1,5 @@
 import type { Metadata } from "../metadata/types.ts";
-import type { ThriftError } from "./errors.ts";
+import { type ThriftError, ThriftServiceError, getThriftExceptionInfo } from "./errors.ts";
 
 /** Result type for safe RPC calls in openapi-fetch style. */
 export type ThriftResult<TData, TError = ThriftError> =
@@ -79,6 +79,31 @@ export interface RequestOptions {
   serviceHeader?: boolean | string;
 }
 
+/** Alias for RequestOptions with Thrift namespace prefix to avoid identifier collisions. */
+export type ThriftRequestOptions = RequestOptions;
+
+/**
+ * Wraps a Promise into a ThriftResult object { data, error }.
+ * Captures thrown ThriftServiceError exceptions or system errors.
+ */
+export async function toThriftResult<TData, TError = unknown>(
+  promise: Promise<TData>,
+): Promise<ThriftResult<TData, TError>> {
+  try {
+    const data = await promise;
+    return { data, error: undefined };
+  } catch (error) {
+    const info = getThriftExceptionInfo(error);
+    if (info && error && typeof error === "object") {
+      return {
+        data: undefined,
+        error: new ThriftServiceError(info.type, info.fieldName, error) as unknown as TError,
+      };
+    }
+    return { data: undefined, error: error as TError };
+  }
+}
+
 /** Low-level transport function sending raw bytes and receiving response bytes. */
 export type TransportFunction = (
   payload: Uint8Array,
@@ -86,7 +111,7 @@ export type TransportFunction = (
 ) => Promise<Uint8Array>;
 
 /** Descriptor of a generated Thrift service containing metadata and service factory. */
-export interface ThriftServiceDescriptor<TService = unknown> {
+export interface ThriftServiceDescriptor<TService = unknown, TErrors = any> {
   /** Service name in IDL (e.g. "Repository" or "UserService"). */
   serviceName: string;
   /** IDL namespace or module name. */
@@ -95,4 +120,16 @@ export interface ThriftServiceDescriptor<TService = unknown> {
   createService: (config?: any) => TService;
   /** Lazy loader returning parsed schema metadata. */
   getMetadata: () => Promise<Metadata[]>;
+  /** Phantom type property carrying method error map for inference. */
+  readonly __errors__?: TErrors;
 }
+
+/** Extracts the method error type from a ThriftServiceDescriptor or error map interface. */
+export type ThriftMethodError<TTarget, TMethod extends string = string> =
+  TTarget extends ThriftServiceDescriptor<any, infer TErrors>
+    ? TMethod extends keyof TErrors
+      ? TErrors[TMethod]
+      : unknown
+    : TMethod extends keyof TTarget
+      ? TTarget[TMethod]
+      : unknown;

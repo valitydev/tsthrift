@@ -57,25 +57,22 @@ export function emitProgramServices(
 
   for (const [serviceName, service] of Object.entries(services)) {
     let parent = "";
-    let parentSafe = "";
     let parentImport = "";
     if (service.extends) {
       if (service.extends.includes(".")) {
         const [incNamespace, incService] = service.extends.split(".");
         const incTarget = program.includes.get(incNamespace)!.name;
-        parentImport = `import type { ${incService} as ${incNamespace}_${incService}, ${incService}Safe as ${incNamespace}_${incService}Safe } from "../../${incTarget}/services/${incService}.js";\n`;
+        parentImport = `import type { ${incService} as ${incNamespace}_${incService} } from "../../${incTarget}/services/${incService}.js";\n`;
         parent = ` extends ${incNamespace}_${incService}`;
-        parentSafe = ` extends ${incNamespace}_${incService}Safe`;
       } else {
-        parentImport = `import type { ${service.extends}, ${service.extends}Safe } from "./${service.extends}.js";\n`;
+        parentImport = `import type { ${service.extends} } from "./${service.extends}.js";\n`;
         parent = ` extends ${service.extends}`;
-        parentSafe = ` extends ${service.extends}Safe`;
       }
     }
 
     const errorTypes: string[] = [];
+    const errorMembers: string[] = [];
     const methods: string[] = [];
-    const safeMethods: string[] = [];
 
     const seenMethodNames = new Set<string>();
     for (const method of Object.values(service.functions)) {
@@ -93,12 +90,13 @@ export function emitProgramServices(
         ...method.args.map(
           (field) => `${safeParamName(field.name)}: ${serviceTsType(field.type, i64, binary)}`,
         ),
-        `${optionsName}?: models.RequestOptions`,
+        `${optionsName}?: ThriftRequestOptions`,
       ].join(", ");
 
       const capMethodName = method.name.charAt(0).toUpperCase() + method.name.slice(1);
       const serviceErrorTypeName = `${serviceName}${capMethodName}ServiceError`;
       const errorTypeName = `${serviceName}${capMethodName}Error`;
+      errorMembers.push(`  ${JSON.stringify(methodName)}: ${errorTypeName};`);
 
       if (method.throws && method.throws.length > 0) {
         const serviceErrors = method.throws.map((field) => {
@@ -117,9 +115,6 @@ export function emitProgramServices(
 
       const returnType = serviceTsType(method.type, i64, binary);
       methods.push(`  ${JSON.stringify(methodName)}(${parameters}): Promise<${returnType}>;`);
-      safeMethods.push(
-        `  ${JSON.stringify(methodName)}(${parameters}): Promise<ThriftResult<${returnType}, ${errorTypeName}>>;`,
-      );
     }
 
     const lines = [
@@ -127,12 +122,12 @@ export function emitProgramServices(
       "import {",
       "  createLazyMetadataClient,",
       "  type MetadataClientConfig,",
-      "  type ThriftResult,",
+      "  type ThriftRequestOptions,",
       "  type ThriftServiceDescriptor,",
       "  type ThriftServiceError,",
       "  type ThriftSystemError,",
       '} from "@vality/tsthrift";',
-      'import { loadMetadata } from "../../metadata.js";',
+      'import { loadThriftMetadata } from "../../metadata.js";',
       'import type * as models from "../models.js";',
     ];
 
@@ -146,20 +141,20 @@ export function emitProgramServices(
 
     lines.push(
       "",
-      `export interface ${serviceName}Safe${parentSafe} {`,
-      safeMethods.join("\n"),
+      `/** Method error map for ${serviceName}. */`,
+      `export interface ${serviceName}Errors {`,
+      errorMembers.join("\n"),
       "}",
       "",
       `export interface ${serviceName}${parent} {`,
       methods.join("\n"),
-      `  readonly safe: ${serviceName}Safe;`,
       "}",
       "",
       `export interface ${serviceName}Config extends Omit<MetadataClientConfig, "serviceName" | "namespace" | "metadata" | "i64Mode"> {`,
       '  metadata?: MetadataClientConfig["metadata"];',
       "}",
       "",
-      `const defaultMetadata = () => loadMetadata(${JSON.stringify(program.name)});`,
+      `const defaultMetadata = () => loadThriftMetadata(${JSON.stringify(program.name)});`,
       "",
       `/**`,
       ` * Creates a service client for ${serviceName} that lazily initializes metadata and codecs.`,
@@ -176,16 +171,9 @@ export function emitProgramServices(
       `}`,
       "",
       `/**`,
-      ` * Creates a safe service client for ${serviceName} returning ThriftResult { data, error }.`,
-      ` */`,
-      `export function create${serviceName}Safe(config: ${serviceName}Config): ${serviceName}Safe {`,
-      `  return create${serviceName}(config).safe;`,
-      `}`,
-      "",
-      `/**`,
       ` * Thrift service descriptor for ${serviceName}.`,
       ` */`,
-      `export const ${serviceName}: ThriftServiceDescriptor<${serviceName}> = {`,
+      `export const ${serviceName}: ThriftServiceDescriptor<${serviceName}, ${serviceName}Errors> = {`,
       `  serviceName: ${JSON.stringify(serviceName)},`,
       `  namespace: ${JSON.stringify(program.name)},`,
       `  createService: create${serviceName},`,
@@ -195,7 +183,7 @@ export function emitProgramServices(
       `/**`,
       ` * Alias for ${serviceName} descriptor.`,
       ` */`,
-      `export const ${serviceName}Descriptor: ThriftServiceDescriptor<${serviceName}> = ${serviceName};`,
+      `export const ${serviceName}Descriptor: ThriftServiceDescriptor<${serviceName}, ${serviceName}Errors> = ${serviceName};`,
       "",
     );
 
@@ -247,8 +235,7 @@ export function emitServicesRegistry(schema: Schema): string {
     );
   }
   lines.push("}");
-  lines.push("");
-  lines.push("export const SERVICES: ServicesRegistry = {");
+  lines.push("export const THRIFT_SERVICES: ServicesRegistry = {");
   for (const s of serviceList) {
     lines.push(
       `  "${s.programName}.${s.serviceName}": ${s.programName}_${s.serviceName}Descriptor,`,
@@ -257,7 +244,14 @@ export function emitServicesRegistry(schema: Schema): string {
 
   lines.push("};");
   lines.push("");
-  lines.push("export const SERVICES_LIST: ThriftServiceDescriptor[] = Object.values(SERVICES);");
+  lines.push(
+    "export const THRIFT_SERVICES_LIST: ThriftServiceDescriptor[] = Object.values(THRIFT_SERVICES);",
+  );
+  lines.push("/** Alias for THRIFT_SERVICES. */");
+  lines.push("export const SERVICES: ServicesRegistry = THRIFT_SERVICES;");
+  lines.push("");
+  lines.push("/** Alias for THRIFT_SERVICES_LIST. */");
+  lines.push("export const SERVICES_LIST: ThriftServiceDescriptor[] = THRIFT_SERVICES_LIST;");
   lines.push("");
 
   return lines.join("\n");
