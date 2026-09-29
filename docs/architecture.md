@@ -119,7 +119,7 @@ contract: all binary serialization, networking (`fetch`, `AbortSignal`, `Readabl
 utility operations (`Uint8Array`, `DataView`, `TextEncoder`/`TextDecoder`) use standard ECMAScript
 and Web APIs without Node.js runtime globals or shims. They have no runtime imports of
 Apache Thrift, Buffer, parser, Node, Angular, or RxJS. The core runs natively in browsers,
-Web Workers, and modern Node.js runtimes (`>=22.18.0`). Node.js dependencies are strictly
+Web Workers, and modern Node.js runtimes (`>=24.0.0`). Node.js dependencies are strictly
 isolated to build-time tooling and the `@vality/tsthrift-cli` compiler. `createMetadataClient` loads
 metadata once at initialization and reuses pure TypeScript codecs and binary protocol reader/writer.
 

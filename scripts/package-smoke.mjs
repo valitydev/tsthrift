@@ -34,10 +34,8 @@ try {
     assert.match(stdout, /package\/README.md/);
   }
   await json(path.join(directory, "package.json"), { private: true, type: "module" });
-  await writeFile(path.join(directory, ".npmrc"), "legacy-peer-deps=true\n");
   await run("npm", [
     "install",
-    "--legacy-peer-deps",
     "--ignore-scripts",
     "--no-audit",
     "--no-fund",
@@ -95,7 +93,6 @@ try {
   await run("npm", ["pack", "--pack-destination", directory], protocol);
   await run("npm", [
     "install",
-    "--legacy-peer-deps",
     "--ignore-scripts",
     "--no-audit",
     "--no-fund",
@@ -149,7 +146,6 @@ try {
     if (version === "16.2.12")
       await run("npm", [
         "install",
-        "--legacy-peer-deps",
         "--ignore-scripts",
         "--no-audit",
         "--no-fund",
