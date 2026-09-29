@@ -1,4 +1,4 @@
-import { lstat, realpath, readFile, readdir, writeFile } from "node:fs/promises";
+import { lstat, readFile, readdir, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const MANIFEST = ".tsthrift.json";

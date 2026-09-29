@@ -1,5 +1,5 @@
 import { Observable } from "rxjs";
-import { THRIFT_METHOD_ARGUMENT_COUNT, type RequestOptions } from "@vality/tsthrift";
+import { type RequestOptions, THRIFT_METHOD_ARGUMENT_COUNT } from "@vality/tsthrift";
 
 /** Wraps one invocation, preserving IDL argument positions and cancellation lifetime. */
 export function createObservableMethod(

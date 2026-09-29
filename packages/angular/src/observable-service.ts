@@ -1,11 +1,11 @@
-import { inject, InjectionToken } from "@angular/core";
+import { InjectionToken, inject } from "@angular/core";
 import {
-  mergeHeaderProviders,
   type HttpTransportConfig,
   type ThriftServiceDescriptor,
+  mergeHeaderProviders,
 } from "@vality/tsthrift";
 import { THRIFT_CONFIG, registerServiceToken } from "./tokens.ts";
-import { toObservableClient, type ObservableClient } from "./rxjs.ts";
+import { type ObservableClient, toObservableClient } from "./rxjs.ts";
 
 const tokenDescriptors = new WeakMap<InjectionToken<any>, ThriftServiceDescriptor<any>>();
 const tokenConfigs = new WeakMap<InjectionToken<any>, Partial<HttpTransportConfig> | undefined>();

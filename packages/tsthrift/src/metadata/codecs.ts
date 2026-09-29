@@ -2,7 +2,7 @@ import { MetadataIndex } from "./index.ts";
 import type { Field, I64Mode, ValueType } from "./types.ts";
 import * as scalar from "../codecs/scalar.ts";
 import { list, map, set } from "../codecs/collections.ts";
-import { struct, type WireField } from "../codecs/struct.ts";
+import { type WireField, struct } from "../codecs/struct.ts";
 import { evaluateDefault } from "./defaults.ts";
 import { DEFAULT_MAX_DEPTH } from "../runtime/wire.ts";
 

@@ -1,9 +1,9 @@
 import "@angular/compiler";
-import { HttpClient, HttpBackend } from "@angular/common/http";
+import { HttpBackend, HttpClient } from "@angular/common/http";
 import { HttpTestingController, provideHttpClientTesting } from "@angular/common/http/testing";
-import { createEnvironmentInjector, type EnvironmentInjector } from "@angular/core";
+import { type EnvironmentInjector, createEnvironmentInjector } from "@angular/core";
 import { expect, test } from "vite-plus/test";
-import { createHttpTransport, ThriftTimeoutError } from "@vality/tsthrift";
+import { ThriftTimeoutError, createHttpTransport } from "@vality/tsthrift";
 import { createHttpClientFetch } from "../src/http-client-fetch.ts";
 
 async function pendingRequest(http: HttpTestingController) {

@@ -2,7 +2,7 @@
 
 ## Runtime metadata clients
 
-`createMetadataClient` constructs a Promise client from a legacy Metadata[] schema,
+`createMetadataClient` constructs a Promise client from a `Metadata[]` schema,
 namespace, service name, and transport configuration. It accepts a static array,
 Promise, or lazy loader. Initialization snapshots metadata and resolves reachable
 service/type definitions once into in-memory codecs. Calls then reuse the common
@@ -55,8 +55,9 @@ constructed directly at runtime via `createMetadataClient` using either `loadMet
 - Output publication stages files and preserves prior output on failure.
 
 These are source artifacts, not an automatically published protocol package.
-Compile them as ESM with standard TypeScript/JavaScript tooling; modular metadata
-files are TypeScript modules and do not require JSON module import support.
+Compile them as ESM with standard TypeScript/JavaScript tooling (`NodeNext` module resolution,
+strict type checking, and `isolatedDeclarations` compatibility for native compilers such as `tsgo`
+and `oxc`); modular metadata files are TypeScript modules and do not require JSON module import support.
 
 ## Native value and wire contracts
 
@@ -113,9 +114,14 @@ owns its own I/O, cancellation, and timeout behavior.
 
 ## Runtime/package boundaries
 
-The `@vality/tsthrift` package and `@vality/tsthrift/runtime` have no runtime imports of
-Apache Thrift, Buffer, parser, Node, Angular, or RxJS. `createMetadataClient` loads metadata once
-at initialization and reuses pure TypeScript codecs and binary protocol reader/writer.
+The `@vality/tsthrift` package and `@vality/tsthrift/runtime` follow a Web Standards First (universal)
+contract: all binary serialization, networking (`fetch`, `AbortSignal`, `ReadableStream`), and
+utility operations (`Uint8Array`, `DataView`, `TextEncoder`/`TextDecoder`) use standard ECMAScript
+and Web APIs without Node.js runtime globals or shims. They have no runtime imports of
+Apache Thrift, Buffer, parser, Node, Angular, or RxJS. The core runs natively in browsers,
+Web Workers, and modern Node.js runtimes (`>=22.18.0`). Node.js dependencies are strictly
+isolated to build-time tooling and the `@vality/tsthrift-cli` compiler. `createMetadataClient` loads
+metadata once at initialization and reuses pure TypeScript codecs and binary protocol reader/writer.
 
 The legacy Apache Thrift target and `@vality/tsthrift/apache` runtime have been removed.
 The official Apache `thrift` package is retained solely in test devDependencies to independently

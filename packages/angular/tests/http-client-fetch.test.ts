@@ -1,10 +1,10 @@
 import { expect, test, vi } from "vite-plus/test";
-import { Observable, EMPTY, of, throwError } from "rxjs";
+import { EMPTY, Observable, of, throwError } from "rxjs";
 import {
-  createHttpTransport,
   ThriftConnectionError,
   ThriftHttpError,
   ThriftTimeoutError,
+  createHttpTransport,
 } from "@vality/tsthrift";
 import { createHttpClientFetch } from "../src/http-client-fetch.ts";
 

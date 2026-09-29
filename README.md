@@ -1,12 +1,12 @@
 # TsThrift
 
-TypeScript models, legacy-compatible form metadata, and Promise RPC clients for
+TypeScript models, modular runtime metadata, and Promise RPC clients for
 Thrift Binary Protocol. The metadata-driven runtime constructs clients without an
 external Apache Thrift compiler, npm runtime dependencies, or Buffer polyfill.
 
 ## Clients from metadata
 
-A client can be created at runtime using only the legacy metadata array:
+A client can be created at runtime using schema metadata:
 
 ```ts
 import { createMetadataClient } from "@vality/tsthrift";
@@ -40,6 +40,53 @@ The async factory reserves the method name `then` to avoid Promise assimilation.
 - `@vality/tsthrift`: Zero-framework core runtime, Binary Protocol, metadata client, and HTTP transport.
 - `@vality/tsthrift-angular`: Angular dependency injection, providers (`provideThriftServices`, `provideThriftService`), and RxJS adapters (`toObservableClient`, `deferThriftCall`).
 - `@vality/tsthrift-cli`: Pure TypeScript compiler generating models, modular metadata, and framework-agnostic service factories.
+
+## Framework-agnostic Promise client
+
+Generated service clients and runtime clients are pure TypeScript and work in any environment (Node.js, browsers, React, Vue, Web Workers) using standard Web APIs (`fetch`, `AbortSignal`, Promises):
+
+```ts
+import { isThriftServiceError, isThriftSystemError } from "@vality/tsthrift";
+import { createPaymentProcessing } from "./generated/payment_processing/index.js";
+
+// 1. Initialize client with tracing and default timeout
+const client = createPaymentProcessing({
+  endpoint: "https://api.example.com/rpc/payment",
+  timeoutMs: 15_000,
+  woody: true, // auto-generates x-woody-trace-id, span-id, parent-id
+});
+
+// 2. Request cancellation via standard AbortController
+const controller = new AbortController();
+
+try {
+  const payment = await client.getPayment(123456789n, {
+    signal: controller.signal,
+    headers: { "X-Request-Id": "req-123" },
+  });
+  console.log("Payment received:", payment);
+} catch (err) {
+  if (err instanceof Error && err.name === "AbortError") {
+    console.warn("Request was aborted");
+  } else if (isThriftServiceError(err, "PaymentNotFound")) {
+    // Declared Thrift IDL service exception with typed payload
+    console.warn("Payment not found:", err.data);
+  } else if (isThriftSystemError(err)) {
+    // Network, HTTP status, timeout, or protocol failure
+    console.error("System or transport error:", err.message);
+  } else {
+    throw err;
+  }
+}
+
+// 3. Alternative: non-throwing execution via .safe
+const { data, error } = await client.safe.getPayment(123456789n);
+if (error) {
+  console.error("Call failed:", error.message);
+} else {
+  console.log("Payment received:", data);
+}
+```
 
 ## Angular integration
 

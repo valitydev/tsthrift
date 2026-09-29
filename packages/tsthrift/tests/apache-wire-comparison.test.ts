@@ -4,9 +4,9 @@ import {
   BinaryReader,
   BinaryWriter,
   MessageType,
+  type Metadata,
   WireType,
   createMetadataClient,
-  type Metadata,
 } from "../src/index.ts";
 
 const require = createRequire(import.meta.url);

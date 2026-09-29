@@ -1,9 +1,9 @@
 import { expect, test, vi } from "vite-plus/test";
 import {
+  ThriftProtocolError,
+  ThriftTimeoutError,
   createHttpTransport,
   mergeHeaderProviders,
-  ThriftTimeoutError,
-  ThriftProtocolError,
   toBinary,
 } from "../src/index.ts";
 

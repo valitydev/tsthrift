@@ -4,10 +4,10 @@ import { pathToFileURL } from "node:url";
 import { afterAll, afterEach, beforeAll, expect, test } from "vite-plus/test";
 import {
   BinaryWriter,
-  MessageType,
-  MetadataIndex,
   type I64Mode,
+  MessageType,
   type Metadata,
+  MetadataIndex,
   type TransportFunction,
 } from "@vality/tsthrift";
 import { createConformanceDirectory, prepareConformance } from "./setup.ts";

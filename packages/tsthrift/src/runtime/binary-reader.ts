@@ -2,9 +2,6 @@ import { i64ToNumber } from "./i64.ts";
 import { skipValue } from "./skip-value.ts";
 import { formatUuid } from "./uuid.ts";
 import {
-  assertInteger,
-  assertMessageType,
-  assertValueType,
   BINARY_VERSION_1,
   BINARY_VERSION_MASK,
   DEFAULT_MAX_BYTES,
@@ -12,6 +9,9 @@ import {
   DEFAULT_MAX_DEPTH,
   WireType,
   type WireTypeValue,
+  assertInteger,
+  assertMessageType,
+  assertValueType,
 } from "./wire.ts";
 
 export interface BinaryReaderOptions {

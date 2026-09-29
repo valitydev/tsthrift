@@ -1,13 +1,13 @@
 import { describe, expect, test, vi } from "vite-plus/test";
 import {
+  FlakeId,
   WOODY_HEADERS,
-  createWoodyHeaders,
+  bs64,
+  createHttpTransport,
   createWoodyHeaderProvider,
+  createWoodyHeaders,
   generateId,
   generateTraceId,
-  bs64,
-  FlakeId,
-  createHttpTransport,
 } from "../src/index.ts";
 
 describe("Woody headers", () => {

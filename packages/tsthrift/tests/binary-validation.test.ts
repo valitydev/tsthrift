@@ -1,5 +1,5 @@
 import { expect, test } from "vite-plus/test";
-import { BinaryReader, BinaryWriter, i64ToNumber, numberToI64, WireType } from "../src/runtime.ts";
+import { BinaryReader, BinaryWriter, WireType, i64ToNumber, numberToI64 } from "../src/runtime.ts";
 
 test("checks public number conversion and signed i64 bounds without rounding", () => {
   for (const value of [Number.MIN_SAFE_INTEGER, -1, 0, 1, Number.MAX_SAFE_INTEGER]) {

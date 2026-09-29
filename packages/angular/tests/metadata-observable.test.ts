@@ -1,12 +1,12 @@
 import { firstValueFrom } from "rxjs";
 import { expect, test } from "vite-plus/test";
 import {
-  createLazyMetadataClient,
-  createMetadataClient,
-  type Metadata,
   BinaryReader,
   BinaryWriter,
   MessageType,
+  type Metadata,
+  createLazyMetadataClient,
+  createMetadataClient,
 } from "@vality/tsthrift";
 import { toObservableClient } from "../src/rxjs.ts";
 

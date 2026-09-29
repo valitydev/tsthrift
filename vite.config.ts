@@ -4,6 +4,15 @@ export default defineConfig({
   fmt: {},
   lint: {
     options: { typeAware: true, typeCheck: true },
+    rules: {
+      "sort-imports": [
+        "error",
+        {
+          ignoreDeclarationSort: true,
+          ignoreMemberSort: false,
+        },
+      ],
+    },
   },
   run: {
     cache: true,

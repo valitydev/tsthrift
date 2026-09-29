@@ -1,6 +1,6 @@
 import { createRequire } from "node:module";
 import { describe, expect, test } from "vite-plus/test";
-import { createMetadataClient, type Metadata } from "../src/index.ts";
+import { type Metadata, createMetadataClient } from "../src/index.ts";
 
 const require = createRequire(import.meta.url);
 const { TBinaryProtocol, TBufferedTransport, fromBigInt, toBigInt } = require("thrift") as {

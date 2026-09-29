@@ -1,14 +1,15 @@
 import { describe, expect, test } from "vite-plus/test";
-import { createEnvironmentInjector, inject, Injector, runInInjectionContext } from "@angular/core";
-import { catchError, firstValueFrom, of, Observable } from "rxjs";
+import { Injector, createEnvironmentInjector, inject, runInInjectionContext } from "@angular/core";
+import { Observable, catchError, firstValueFrom, of } from "rxjs";
 import {
   ThriftHttpError,
+  type ThriftServiceDescriptor,
   ThriftServiceError,
   catchServiceError,
   catchSystemError,
-  type ThriftServiceDescriptor,
 } from "@vality/tsthrift";
 import {
+  type AngularHttpClientLike,
   THRIFT_CONFIG,
   THRIFT_SERVICES_REGISTRY,
   createHttpClientFetch,
@@ -21,7 +22,6 @@ import {
   provideThriftService,
   provideThriftServices,
   toObservableClient,
-  type AngularHttpClientLike,
 } from "../src/index.ts";
 
 describe("Angular Thrift DI integration", () => {

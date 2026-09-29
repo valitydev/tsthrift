@@ -3,14 +3,14 @@ import { BinaryReader } from "../runtime/binary-reader.ts";
 import { BinaryWriter } from "../runtime/binary-writer.ts";
 import { MessageType } from "../runtime/wire.ts";
 import {
+  THRIFT_EXCEPTION_INFO,
   ThriftApplicationError,
   ThriftProtocolError,
   ThriftServiceError,
-  THRIFT_EXCEPTION_INFO,
   getThriftExceptionInfo,
 } from "./errors.ts";
 import { createHttpTransport } from "./http-transport.ts";
-import type { RequestOptions, HttpTransportConfig, TransportFunction } from "./types.ts";
+import type { HttpTransportConfig, RequestOptions, TransportFunction } from "./types.ts";
 import { type Codec, i32, string } from "../codecs/scalar.ts";
 import { struct } from "../codecs/struct.ts";
 

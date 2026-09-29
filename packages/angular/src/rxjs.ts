@@ -1,4 +1,4 @@
-import { map, Observable, type OperatorFunction } from "rxjs";
+import { Observable, type OperatorFunction, map } from "rxjs";
 import { createObservableMethod } from "./observable-method.ts";
 import type { RequestOptions, ThriftResult } from "@vality/tsthrift";
 

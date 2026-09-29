@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
 import { BinaryReader, BinaryWriter } from "../src/runtime.ts";
-import { i32, string, type Codec } from "../src/codecs/scalar.ts";
+import { type Codec, i32, string } from "../src/codecs/scalar.ts";
 import { list, map } from "../src/codecs/collections.ts";
 import { struct } from "../src/codecs/struct.ts";
 

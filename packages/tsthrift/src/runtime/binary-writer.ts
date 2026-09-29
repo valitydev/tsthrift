@@ -1,12 +1,12 @@
 import { assertI64, numberToI64 } from "./i64.ts";
 import { parseUuid } from "./uuid.ts";
 import {
-  assertInteger,
-  assertMessageType,
-  assertValueType,
   BINARY_VERSION_1,
   DEFAULT_MAX_BYTES,
   WireType,
+  assertInteger,
+  assertMessageType,
+  assertValueType,
 } from "./wire.ts";
 
 /** Writes unframed, big-endian Thrift Binary Protocol messages. */

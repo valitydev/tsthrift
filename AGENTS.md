@@ -45,3 +45,5 @@ Consult the source revisions in `docs/compatibility.md` when changing compatibil
 - Check module responsibilities, imports/exports, and `git diff --check`.
 - Keep technical documentation strictly neutral, objective, and reproducible.
 - Distinguish verified artifacts from transport, browser, and consumer acceptance.
+- Maintain Web Standards First purity in `@vality/tsthrift`: zero Node-specific runtime imports or globals (`Buffer`, `node:*`), relying solely on standard ECMAScript and Web standards (`Uint8Array`, `fetch`, `AbortSignal`).
+- Align configurations and emitted models with modern TypeScript standards: strict ESM, `NodeNext` module resolution, and `isolatedDeclarations` compatibility for native toolchains (`tsgo`, `oxc`).

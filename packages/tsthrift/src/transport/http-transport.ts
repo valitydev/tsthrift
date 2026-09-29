@@ -5,10 +5,10 @@ import {
   ThriftProtocolError,
   ThriftTimeoutError,
 } from "./errors.ts";
-import type { RequestOptions, HttpTransportConfig, TransportFunction } from "./types.ts";
+import type { HttpTransportConfig, RequestOptions, TransportFunction } from "./types.ts";
 import { mergeHeaders, resolveHeaders } from "./headers.ts";
 import { readResponseBody } from "./response-body.ts";
-import { resolveWoodyHeaders, WOODY_HEADERS } from "./woody.ts";
+import { WOODY_HEADERS, resolveWoodyHeaders } from "./woody.ts";
 
 export { mergeHeaderProviders } from "./headers.ts";
 

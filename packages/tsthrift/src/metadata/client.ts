@@ -2,9 +2,9 @@ import { THRIFT_METHOD_ARGUMENT_COUNT } from "../transport/method-arguments.ts";
 import { MetadataIndex } from "./index.ts";
 import type { Field, I64Mode } from "./types.ts";
 import {
-  createRpcClient,
   type MethodCodec,
   type RpcClientConfig,
+  createRpcClient,
 } from "../transport/rpc-client.ts";
 import { struct } from "../codecs/struct.ts";
 import type { MetadataSource } from "../transport/types.ts";

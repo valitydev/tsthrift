@@ -1,21 +1,21 @@
 import {
-  inject,
-  makeEnvironmentProviders,
   type EnvironmentProviders,
   type Provider,
+  inject,
+  makeEnvironmentProviders,
 } from "@angular/core";
 import {
-  mergeHeaderProviders,
   type HttpTransportConfig,
   type ThriftServiceDescriptor,
+  mergeHeaderProviders,
 } from "@vality/tsthrift";
 import { THRIFT_CONFIG, THRIFT_SERVICES_REGISTRY, getServiceToken } from "./tokens.ts";
 import { toObservableClient } from "./rxjs.ts";
 import {
+  type ObservableServiceToken,
   getObservableServiceConfig,
   getObservableServiceDescriptor,
   isObservableServiceToken,
-  type ObservableServiceToken,
 } from "./observable-service.ts";
 
 /**
