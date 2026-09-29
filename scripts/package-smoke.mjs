@@ -101,13 +101,14 @@ try {
   await writeFile(
     path.join(directory, "consumer.mts"),
     `
-    import { example, SERVICES } from "tsthrift-smoke-proto";
+    import { BYTES, THRIFT_SERVICES } from "tsthrift-smoke-proto";
+    import * as example from "tsthrift-smoke-proto/example";
     import { createExample } from "tsthrift-smoke-proto/example";
-    const bytes: Uint8Array = example.BYTES;
+    const bytes: Uint8Array = BYTES;
     const promise: Promise<number> = createExample({ endpoint: "unused" }).echo(42);
     // @ts-expect-error The factory mode is bound to its generated models.
     createExample({ endpoint: "unused", i64Mode: "bigint" });
-    void [bytes, promise, SERVICES];
+    void [bytes, promise, THRIFT_SERVICES, example];
   `,
   );
   await run(path.join(directory, "node_modules/.bin/tsc"), [
@@ -125,17 +126,18 @@ try {
     "-e",
     `
     import assert from 'node:assert/strict';
-    import { example, SERVICES } from 'tsthrift-smoke-proto';
+    import { BYTES, THRIFT_SERVICES } from 'tsthrift-smoke-proto';
+    import * as example from 'tsthrift-smoke-proto/example';
     import { createExample } from 'tsthrift-smoke-proto/example';
     import { BinaryReader, BinaryWriter, MessageType } from '@vality/tsthrift';
-    assert.ok(example.BYTES instanceof Uint8Array);
+    assert.ok(BYTES instanceof Uint8Array);
     const transport = async bytes => {
       const r = new BinaryReader(bytes); const h = r.readMessageBegin();
       r.readFieldBegin(); assert.equal(r.readI64(), 42n);
       const w = new BinaryWriter(); w.writeMessageBegin(h.name, MessageType.Reply, h.sequenceId);
       w.writeFieldBegin(10, 0); w.writeI64(42n); w.writeFieldStop(); return w.finish();
     };
-    for (const factory of [example.createExample, createExample, SERVICES['example.Example'].createService]) {
+    for (const factory of [example.createExample, createExample, THRIFT_SERVICES['example.Example'].createService]) {
       assert.equal(await factory({ endpoint: 'unused', transport, i64Mode: 'bigint', metadata: undefined }).echo(42), 42);
     }
   `,

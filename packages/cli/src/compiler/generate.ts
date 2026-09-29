@@ -6,7 +6,7 @@ import { validateSchema } from "./validate-schema.ts";
 import { emitModels } from "./emit-models.ts";
 import { emitProgramIndex, emitProgramServices, emitServicesRegistry } from "./emit-services.ts";
 import { emitMetadata } from "../metadata/emit-metadata.ts";
-import { canonicalOutputPath, validateOwnedOutput } from "./output-ownership.ts";
+import { canonicalOutputPath, validateDirectory, validateOwnedOutput } from "./output-ownership.ts";
 import { publishOutput } from "./publish-output.ts";
 import {
   emitMetadataLoader,
@@ -98,7 +98,7 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
   }
 
   await validateOwnedOutput(output);
-  if (options.bundle) await validateOwnedOutput(dist);
+  if (options.bundle) await validateDirectory(dist);
 
   const models = shouldEmitModels
     ? schema.localPrograms.map((program) => ({
@@ -224,16 +224,20 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
             .filter((pkg): pkg is string => Boolean(pkg)),
         ),
       );
-      await publishOutput(dist, async (stagingDist) => {
-        await bundleOutput({
-          entry: entries,
-          outDir: stagingDist,
-          tsconfig: path.join(staging, "tsconfig.json"),
-          cwd: path.dirname(output),
-          sourcemap: options.sourcemap,
-          externalPackages,
-        });
-      });
+      await publishOutput(
+        dist,
+        async (stagingDist) => {
+          await bundleOutput({
+            entry: entries,
+            outDir: stagingDist,
+            tsconfig: path.join(staging, "tsconfig.json"),
+            cwd: path.dirname(output),
+            sourcemap: options.sourcemap,
+            externalPackages,
+          });
+        },
+        { ownership: false },
+      );
     }
   });
 

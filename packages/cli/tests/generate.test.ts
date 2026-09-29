@@ -312,10 +312,12 @@ test("bundles output into dist/ with types when bundle: true", async () => {
   const outputFiles = await readdir(options.output);
   expect(outputFiles).toContain("index.ts");
   expect(outputFiles).toContain("tsconfig.json");
+  expect(outputFiles).toContain(".tsthrift.json");
 
   const distFiles = await readdir(dist);
   expect(distFiles).toContain("index.mjs");
   expect(distFiles).toContain("index.d.mts");
+  expect(distFiles).not.toContain(".tsthrift.json");
 
   // Subsequent generation run works and atomically replaces without unmanaged file errors
   await expect(

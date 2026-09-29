@@ -28,11 +28,11 @@ jobs:
       - name: Install dependencies
         run: vp install
 
-      - name: Code formatting and type check
-        run: vp check
-
       - name: Build all packages
         run: vp run build
+
+      - name: Code formatting and type check
+        run: vp check
 
       - name: Run unit and generated-output tests
         run: vp test
