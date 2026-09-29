@@ -1,6 +1,21 @@
 import { Observable, type OperatorFunction, catchError, map, of } from "rxjs";
 import { createObservableMethod } from "./observable-method.ts";
-import type { RequestOptions, ThriftResult } from "@vality/tsthrift";
+import {
+  type RequestOptions,
+  THRIFT_ERRORS,
+  type ThriftError,
+  type ThriftMethodError,
+  type ThriftResult,
+} from "@vality/tsthrift";
+
+/**
+ * A typed RxJS Observable carrying compile-time metadata about potential Thrift method errors.
+ * At runtime, this is a standard RxJS Observable instance with 100% interoperability.
+ */
+export interface ThriftObservable<TData, TError = ThriftError> extends Observable<TData> {
+  /** Phantom field retaining the compile-time method error type. */
+  readonly [THRIFT_ERRORS]?: TError;
+}
 
 /**
  * RxJS operator that unwraps a ThriftResult.
@@ -25,12 +40,17 @@ export function unwrapResult<TData, TError = unknown>(): OperatorFunction<
 /**
  * RxJS operator that catches errors from an Observable and wraps into a ThriftResult { data, error }.
  * Emits { data, error: undefined } on success, or { data: undefined, error } on error, then completes.
+ * When applied to a ThriftObservable, automatically infers the precise method error type.
  */
-export function catchThriftResult<TData, TError = unknown>(): OperatorFunction<
+export function catchThriftResult<TData, TError>(): (
+  source$: ThriftObservable<TData, TError>,
+) => Observable<ThriftResult<TData, TError>>;
+export function catchThriftResult<TData, TError = ThriftError>(): OperatorFunction<
   TData,
   ThriftResult<TData, TError>
-> {
-  return (source$) =>
+>;
+export function catchThriftResult<TData, TError>(): any {
+  return (source$: Observable<TData>) =>
     source$.pipe(
       map((data) => ({ data, error: undefined }) as ThriftResult<TData, TError>),
       catchError((error) => of({ data: undefined, error: error as TError })),
@@ -83,14 +103,15 @@ export function deferThriftCall<T>(
  * Type mapping Promise-based client methods to Observable-based client methods.
  * Unwraps ThriftResult into plain data in Observables and emits declared exceptions
  * or system errors into the error channel (real throw).
+ * Returned streams are ThriftObservables carrying compile-time error types.
  */
 export type ObservableClient<TClient extends object> = {
-  [K in keyof TClient]: TClient[K] extends (
+  [K in Extract<keyof TClient, string>]: TClient[K] extends (
     ...args: infer Args
   ) => Promise<ThriftResult<infer TData, any>>
-    ? (...args: Args) => Observable<TData>
+    ? (...args: Args) => ThriftObservable<TData, ThriftMethodError<TClient, K>>
     : TClient[K] extends (...args: infer Args) => Promise<infer R>
-      ? (...args: Args) => Observable<R>
+      ? (...args: Args) => ThriftObservable<R, ThriftMethodError<TClient, K>>
       : TClient[K];
 } & {
   /** Access to the underlying raw Promise-based client instance. */
@@ -118,3 +139,5 @@ export function toObservableClient<TClient extends object>(
     },
   });
 }
+
+export { catchThriftError, catchTypedError } from "./catch-thrift-error.ts";

@@ -182,7 +182,30 @@ const observable$ = deferThriftCall((options) => client.calculate(param, options
 
 ### Error Handling in Observables
 
-Errors emitted by Observable clients preserve Thrift error types:
+Use `catchThriftError` (or `catchTypedError`) to cleanly catch specific declared Thrift errors with automatic type inference and automatic re-throwing of unhandled errors:
+
+```ts
+import { of } from "rxjs";
+import { catchThriftError } from "@vality/tsthrift-angular";
+
+// 1. Catch specific declared error by name with auto-rethrow of other errors:
+this.paymentService.getPayment(id).pipe(
+  catchThriftError("PaymentNotFound", (err) => {
+    console.warn("Payment missing:", err.data);
+    return of(null);
+  }),
+);
+
+// 2. Pattern-match multiple declared errors via dictionary:
+this.paymentService.getPayment(id).pipe(
+  catchThriftError({
+    PaymentNotFound: (err) => of(null),
+    LimitExceeded: (err) => of({ status: "blocked" }),
+  }),
+);
+```
+
+Or inspect all errors manually with standard RxJS `catchError` and `@vality/tsthrift` guards:
 
 ```ts
 import { catchError, of } from "rxjs";
@@ -218,6 +241,7 @@ this.paymentService.getPayment(id).pipe(
 
 - `toObservableClient(client, unwrap = true)`: Proxies a Thrift client into an Observable-returning client with `.promise` access to the underlying Promise client.
 - `deferThriftCall(callFactory)`: Wraps a Promise Thrift call into a cold Observable.
+- `catchThriftError(name, handler)` / `catchThriftError(handlers)`: Declarative typed error catching operator with automatic type inference and auto-rethrow (aliased as `catchTypedError`).
 - `catchThriftResult()`: RxJS operator to catch errors and map emissions into `{ data, error }` `ThriftResult` streams.
 - `unwrapResult()`: RxJS operator to unwrap `ThriftResult` streams.
 - `createHttpClientFetch(httpClient)`: Bridges an Angular `HttpClient` instance to the Web `fetch` interface.

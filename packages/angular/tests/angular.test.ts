@@ -2,6 +2,7 @@ import { describe, expect, test } from "vite-plus/test";
 import { Injector, createEnvironmentInjector, inject, runInInjectionContext } from "@angular/core";
 import { Observable, catchError, firstValueFrom, of } from "rxjs";
 import {
+  THRIFT_ERRORS,
   ThriftHttpError,
   type ThriftServiceDescriptor,
   ThriftServiceError,
@@ -12,7 +13,9 @@ import {
   type AngularHttpClientLike,
   THRIFT_CONFIG,
   THRIFT_SERVICES_REGISTRY,
+  catchThriftError,
   catchThriftResult,
+  catchTypedError,
   createHttpClientFetch,
   createObservableService,
   createServiceToken,
@@ -280,6 +283,106 @@ describe("Angular Thrift DI integration", () => {
     const failRes = await firstValueFrom(obsClient.fail().pipe(catchThriftResult()));
     expect(failRes.data).toBeUndefined();
     expect((failRes.error as Error).message).toBe("failed");
+  });
+
+  test("catchThriftError catches declared exception by name and ignores others", async () => {
+    const notFoundError = new ThriftServiceError("PaymentNotFound", "paymentNotFound", {
+      id: "123",
+    });
+    const limitError = new ThriftServiceError("LimitExceeded", "limitExceeded", { amount: 1000 });
+
+    const mockClient = {
+      getPayment: async (failType: string) => {
+        if (failType === "not_found") throw notFoundError;
+        if (failType === "limit") throw limitError;
+        return "payment-ok";
+      },
+    };
+    const obsClient = toObservableClient(mockClient);
+
+    // 1. Matched error name is handled
+    const handled = await firstValueFrom(
+      obsClient
+        .getPayment("not_found")
+        .pipe(catchThriftError("PaymentNotFound", (err) => of(`handled:${(err.data as any).id}`))),
+    );
+    expect(handled).toBe("handled:123");
+
+    // 2. Unmatched error name is re-thrown
+    await expect(
+      firstValueFrom(
+        obsClient.getPayment("limit").pipe(catchThriftError("PaymentNotFound", () => of("never"))),
+      ),
+    ).rejects.toThrow("Thrift service error [LimitExceeded]");
+
+    // 3. Success emission passes through
+    const success = await firstValueFrom(
+      obsClient.getPayment("ok").pipe(catchThriftError("PaymentNotFound", () => of("never"))),
+    );
+    expect(success).toBe("payment-ok");
+  });
+
+  test("catchThriftError matches errors using dictionary of handlers", async () => {
+    const notFoundError = new ThriftServiceError("PaymentNotFound", "paymentNotFound", {
+      id: "p1",
+    });
+    const limitError = new ThriftServiceError("LimitExceeded", "limitExceeded", { max: 500 });
+    const networkError = new Error("network failed");
+
+    const mockClient = {
+      action: async (type: string) => {
+        if (type === "not_found") throw notFoundError;
+        if (type === "limit") throw limitError;
+        if (type === "network") throw networkError;
+        return "ok";
+      },
+    };
+    const obsClient = toObservableClient(mockClient);
+
+    const matchOperator = () =>
+      catchThriftError({
+        PaymentNotFound: (err) => of(`from-dict:${(err.data as any).id}`),
+        LimitExceeded: (err) => of(`from-dict:${(err.data as any).max}`),
+      });
+
+    const res1 = await firstValueFrom(obsClient.action("not_found").pipe(matchOperator()));
+    expect(res1).toBe("from-dict:p1");
+
+    const res2 = await firstValueFrom(obsClient.action("limit").pipe(matchOperator()));
+    expect(res2).toBe("from-dict:500");
+
+    // Unmatched network error re-throws
+    await expect(firstValueFrom(obsClient.action("network").pipe(matchOperator()))).rejects.toThrow(
+      "network failed",
+    );
+  });
+
+  test("catchThriftError and catchTypedError support general handler function", async () => {
+    const notFoundError = new ThriftServiceError("PaymentNotFound", "paymentNotFound", {
+      id: "p2",
+    });
+
+    interface TestErrors {
+      call: ThriftServiceError<"PaymentNotFound", { id: string }>;
+    }
+    interface TypedClient {
+      readonly [THRIFT_ERRORS]?: TestErrors;
+      call(): Promise<string>;
+    }
+
+    const mockClient: TypedClient = {
+      call: async () => {
+        throw notFoundError;
+      },
+    };
+    const obsClient = toObservableClient(mockClient);
+
+    const res = await firstValueFrom(
+      obsClient
+        .call()
+        .pipe(catchTypedError<TestErrors["call"]>((err) => of(`caught:${err.data.id}`))),
+    );
+    expect(res).toBe("caught:p2");
   });
 
   test("toObservableClient unwraps ThriftResult success and emits data", async () => {
