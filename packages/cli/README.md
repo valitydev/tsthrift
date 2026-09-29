@@ -210,6 +210,18 @@ Compile sources into a separate directory; do not emit JS beside generated TS.
 The package recipe uses example versions; select the published tsthrift versions
 when installing dependencies.
 
+## Requiredness
+
+Generated fields marked `/** @remarks requiredness */` are declared in the IDL without `required` or
+`optional`.
+
+- `required`: always present; the decoder rejects data without it.
+- `optional`: typed optional (`"a"?: T`).
+- No keyword: typed as present (`"a": T`), matching the legacy generator, but the decoder does not
+  enforce it. A peer may omit the field, and the value is then `undefined` at runtime.
+
+Union members are always optional.
+
 ## Known Limitations
 
 - **IDL numeric constants:** Integer constants and default values in `.thrift` files are constrained to JavaScript safe integer bounds (`Number.MIN_SAFE_INTEGER` to `Number.MAX_SAFE_INTEGER`, i.e., ±(2^53 - 1)). This constraint exists because the underlying IDL parser (`thrift-parser`) tokenizes numeric literals into standard JavaScript `Number` (IEEE-754 double precision float), and the JSON-compatible metadata AST format cannot serialize 64-bit `bigint` literals without loss of precision. Rather than silently rounding constants exceeding 53 bits (e.g., `9223372036854775807` turning into `9223372036854776000`), the compiler explicitly rejects unsafe literals at compile time. Runtime RPC parameters, structs, and network payloads preserve the full signed 64-bit range via `bigint`.

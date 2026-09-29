@@ -5,12 +5,16 @@ import { enumMembers } from "./enum-members.ts";
 import type { I64Mode } from "./i64-mode.ts";
 import { tsType } from "./ts-type.ts";
 
+const DEFAULT_FIELD_NOTE = "  /** @remarks requiredness */";
+
 function fieldsBody(fields: Field[], union: boolean, i64: I64Mode): string {
   return fields
-    .map(
-      (field) =>
-        `  ${JSON.stringify(field.name)}${union || field.option === "optional" ? "?" : ""}: ${tsType(field.type, i64)};`,
-    )
+    .map((field) => {
+      const declaration = `  ${JSON.stringify(field.name)}${union || field.option === "optional" ? "?" : ""}: ${tsType(field.type, i64)};`;
+      return !union && field.option === undefined
+        ? `${DEFAULT_FIELD_NOTE}\n${declaration}`
+        : declaration;
+    })
     .join("\n");
 }
 

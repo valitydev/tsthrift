@@ -129,3 +129,16 @@ test("supports native uuid field in schema and emits string type", async () => {
   const models = emitModels(schema.roots[0]!);
   expect(models).toContain('"id": string;');
 });
+
+test("marks default-requiredness fields with @remarks requiredness", async () => {
+  const schema = await source(
+    "struct S { 1: string plain 2: optional string maybe 3: required string must }\nunion U { 1: string a }",
+  );
+  validateSchema(schema);
+  const models = emitModels(schema.roots[0]!);
+  expect(models).toContain('  /** @remarks requiredness */\n  "plain": string;');
+  expect(models.match(/@remarks requiredness/g)).toHaveLength(1);
+  expect(models).toContain('"maybe"?: string;');
+  expect(models).toContain('"must": string;');
+  expect(models).toContain('"a"?: string;');
+});
