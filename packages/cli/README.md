@@ -78,9 +78,9 @@ npx --package @vality/tsthrift-cli tsthrift-cli \
 When generating or bundling:
 
 - Models and services import directly from `@vality/base-proto/base`.
-- Transitive metadata loaders dynamically resolve external metadata.
+- Transitive metadata loaders dynamically resolve external metadata and pass the module name to `loadThriftMetadata(namespace)`. Both package-root and namespace-subpath loaders are supported.
 - Root `metadata.ts` emits an `EXTERNAL_NAMESPACES` dictionary descriptor.
-- The external package (`@vality/base-proto`) is automatically excluded from the bundle output (`neverBundle`).
+- The external package (`@vality/base-proto`) is automatically excluded from the bundle output (`neverBundle`), including its subpath imports.
 
 #### With multiple include roots
 

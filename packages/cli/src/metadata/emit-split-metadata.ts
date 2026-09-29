@@ -76,10 +76,13 @@ export function emitNamespaceMetadataLoader(program: Program): string {
 
   lines.push("    ]).then(async (modules) => {");
   lines.push("      const results = await Promise.all(");
-  lines.push("        modules.map(async (raw) => {");
+  lines.push("        modules.map(async (raw, index) => {");
+  lines.push(`          const namespace = ${JSON.stringify(deps.map((dep) => dep.name))}[index]!;`);
   lines.push("          const m = raw as Record<string, unknown>;");
   lines.push('          if (typeof m.loadThriftMetadata === "function") {');
-  lines.push("            return await (m.loadThriftMetadata as () => Promise<Metadata[]>)();");
+  lines.push(
+    "            return await (m.loadThriftMetadata as (namespace: string) => Promise<Metadata[]>)(namespace);",
+  );
   lines.push("          }");
   lines.push("          const meta = (m.thriftMetadata ?? m.metadata ?? m.default ?? m) as");
   lines.push("            | Metadata");
@@ -155,7 +158,7 @@ export function emitMetadataLoader(schema: Schema): string {
       `    const raw = await import(${JSON.stringify(metaPath)});`,
       "    const m = raw as Record<string, unknown>;",
       '    if (typeof m.loadThriftMetadata === "function") {',
-      "      return await (m.loadThriftMetadata as () => Promise<Metadata[]>)();",
+      `      return await (m.loadThriftMetadata as (namespace: string) => Promise<Metadata[]>)(${JSON.stringify(program.name)});`,
       "    }",
       "    const meta = (m.thriftMetadata ?? m.metadata ?? m.default ?? m) as",
       "      | Metadata",

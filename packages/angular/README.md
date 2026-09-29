@@ -182,7 +182,7 @@ const observable$ = deferThriftCall((options) => client.calculate(param, options
 
 ### Error Handling in Observables
 
-Use `catchThriftError` (or `catchTypedError`) to cleanly catch specific declared Thrift errors with automatic type inference and automatic re-throwing of unhandled errors:
+Use `catchThriftError` (or `catchTypedError`) to catch declared Thrift errors and rethrow unmatched errors. Matching handlers receive a `ThriftServiceError` wrapper, including when the RPC client rejects with a tagged plain payload. The original payload is available as `error.data`; dictionary keys match the declared exception type. Recovery values are included in the resulting Observable type:
 
 ```ts
 import { of } from "rxjs";

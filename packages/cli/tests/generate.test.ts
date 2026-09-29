@@ -317,7 +317,7 @@ test("bundles output into dist/ with types when bundle: true", async () => {
   const distFiles = await readdir(dist);
   expect(distFiles).toContain("index.mjs");
   expect(distFiles).toContain("index.d.mts");
-  expect(distFiles).not.toContain(".tsthrift.json");
+  expect(distFiles).toContain(".tsthrift.json");
 
   // Subsequent generation run works and atomically replaces without unmanaged file errors
   await expect(
@@ -659,4 +659,24 @@ test("allows Thrift struct named Metadata and RequestOptions without collision",
   );
   expect(serviceContent).toContain("export interface BusinessServiceErrors {");
   expect(serviceContent).toContain('"getMeta": BusinessServiceGetMetaError;');
+});
+
+test("refuses unowned bundles and handwritten additions without replacing sources", async () => {
+  const options = await setup();
+  const dist = path.join(options.output, "../dist");
+  await generate(options);
+  const before = await readFile(path.join(options.output, "index.ts"), "utf8");
+  await mkdir(dist);
+  await writeFile(path.join(dist, "keep.txt"), "keep");
+  await expect(generate({ ...options, bundle: true, dist })).rejects.toThrow("unowned");
+  expect(await readFile(path.join(dist, "keep.txt"), "utf8")).toBe("keep");
+  expect(await readFile(path.join(options.output, "index.ts"), "utf8")).toBe(before);
+
+  const ownedDist = path.join(options.output, "../owned-dist");
+  await generate({ ...options, bundle: true, dist: ownedDist });
+  await writeFile(path.join(ownedDist, "keep.txt"), "keep");
+  await expect(generate({ ...options, bundle: true, dist: ownedDist })).rejects.toThrow(
+    "not owned",
+  );
+  expect(await readFile(path.join(ownedDist, "keep.txt"), "utf8")).toBe("keep");
 });

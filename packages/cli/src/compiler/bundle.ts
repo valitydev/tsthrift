@@ -21,7 +21,7 @@ export async function bundleOutput(options: BundleOptions): Promise<void> {
   const root = path.dirname(entries[0]!);
   const neverBundle = Array.from(
     new Set(["@vality/tsthrift", ...(options.externalPackages ?? [])]),
-  );
+  ).map((specifier) => new RegExp(`^${specifier.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:/|$)`));
   await pack.build({
     config: false,
     exports: false,

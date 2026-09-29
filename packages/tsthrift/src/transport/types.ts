@@ -1,5 +1,5 @@
 import type { Metadata } from "../metadata/types.ts";
-import { type ThriftError, ThriftServiceError, getThriftExceptionInfo } from "./errors.ts";
+import { type ThriftError, normalizeThriftError } from "./errors.ts";
 
 /** Result type for safe RPC calls in openapi-fetch style. */
 export type ThriftResult<TData, TError = ThriftError> =
@@ -118,14 +118,7 @@ async function toThriftResultPromise<TData, TError = ThriftError>(
     const data = await promise;
     return { data, error: undefined };
   } catch (error) {
-    const info = getThriftExceptionInfo(error);
-    if (info && error && typeof error === "object") {
-      return {
-        data: undefined,
-        error: new ThriftServiceError(info.type, info.fieldName, error) as unknown as TError,
-      };
-    }
-    return { data: undefined, error: error as TError };
+    return { data: undefined, error: normalizeThriftError(error) as TError };
   }
 }
 

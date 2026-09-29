@@ -1,11 +1,10 @@
+import { type Observable, type ObservableInput, catchError, throwError } from "rxjs";
 import {
-  type Observable,
-  type ObservableInput,
-  type ObservedValueOf,
-  catchError,
-  throwError,
-} from "rxjs";
-import { type ThriftError, type ThriftServiceError, isThriftServiceError } from "@vality/tsthrift";
+  type ThriftError,
+  type ThriftServiceError,
+  isThriftServiceError,
+  normalizeThriftError,
+} from "@vality/tsthrift";
 
 /**
  * RxJS operator that catches a specific declared Thrift service error by name and routes it to a handler.
@@ -14,7 +13,7 @@ import { type ThriftError, type ThriftServiceError, isThriftServiceError } from 
 export function catchThriftError<TName extends string, R, TDataType extends object = any>(
   name: TName,
   handler: (error: ThriftServiceError<TName, TDataType>) => ObservableInput<R>,
-): <TData>(source$: Observable<TData>) => Observable<TData | ObservedValueOf<R>>;
+): <TData>(source$: Observable<TData>) => Observable<TData | R>;
 
 /**
  * RxJS operator that matches declared Thrift service errors against a dictionary of handlers.
@@ -23,14 +22,14 @@ export function catchThriftError<TName extends string, R, TDataType extends obje
  */
 export function catchThriftError<R>(
   handlers: Record<string, (error: ThriftServiceError<any, any>) => ObservableInput<R>>,
-): <TData>(source$: Observable<TData>) => Observable<TData | ObservedValueOf<R>>;
+): <TData>(source$: Observable<TData>) => Observable<TData | R>;
 
 /**
  * RxJS operator that catches errors with typed error inspection in the handler.
  */
 export function catchThriftError<TError = ThriftError, R = any>(
   handler: (error: TError) => ObservableInput<R>,
-): <TData>(source$: Observable<TData>) => Observable<TData | ObservedValueOf<R>>;
+): <TData>(source$: Observable<TData>) => Observable<TData | R>;
 
 export function catchThriftError(...args: any[]): any {
   if (typeof args[0] === "string" && typeof args[1] === "function") {
@@ -38,8 +37,9 @@ export function catchThriftError(...args: any[]): any {
     return (source$: Observable<any>) =>
       source$.pipe(
         catchError((error) => {
-          if (isThriftServiceError(error, name)) {
-            return handler(error);
+          const normalized = normalizeThriftError(error);
+          if (isThriftServiceError(normalized, name)) {
+            return handler(normalized);
           }
           return throwError(() => error);
         }),
@@ -50,16 +50,11 @@ export function catchThriftError(...args: any[]): any {
     return (source$: Observable<any>) =>
       source$.pipe(
         catchError((error) => {
-          if (
-            error !== null &&
-            typeof error === "object" &&
-            "name" in error &&
-            typeof (error as any).name === "string" &&
-            Object.hasOwn(handlers, (error as any).name)
-          ) {
-            const handler = handlers[(error as any).name];
+          const normalized = normalizeThriftError(error);
+          if (isThriftServiceError(normalized) && Object.hasOwn(handlers, normalized.type)) {
+            const handler = handlers[normalized.type];
             if (typeof handler === "function") {
-              return handler(error);
+              return handler(normalized);
             }
           }
           return throwError(() => error);
@@ -68,7 +63,8 @@ export function catchThriftError(...args: any[]): any {
   }
   if (typeof args[0] === "function") {
     const handler = args[0];
-    return (source$: Observable<any>) => source$.pipe(catchError((error) => handler(error)));
+    return (source$: Observable<any>) =>
+      source$.pipe(catchError((error) => handler(normalizeThriftError(error))));
   }
   throw new TypeError("Invalid arguments passed to catchThriftError");
 }

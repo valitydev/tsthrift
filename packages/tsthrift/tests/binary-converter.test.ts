@@ -51,3 +51,13 @@ describe("binary-converter", () => {
     expect(() => toBinary("zz", "hex")).toThrow(TypeError);
   });
 });
+
+test.each(["!!!!", "a", "YQ===", "Y-Q_"])("rejects malformed base64 %s", (input) => {
+  expect(() => toBinary(input, "base64")).toThrow();
+});
+
+test("base64 handles byte subarrays and optional padding using Web APIs", () => {
+  const bytes = new Uint8Array([0, 97, 255, 0]).subarray(1, 3);
+  expect(binaryToString(bytes, "base64")).toBe("Yf8=");
+  expect(toBinary("Yf8", "base64")).toEqual(bytes);
+});

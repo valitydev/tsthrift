@@ -35,9 +35,6 @@ export function toBinary(
   }
 
   if (encoding === "base64") {
-    if (typeof Buffer !== "undefined") {
-      return new Uint8Array(Buffer.from(input, "base64"));
-    }
     const binaryStr = globalThis.atob(input);
     const bytes = new Uint8Array(binaryStr.length);
     for (let i = 0; i < binaryStr.length; i++) {
@@ -63,9 +60,6 @@ export function binaryToString(bytes: Uint8Array, encoding: BinaryEncoding = "ut
   }
 
   if (encoding === "base64") {
-    if (typeof Buffer !== "undefined") {
-      return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString("base64");
-    }
     let binaryStr = "";
     for (let i = 0; i < bytes.length; i++) {
       binaryStr += String.fromCharCode(bytes[i]!);

@@ -137,7 +137,16 @@ export class ThriftServiceError<
     this.type = type;
     this.fieldName = fieldName;
     this.data = data;
-    Object.assign(this, data);
+    for (const key of Object.keys(data)) {
+      if (!(key in this)) {
+        Object.defineProperty(this, key, {
+          value: (data as Record<string, unknown>)[key],
+          enumerable: true,
+          configurable: true,
+          writable: true,
+        });
+      }
+    }
     Object.defineProperty(this, THRIFT_EXCEPTION_INFO, {
       value: { type, fieldName },
       enumerable: false,
@@ -187,8 +196,18 @@ export function catchServiceError<TError extends ThriftServiceError = ThriftServ
   const handler =
     typeof expectedTypeOrHandler === "function" ? expectedTypeOrHandler : maybeHandler!;
 
+  error = normalizeThriftError(error);
   if (isThriftServiceError<any, any>(error, expectedType)) {
     return handler(error as TError);
   }
   return undefined;
+}
+
+/** Wraps tagged RPC payloads while preserving existing wrappers and unrelated errors. */
+export function normalizeThriftError(error: unknown): unknown {
+  if (error instanceof ThriftServiceError) return error;
+  const info = getThriftExceptionInfo(error);
+  return info && error && typeof error === "object"
+    ? new ThriftServiceError(info.type, info.fieldName, error)
+    : error;
 }
