@@ -9,7 +9,7 @@ function fieldsBody(fields: Field[], union: boolean, i64: I64Mode): string {
   return fields
     .map(
       (field) =>
-        `  ${JSON.stringify(field.name)}${union || field.option !== "required" ? "?" : ""}: ${tsType(field.type, i64)};`,
+        `  ${JSON.stringify(field.name)}${union || field.option === "optional" ? "?" : ""}: ${tsType(field.type, i64)};`,
     )
     .join("\n");
 }
