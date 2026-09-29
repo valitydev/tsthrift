@@ -114,9 +114,6 @@ export function toObservableClient<TClient extends object>(
       if (typeof original === "function") {
         return createObservableMethod(target, original, unwrap);
       }
-      if (prop === "safe" && original && typeof original === "object") {
-        return toObservableClient(original, false);
-      }
       return original;
     },
   });

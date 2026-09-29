@@ -108,7 +108,9 @@ test.each(["number", "bigint"] as const)(
     const exampleService = await readFile(path.join(exampleDir, "services/Example.ts"), "utf8");
     expect(exampleService).not.toContain("readonly safe");
     expect(exampleService).not.toContain("createExampleSafe");
-    expect(exampleService).toContain("export interface ExampleErrors {");
+    expect(exampleService).toContain("export interface ExampleErrors extends common_BaseErrors {");
+    expect(exampleService).toContain("readonly [THRIFT_ERRORS]?: ExampleErrors;");
+    expect(exampleService).toContain("readonly [THRIFT_RESULT]: ThriftResultClient<Example>;");
     expect(exampleService).toContain("export type ExampleEchoError =");
     expect(exampleService).toContain("export type ExampleEchoServiceError =");
 

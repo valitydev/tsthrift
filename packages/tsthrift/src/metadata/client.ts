@@ -7,7 +7,12 @@ import {
   createRpcClient,
 } from "../transport/rpc-client.ts";
 import { struct } from "../codecs/struct.ts";
-import type { MetadataSource } from "../transport/types.ts";
+import {
+  type MetadataSource,
+  THRIFT_ERRORS,
+  THRIFT_RESULT,
+  toThriftResult,
+} from "../transport/types.ts";
 import { MetadataCodecs } from "./codecs.ts";
 
 export interface MetadataClientConfig extends RpcClientConfig {
@@ -61,7 +66,7 @@ export async function createMetadataClient<T extends object = DynamicThriftClien
         throw new Error(`Method name collision in ${key}: ${methodName}`);
       }
       seenInService.add(methodName);
-      if (["then", "safe", "promise"].includes(methodName))
+      if (["then", "promise"].includes(methodName))
         throw new Error(`A metadata client cannot expose the reserved method ${methodName}`);
       if (method.oneway && (method.type !== "void" || method.throws.length))
         throw new Error(`Invalid oneway method ${key}.${method.name}`);
@@ -109,28 +114,27 @@ export function createLazyMetadataClient<T extends object = DynamicThriftClient>
     if (!clientPromise) clientPromise = createMetadataClient<T>(config);
     return clientPromise;
   };
-  const proxy = (safe = false): T =>
-    new Proxy(Object.create(null) as T, {
-      get(_target, prop: string | symbol) {
-        if (typeof prop !== "string" || prop === "then") return undefined;
-        if (prop === "safe" && !safe) return proxy(true);
-        const getMethod = async () => {
-          const client = await getClient();
-          const target = safe ? (client as any).safe : client;
-          const method = target[prop];
-          if (typeof method !== "function") {
-            throw new TypeError(
-              `Method ${prop} not found on client for service ${config.serviceName}`,
-            );
-          }
-          return method;
-        };
-        const call = async (...args: unknown[]) => (await getMethod())(...args);
-        Object.defineProperty(call, THRIFT_METHOD_ARGUMENT_COUNT, {
-          get: () => getMethod().then((method) => method[THRIFT_METHOD_ARGUMENT_COUNT]),
-        });
-        return call;
-      },
-    });
-  return proxy();
+  const client: T = new Proxy(Object.create(null) as T, {
+    get(_target, prop: string | symbol) {
+      if (prop === "then" || prop === THRIFT_ERRORS) return undefined;
+      if (prop === THRIFT_RESULT) return toThriftResult(client as any);
+      if (typeof prop !== "string") return undefined;
+      const getMethod = async () => {
+        const underlyingClient = await getClient();
+        const method = (underlyingClient as Record<string, unknown>)[prop];
+        if (typeof method !== "function") {
+          throw new TypeError(
+            `Method ${prop} not found on client for service ${config.serviceName}`,
+          );
+        }
+        return method;
+      };
+      const call = async (...args: unknown[]) => (await getMethod())(...args);
+      Object.defineProperty(call, THRIFT_METHOD_ARGUMENT_COUNT, {
+        get: () => getMethod().then((method) => (method as any)[THRIFT_METHOD_ARGUMENT_COUNT]),
+      });
+      return call;
+    },
+  });
+  return client;
 }

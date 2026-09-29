@@ -82,11 +82,36 @@ export interface RequestOptions {
 /** Alias for RequestOptions with Thrift namespace prefix to avoid identifier collisions. */
 export type ThriftRequestOptions = RequestOptions;
 
+/** Unique symbol used for phantom service error map property. */
+export const THRIFT_ERRORS: unique symbol = Symbol("THRIFT_ERRORS");
+
+/** Unique symbol used to access typed non-throwing Result client on service instance. */
+export const THRIFT_RESULT: unique symbol = Symbol("THRIFT_RESULT");
+
 /**
- * Wraps a Promise into a ThriftResult object { data, error }.
- * Captures thrown ThriftServiceError exceptions or system errors.
+ * Maps a service client's methods to methods returning Promise<ThriftResult<Data, MethodError>>.
+ * Preserves parameter types and automatically infers precise method errors from THRIFT_ERRORS.
  */
-export async function toThriftResult<TData, TError = unknown>(
+export type ThriftResultClient<TClient extends object> = {
+  [K in keyof TClient as K extends symbol ? never : K]: TClient[K] extends (
+    ...args: infer Args
+  ) => Promise<infer R>
+    ? (
+        ...args: Args
+      ) => Promise<
+        ThriftResult<
+          R,
+          TClient extends { readonly [THRIFT_ERRORS]?: infer TErrors }
+            ? K extends keyof TErrors
+              ? TErrors[K]
+              : ThriftError
+            : ThriftError
+        >
+      >
+    : TClient[K];
+};
+
+async function toThriftResultPromise<TData, TError = ThriftError>(
   promise: Promise<TData>,
 ): Promise<ThriftResult<TData, TError>> {
   try {
@@ -102,6 +127,36 @@ export async function toThriftResult<TData, TError = unknown>(
     }
     return { data: undefined, error: error as TError };
   }
+}
+
+/**
+ * Wraps a Promise into a ThriftResult object { data, error }.
+ * Captures thrown ThriftServiceError exceptions or system errors.
+ */
+export function toThriftResult<TData, TError = ThriftError>(
+  promise: Promise<TData>,
+): Promise<ThriftResult<TData, TError>>;
+
+/**
+ * Returns a typed Result-client proxy where every method returns Promise<ThriftResult<Data, Error>>.
+ */
+export function toThriftResult<TClient extends object>(
+  client: TClient,
+): ThriftResultClient<TClient>;
+
+export function toThriftResult(target: any): any {
+  if (target && typeof target === "object" && typeof target.then === "function") {
+    return toThriftResultPromise(target);
+  }
+  return new Proxy(target, {
+    get(client, prop, receiver) {
+      const orig = Reflect.get(client, prop, receiver);
+      if (typeof orig === "function") {
+        return (...args: unknown[]) => toThriftResultPromise(orig.apply(client, args));
+      }
+      return orig;
+    },
+  });
 }
 
 /** Low-level transport function sending raw bytes and receiving response bytes. */
@@ -124,12 +179,17 @@ export interface ThriftServiceDescriptor<TService = unknown, TErrors = any> {
   readonly __errors__?: TErrors;
 }
 
-/** Extracts the method error type from a ThriftServiceDescriptor or error map interface. */
-export type ThriftMethodError<TTarget, TMethod extends string = string> =
-  TTarget extends ThriftServiceDescriptor<any, infer TErrors>
+/** Extracts the method error type from a Service interface, client instance, descriptor, or error map. */
+export type ThriftMethodError<TTarget, TMethod extends string = string> = TTarget extends {
+  readonly [THRIFT_ERRORS]?: infer TErrors;
+}
+  ? TMethod extends keyof TErrors
+    ? TErrors[TMethod]
+    : ThriftError
+  : TTarget extends ThriftServiceDescriptor<any, infer TErrors>
     ? TMethod extends keyof TErrors
       ? TErrors[TMethod]
-      : unknown
+      : ThriftError
     : TMethod extends keyof TTarget
       ? TTarget[TMethod]
-      : unknown;
+      : ThriftError;

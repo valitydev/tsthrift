@@ -1,6 +1,6 @@
 import { expect, test, vi } from "vite-plus/test";
 import { createLazyMetadataClient, createMetadataClient } from "../src/metadata/client.ts";
-import { toThriftResult } from "../src/index.ts";
+import { THRIFT_RESULT, toThriftResult } from "../src/index.ts";
 import { MetadataIndex } from "../src/metadata/index.ts";
 import { MetadataCodecs } from "../src/metadata/codecs.ts";
 import { BinaryReader, BinaryWriter, MessageType } from "../src/runtime.ts";
@@ -170,6 +170,12 @@ test("createLazyMetadataClient returns client synchronously and resolves on firs
   expect(res1).toBe(42n);
   expect(loader).toHaveBeenCalledTimes(1);
 
+  const resWrapped = await toThriftResult(client).next(10n);
+  expect(resWrapped).toEqual({ data: 20n, error: undefined });
+
+  const resSymbol = await (client as any)[THRIFT_RESULT].next(5n);
+  expect(resSymbol).toEqual({ data: 10n, error: undefined });
+
   const res2 = await client.next(50n);
   expect(res2).toBe(100n);
   expect(loader).toHaveBeenCalledTimes(1);
@@ -224,7 +230,10 @@ test("supports lowerCaseMethods mapping client methods to lowerFirst while prese
   ];
 
   let wireMethodNameReceived = "";
-  const client = await createMetadataClient<any>({
+  const client = await createMetadataClient<{
+    getPayment: (id: string) => Promise<string>;
+    GetPayment?: (id: string) => Promise<string>;
+  }>({
     endpoint: "unused",
     namespace: "payment",
     serviceName: "PaymentService",
@@ -255,6 +264,12 @@ test("supports lowerCaseMethods mapping client methods to lowerFirst while prese
   const safeResult = await toThriftResult(client.getPayment("456"));
   expect(safeResult).toEqual({ data: "payment-456", error: undefined });
   expect((client as any).safe).toBeUndefined();
+
+  const clientResult = await toThriftResult(client).getPayment("789");
+  expect(clientResult).toEqual({ data: "payment-789", error: undefined });
+
+  const symbolResult = await (client as any)[THRIFT_RESULT].getPayment("999");
+  expect(symbolResult).toEqual({ data: "payment-999", error: undefined });
 });
 
 test("scenario 1: methods differing only by initial case coexist normally, but collide under lowerCaseMethods", async () => {

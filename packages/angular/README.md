@@ -11,7 +11,7 @@ Angular dependency injection providers, service tokens, and RxJS Observable adap
 - **Automatic cancellation:** Unsubscribing from an Observable immediately aborts the in-flight HTTP request via `AbortSignal`.
 - **Angular `HttpClient` bridge:** Use `createHttpClientFetch` to route Thrift binary requests through Angular's `HttpClient`, keeping existing interceptors (auth, logging, CSRF) active.
 - **Typed service injection tokens:** Stable tokens generated per service descriptor (`getServiceToken`), typed as `ObservableClient<TService>`.
-- **Safe call handling:** Seamless support for `.safe` sub-clients in Observables for non-throwing error handling.
+- **Result mapping:** Seamless transformation into `{ data, error }` results via the `catchThriftResult()` RxJS operator.
 
 ## Installation
 
@@ -218,6 +218,7 @@ this.paymentService.getPayment(id).pipe(
 
 - `toObservableClient(client, unwrap = true)`: Proxies a Thrift client into an Observable-returning client with `.promise` access to the underlying Promise client.
 - `deferThriftCall(callFactory)`: Wraps a Promise Thrift call into a cold Observable.
+- `catchThriftResult()`: RxJS operator to catch errors and map emissions into `{ data, error }` `ThriftResult` streams.
 - `unwrapResult()`: RxJS operator to unwrap `ThriftResult` streams.
 - `createHttpClientFetch(httpClient)`: Bridges an Angular `HttpClient` instance to the Web `fetch` interface.
 

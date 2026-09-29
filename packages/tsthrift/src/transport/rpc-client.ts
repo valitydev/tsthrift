@@ -4,7 +4,13 @@ import { BinaryWriter } from "../runtime/binary-writer.ts";
 import { MessageType } from "../runtime/wire.ts";
 import { THRIFT_EXCEPTION_INFO, ThriftApplicationError, ThriftProtocolError } from "./errors.ts";
 import { createHttpTransport } from "./http-transport.ts";
-import type { HttpTransportConfig, RequestOptions, TransportFunction } from "./types.ts";
+import {
+  type HttpTransportConfig,
+  type RequestOptions,
+  THRIFT_RESULT,
+  type TransportFunction,
+  toThriftResult,
+} from "./types.ts";
 import { type Codec, i32, string } from "../codecs/scalar.ts";
 import { struct } from "../codecs/struct.ts";
 
@@ -125,5 +131,11 @@ export function createRpcClient<T extends object>(
       value: methods[name as string]!.argumentNames.length,
     });
   }
-  return Object.fromEntries(entries) as T;
+  const client = Object.fromEntries(entries) as T;
+  Object.defineProperty(client, THRIFT_RESULT, {
+    get: () => toThriftResult(client as any),
+    enumerable: false,
+    configurable: true,
+  });
+  return client;
 }
