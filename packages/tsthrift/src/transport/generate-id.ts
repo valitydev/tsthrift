@@ -114,7 +114,18 @@ export class FlakeId {
 }
 
 export const bs64: ReturnType<typeof baseX> = baseX(BASE64_ALPHABET);
-export const defaultFlake: FlakeId = new FlakeId();
+let defaultFlake: FlakeId | undefined;
+
+/**
+ * Shared generator behind `generateId`, created on first use. Its 10-bit generator id is random
+ * per runtime instance so that independent clients rarely share (time, generator, sequence);
+ * the bit layout is unchanged.
+ */
+function getDefaultFlake(): FlakeId {
+  return (defaultFlake ??= new FlakeId({
+    id: crypto.getRandomValues(new Uint16Array(1))[0]! & 0x3ff,
+  }));
+}
 
 /**
  * Generates a 64-bit Flake ID (backend-compatible layout) encoded in the legacy base64 alphabet.
@@ -124,4 +135,4 @@ export const defaultFlake: FlakeId = new FlakeId();
  *
  * @returns {string} - The base64-encoded unique ID.
  */
-export const generateId = (): string => bs64.encode(defaultFlake.next());
+export const generateId = (): string => bs64.encode(getDefaultFlake().next());

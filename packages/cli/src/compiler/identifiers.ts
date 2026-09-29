@@ -4,7 +4,3 @@ export const reservedWords: ReadonlySet<string> = new Set(
     " ",
   ),
 );
-
-export function lowerFirst(str: string): string {
-  return str.length > 0 ? str.charAt(0).toLowerCase() + str.slice(1) : str;
-}

@@ -1,5 +1,6 @@
 import type { Schema } from "./load-schema.ts";
-import { lowerFirst, reservedWords } from "./identifiers.ts";
+import { thriftMethodName } from "@vality/tsthrift";
+import { reservedWords } from "./identifiers.ts";
 
 /** Rejects names that would overwrite generated paths or collide in public barrels. */
 export function validateOutput(schema: Schema, services: boolean, lowerCaseMethods = false): void {
@@ -56,7 +57,7 @@ export function validateOutput(schema: Schema, services: boolean, lowerCaseMetho
       }
       const seenMethods = new Set<string>();
       for (const method of Object.values(service.functions)) {
-        const methodName = lowerCaseMethods ? lowerFirst(method.name) : method.name;
+        const methodName = thriftMethodName(method.name, lowerCaseMethods);
         if (seenMethods.has(methodName)) {
           throw new Error(
             `Service method name collision in ${program.name}.${name}: "${methodName}"`,

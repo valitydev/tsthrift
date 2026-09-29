@@ -231,6 +231,8 @@ The built-in HTTP transport also captures the final `x-woody-trace-id` when pres
 custom transports and header prefixes must provide their own trace correlation.
 
 `generateId` produces backend-compatible 64-bit Flake IDs in the legacy base64 alphabet.
+`generateId` uses a shared `FlakeId` with a random 10-bit generator id chosen per runtime
+instance, so independent clients rarely collide; `new FlakeId()` keeps generator id 0 like `flake-idgen`.
 `FlakeId.next()` never throws by default: after a clock rollback it keeps the last timestamp,
 and after 4096 IDs in one millisecond it borrows the next one, so tracing never fails a call.
 Output matches `flake-idgen` wherever upstream succeeds; `new FlakeId({ strict: true })`

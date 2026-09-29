@@ -128,6 +128,17 @@ async function toThriftResultPromise<TData, TError = ThriftError>(
   }
 }
 
+function memberNames(target: object): string[] {
+  const names = new Set<string>();
+  for (let object: object | null = target; object && object !== Object.prototype;) {
+    for (const name of Object.getOwnPropertyNames(object)) {
+      if (name !== "constructor" && name !== "then") names.add(name);
+    }
+    object = Object.getPrototypeOf(object);
+  }
+  return [...names];
+}
+
 /**
  * Wraps a Promise into a ThriftResult object { data, error }.
  * Captures thrown ThriftServiceError exceptions or system errors.
@@ -147,23 +158,24 @@ export function toThriftResult(target: any): any {
   if (target && typeof target === "object" && typeof target.then === "function") {
     return toThriftResultPromise(target);
   }
-  return new Proxy(target, {
-    get(client, prop, receiver) {
-      if (prop === THRIFT_METHOD_RESULT) return true;
-      const orig = Reflect.get(client, prop, receiver);
-      if (typeof orig === "function") {
-        const call = (...args: unknown[]) => toThriftResultPromise(orig.apply(client, args));
-        if (THRIFT_METHOD_ARGUMENT_COUNT in orig) {
-          Object.defineProperty(call, THRIFT_METHOD_ARGUMENT_COUNT, {
-            get: () => orig[THRIFT_METHOD_ARGUMENT_COUNT],
-          });
-        }
-        Object.defineProperty(call, THRIFT_METHOD_RESULT, { value: true });
-        return call;
-      }
-      return orig;
-    },
-  });
+  const wrapped: Record<string | symbol, unknown> = {};
+  for (const name of memberNames(target)) {
+    const original = target[name];
+    if (typeof original !== "function") {
+      Object.defineProperty(wrapped, name, { get: () => target[name], enumerable: true });
+      continue;
+    }
+    const call = (...args: unknown[]) => toThriftResultPromise(original.apply(target, args));
+    if (THRIFT_METHOD_ARGUMENT_COUNT in original) {
+      Object.defineProperty(call, THRIFT_METHOD_ARGUMENT_COUNT, {
+        get: () => original[THRIFT_METHOD_ARGUMENT_COUNT],
+      });
+    }
+    Object.defineProperty(call, THRIFT_METHOD_RESULT, { value: true });
+    wrapped[name] = call;
+  }
+  Object.defineProperty(wrapped, THRIFT_METHOD_RESULT, { value: true });
+  return wrapped;
 }
 
 /** Low-level transport function sending raw bytes and receiving response bytes. */

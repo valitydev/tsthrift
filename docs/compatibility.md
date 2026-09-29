@@ -145,7 +145,8 @@ client/application code. Tracing IDs in `control-center` and `frontend-thrift-co
 are generated via `generateId()` (`tools/static/utils/generate-id.ts`), producing 64-bit
 Flake IDs encoded in base64 using `base-x` (`ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/`).
 `@vality/tsthrift` preserves that layout and encoding: the default `generateId` uses a
-shared `FlakeId` (generator id 0). `FlakeId.next()` never throws by default: a backwards
+shared `FlakeId` whose 10-bit generator id is random per runtime instance (`new FlakeId()` keeps
+generator id 0, as in `flake-idgen`). `FlakeId.next()` never throws by default: a backwards
 clock keeps the last timestamp and an exhausted per-millisecond sequence borrows the next
 millisecond, so IDs remain unique and ordered. Output is byte-identical to `flake-idgen`
 whenever upstream succeeds; `new FlakeId({ strict: true })` reproduces its exceptions.

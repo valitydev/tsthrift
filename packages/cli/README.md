@@ -37,7 +37,8 @@ npx --package @vality/tsthrift-cli tsthrift-cli --input "proto/**/*.thrift" [opt
 | `-o, --output <dir>`         | Directory for generated TypeScript sources                                        | `generated` |
 | `--bundle`                   | Compile and bundle generated TypeScript into distribution directory               | `false`     |
 | `-d, --dist <dir>`           | Bundle distribution output directory                                              | `dist`      |
-| `--no-sourcemap`             | Disable source map generation when bundling                                       | `false`     |
+| `--sourcemap`                | Emit source maps when bundling                                                    | `false`     |
+| `--minify`                   | Minify the bundle                                                                 | `false`     |
 | `-I, --include <dir>`        | Additional include root directory (repeatable)                                    | `[]`        |
 | `-e, --external <ns>=<path>` | External package namespace mapping (repeatable)                                   | `[]`        |
 | `-m, --main <namespace>`     | Re-export one local namespace from the root (automatic for a single local module) | _Unset_     |

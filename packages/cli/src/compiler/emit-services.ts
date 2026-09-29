@@ -1,7 +1,8 @@
 import { resolveReference, resolveType } from "./resolve-type.ts";
 import type { Program } from "./load-schema.ts";
 import type { I64Mode } from "./i64-mode.ts";
-import { lowerFirst, reservedWords } from "./identifiers.ts";
+import { thriftMethodName } from "@vality/tsthrift";
+import { reservedWords } from "./identifiers.ts";
 import { tsType } from "./ts-type.ts";
 
 const serviceType = (name: string) => `models.${name}`;
@@ -60,7 +61,7 @@ export function emitProgramServices(
         collectMethods(parent.program, parent.name);
       }
       for (const method of Object.values(definition.functions)) {
-        allMethodNames.add(lowerCaseMethods ? lowerFirst(method.name) : method.name);
+        allMethodNames.add(thriftMethodName(method.name, lowerCaseMethods));
       }
     };
     collectMethods(program, serviceName);
@@ -70,7 +71,7 @@ export function emitProgramServices(
 
     const seenMethodNames = new Set<string>();
     for (const method of Object.values(service.functions)) {
-      const methodName = lowerCaseMethods ? lowerFirst(method.name) : method.name;
+      const methodName = thriftMethodName(method.name, lowerCaseMethods);
       if (seenMethodNames.has(methodName)) {
         throw new Error(
           `Method name collision in service ${program.name}.${serviceName}: "${methodName}"`,

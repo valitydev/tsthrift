@@ -13,7 +13,7 @@ Thrift Java runtime libraries and transitive dependencies are resolved automatic
 (`packages/cli/tests/conformance/reference/pom.xml`) using `mvn dependency:build-classpath`
 with configurable `LIBTHRIFT_VERSION` (`0.20.0` for Vality Thrift 0.20.1, `0.24.0` for Apache Thrift 0.24.0).
 The task is deliberately uncached and fetches the revision committed in
-`.github/damsel-revision` (currently tag `v2.2.47`).
+`.github/damsel-revision` (currently tag `v2.2.47`); Renovate proposes newer `valitydev/damsel` tags there.
 Normal `vp test` does not need Java, an external compiler, or these downloads.
 Conformance runs in a dedicated two-variant matrix on GitHub Actions CI.
 

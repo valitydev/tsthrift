@@ -1,6 +1,17 @@
 import { createObservableMethod } from "./observable-method.ts";
 import type { ObservableClient } from "./rxjs.ts";
 
+function memberNames(target: object): string[] {
+  const names = new Set<string>();
+  for (let object: object | null = target; object && object !== Object.prototype;) {
+    for (const name of Object.getOwnPropertyNames(object)) {
+      if (name !== "constructor" && name !== "then") names.add(name);
+    }
+    object = Object.getPrototypeOf(object);
+  }
+  return [...names];
+}
+
 /**
  * Creates an Observable wrapper around a Promise-based Thrift client instance,
  * turning each method into a method returning a cold RxJS Observable with
@@ -11,14 +22,20 @@ export function wrapObservableClient<TClient extends object, TUnwrap extends boo
   unwrap: TUnwrap = true as TUnwrap,
   argumentCounts?: Readonly<Record<string, number>>,
 ): ObservableClient<TClient, TUnwrap> {
-  return new Proxy(client as any, {
-    get(target, prop: string | symbol) {
-      if (typeof prop !== "string" || prop === "then") return undefined;
-      const original = (target as any)[prop];
-      if (typeof original === "function") {
-        return createObservableMethod(target, original, unwrap, argumentCounts?.[prop]);
-      }
-      return original;
-    },
-  });
+  const source = client as Record<string, unknown>;
+  const wrapped: Record<string, unknown> = {};
+  for (const name of memberNames(client)) {
+    const original = source[name];
+    if (typeof original === "function") {
+      wrapped[name] = createObservableMethod(
+        client,
+        original as (...args: unknown[]) => Promise<unknown>,
+        unwrap,
+        argumentCounts?.[name],
+      );
+    } else {
+      Object.defineProperty(wrapped, name, { get: () => source[name], enumerable: true });
+    }
+  }
+  return wrapped as ObservableClient<TClient, TUnwrap>;
 }

@@ -8,6 +8,7 @@ import {
 import { struct } from "../codecs/struct.ts";
 import { type MetadataSource } from "../transport/types.ts";
 import { MetadataCodecs } from "./codecs.ts";
+import { thriftMethodName } from "./method-name.ts";
 
 export interface MetadataClientConfig extends RpcClientConfig {
   metadata?: MetadataSource;
@@ -19,10 +20,6 @@ export interface MetadataClientConfig extends RpcClientConfig {
 }
 
 export type DynamicThriftClient = Record<string, (...args: unknown[]) => Promise<unknown>>;
-
-function lowerFirst(str: string): string {
-  return str.length > 0 ? str.charAt(0).toLowerCase() + str.slice(1) : str;
-}
 
 /** Builds a client entirely from metadata, without generated modules or eval. */
 export async function createMetadataClient<T extends object = DynamicThriftClient>(
@@ -57,7 +54,7 @@ export async function createMetadataClient<T extends object = DynamicThriftClien
     }
     const seenInService = new Set<string>();
     for (const method of Object.values(service.functions)) {
-      const methodName = config.lowerCaseMethods ? lowerFirst(method.name) : method.name;
+      const methodName = thriftMethodName(method.name, Boolean(config.lowerCaseMethods));
       if (seenInService.has(methodName)) {
         throw new Error(`Method name collision in ${key}: ${methodName}`);
       }

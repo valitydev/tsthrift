@@ -331,42 +331,35 @@ test("bundles output into dist/ with types when bundle: true", async () => {
   ).resolves.toBeDefined();
 });
 
-test("bundles output into dist/ without minification by default when bundle: true", async () => {
+test("bundles output into dist/ without minification or source maps by default", async () => {
   const options = await setup();
   const dist = path.join(options.output, "../dist");
   await generate({
     ...options,
     bundle: true,
     dist,
-  });
-
-  const distFiles = await readdir(dist);
-  expect(distFiles).toContain("index.mjs");
-  expect(distFiles).toContain("index.d.mts");
-  expect(distFiles).toContain("index.mjs.map");
-
-  const indexContent = await readFile(path.join(dist, "index.mjs"), "utf8");
-  const codeLines = indexContent
-    .trim()
-    .split("\n")
-    .filter((line) => !line.startsWith("//# sourceMappingURL="));
-  expect(codeLines.length).toBeGreaterThan(1);
-});
-
-test("supports sourcemap: false to disable source map generation", async () => {
-  const options = await setup();
-  const dist = path.join(options.output, "../dist");
-  await generate({
-    ...options,
-    bundle: true,
-    dist,
-    sourcemap: false,
   });
 
   const distFiles = await readdir(dist);
   expect(distFiles).toContain("index.mjs");
   expect(distFiles).toContain("index.d.mts");
   expect(distFiles).not.toContain("index.mjs.map");
+
+  const indexContent = await readFile(path.join(dist, "index.mjs"), "utf8");
+  expect(indexContent.trim().split("\n").length).toBeGreaterThan(1);
+});
+
+test("supports sourcemap: true and minify: true when bundling", async () => {
+  const options = await setup();
+  const dist = path.join(options.output, "../dist");
+  const readable = path.join(options.output, "../dist-readable");
+  await generate({ ...options, bundle: true, dist: readable });
+  await generate({ ...options, bundle: true, dist, sourcemap: true, minify: true });
+
+  expect(await readdir(dist)).toContain("index.mjs.map");
+  const minified = await readFile(path.join(dist, "index.mjs"), "utf8");
+  const plain = await readFile(path.join(readable, "index.mjs"), "utf8");
+  expect(minified.length).toBeLessThan(plain.length);
 });
 
 test("CLI supports --bundle and --dist flags with subpath exports", async () => {
@@ -397,7 +390,7 @@ test("CLI supports --bundle and --dist flags with subpath exports", async () => 
   expect(commonDist).toContain("index.d.mts");
 });
 
-test("CLI supports --bundle with --no-sourcemap flag", async () => {
+test("CLI supports --bundle with --sourcemap and --minify flags", async () => {
   const options = await setup();
   const dist = path.join(options.output, "../dist");
   await execute(process.execPath, [
@@ -411,13 +404,14 @@ test("CLI supports --bundle with --no-sourcemap flag", async () => {
     "--bundle",
     "--dist",
     dist,
-    "--no-sourcemap",
+    "--sourcemap",
+    "--minify",
   ]);
 
   const distFiles = await readdir(dist);
   expect(distFiles).toContain("index.mjs");
   expect(distFiles).toContain("index.d.mts");
-  expect(distFiles).not.toContain("index.mjs.map");
+  expect(distFiles).toContain("index.mjs.map");
 });
 
 test("CLI and generate() support glob patterns for input", async () => {

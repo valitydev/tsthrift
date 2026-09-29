@@ -29,6 +29,7 @@ export interface GenerateOptions {
   bundle?: boolean;
   dist?: string;
   sourcemap?: boolean;
+  minify?: boolean;
   includes?: string[];
   external?: Record<string, string | ExternalNamespaceConfig> | string[];
   models?: boolean;
@@ -132,7 +133,7 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
           await writeFile(path.join(programDir, "models.ts"), model.content);
         }
 
-        const meta = emitModuleMetadata(program, undefined, { i64, lowerCaseMethods });
+        const meta = emitModuleMetadata(program, { i64, lowerCaseMethods });
         await writeFile(path.join(programDir, "metadata.ts"), meta.content);
 
         const loadMeta = emitNamespaceMetadataLoader(program);
@@ -244,6 +245,7 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
           tsconfig: path.join(staging, "tsconfig.json"),
           cwd: path.dirname(output),
           sourcemap: options.sourcemap,
+          minify: options.minify,
           externalPackages,
         });
       });

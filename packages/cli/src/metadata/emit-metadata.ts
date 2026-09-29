@@ -1,12 +1,8 @@
 import type { Schema } from "../compiler/load-schema.ts";
 import type { Metadata } from "@vality/tsthrift";
 
-export interface EmitMetadataOptions {
-  minify?: boolean;
-}
-
 /** Preserves the legacy AST, including typedefs and omitted enum values. */
-export function emitMetadata(schema: Schema, options?: EmitMetadataOptions): string {
+export function emitMetadata(schema: Schema): string {
   const programs = schema.programs;
   const metadata: Metadata[] = programs.map(({ path, name, ast }) => ({
     metadataVersion: 1,
@@ -14,7 +10,5 @@ export function emitMetadata(schema: Schema, options?: EmitMetadataOptions): str
     name,
     ast,
   }));
-  return options?.minify
-    ? JSON.stringify(metadata) + "\n"
-    : JSON.stringify(metadata, null, 2) + "\n";
+  return JSON.stringify(metadata, null, 2) + "\n";
 }

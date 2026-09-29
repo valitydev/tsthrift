@@ -11,7 +11,8 @@ Generate metadata, TypeScript models, and service factories.
   -o, --output           Generated TypeScript source directory (default: generated)
       --bundle           Compile and bundle generated TypeScript into distribution directory
   -d, --dist             Bundle output directory (default: dist)
-      --no-sourcemap     Disable source maps when bundling
+      --sourcemap        Emit source maps when bundling
+      --minify           Minify the bundle
   -I, --include          Additional include root (repeatable)
   -e, --external         External package namespace mapping <ns>=<pkg/path> (repeatable)
   -m, --main             Main namespace to re-export at root (auto if single module)
@@ -32,7 +33,8 @@ try {
       output: { type: "string", short: "o" },
       bundle: { type: "boolean" },
       dist: { type: "string", short: "d" },
-      "no-sourcemap": { type: "boolean" },
+      sourcemap: { type: "boolean" },
+      minify: { type: "boolean" },
       include: { type: "string", short: "I", multiple: true },
       external: { type: "string", short: "e", multiple: true },
       main: { type: "string", short: "m" },
@@ -51,13 +53,13 @@ try {
     if (!inputs.length) throw new Error("--input is required. Use --help for usage.");
     const models = values["no-models"] ? false : true;
     const services = values["no-services"] ? false : undefined;
-    const sourcemap = values["no-sourcemap"] ? false : undefined;
     const result = await generate({
       input: inputs.length === 1 ? inputs[0]! : inputs,
       output: values.output,
       bundle: values.bundle,
       dist: values.dist,
-      sourcemap,
+      sourcemap: values.sourcemap,
+      minify: values.minify,
       includes: values.include,
       external: values.external,
       main: values.main,

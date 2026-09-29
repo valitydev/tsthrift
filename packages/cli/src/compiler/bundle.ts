@@ -6,6 +6,7 @@ export interface BundleOptions {
   tsconfig?: string;
   cwd?: string;
   sourcemap?: boolean;
+  minify?: boolean;
   externalPackages?: string[];
 }
 
@@ -35,8 +36,8 @@ export async function bundleOutput(options: BundleOptions): Promise<void> {
     cwd: options.cwd ?? root,
     tsconfig: options.tsconfig,
     dts: true,
-    minify: false,
-    sourcemap: options.sourcemap ?? true,
+    minify: options.minify ?? false,
+    sourcemap: options.sourcemap ?? false,
     format: "esm",
     platform: "neutral",
     deps: {

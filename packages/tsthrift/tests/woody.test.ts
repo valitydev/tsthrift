@@ -29,6 +29,15 @@ describe("Woody headers", () => {
     expect(unique.size).toBe(100);
   });
 
+  test("generateId uses the Flake layout with a stable per-instance generator id", () => {
+    const decode = (id: string) => new DataView(bs64.decode(id).buffer).getBigUint64(0);
+    const first = decode(generateId());
+    const second = decode(generateId());
+    expect(Number(first >> 22n)).toBeGreaterThan(1.7e12);
+    expect((first >> 12n) & 0x3ffn).toBe((second >> 12n) & 0x3ffn);
+    expect(second).toBeGreaterThan(first);
+  });
+
   test("matches upstream flake-idgen output byte-for-byte and string-for-string", async () => {
     const { createRequire } = await import("node:module");
     const require = createRequire(import.meta.url);

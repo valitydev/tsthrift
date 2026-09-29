@@ -64,4 +64,5 @@ export {
   THRIFT_METHOD_RESULT,
 } from "./transport/method-arguments.ts";
 
+export { thriftMethodName } from "./metadata/method-name.ts";
 export { validateThriftAst } from "./metadata/validate-ast.ts";
