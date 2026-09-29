@@ -4,7 +4,7 @@ export default defineConfig({
   pack: {
     entry: ["src/index.ts", "src/cli.ts"],
     dts: {
-      tsgo: true,
+      tsgo: {},
     },
     exports: true,
   },
