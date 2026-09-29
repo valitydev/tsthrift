@@ -16,16 +16,23 @@ async function files(directory: string): Promise<string[]> {
   return result;
 }
 
-/** Refuses replacement of nonempty directories that are not exclusively generated output. */
-export async function validateOwnedOutput(output: string): Promise<boolean> {
+/** Ensures the path is a real directory (not a symlink or file) if it exists. Returns true if it exists. */
+export async function validateDirectory(output: string): Promise<boolean> {
   try {
     const stat = await lstat(output);
     if (!stat.isDirectory() || stat.isSymbolicLink())
       throw new Error(`Output must be a real directory: ${output}`);
+    return true;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
     throw error;
   }
+}
+
+/** Refuses replacement of nonempty directories that are not exclusively generated output. */
+export async function validateOwnedOutput(output: string): Promise<boolean> {
+  const exists = await validateDirectory(output);
+  if (!exists) return false;
   const actual = await files(output);
   if (!actual.length) return true;
   let owned: unknown;
