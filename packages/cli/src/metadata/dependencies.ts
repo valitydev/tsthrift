@@ -12,6 +12,8 @@ export function getTransitiveDependencies(program: Program): Program[] {
     if (visited.has(p.name)) return;
     visited.add(p.name);
     result.push(p);
+    // A package-provided module carries its own dependency closure.
+    if (p.fromPackage) return;
     for (const dep of p.includes.values()) {
       visit(dep);
     }

@@ -40,7 +40,7 @@ npx --package @vality/tsthrift-cli tsthrift-cli --input "proto/**/*.thrift" [opt
 | `--sourcemap`                | Emit source maps when bundling                                                    | `false`     |
 | `--minify`                   | Minify the bundle                                                                 | `false`     |
 | `-I, --include <dir>`        | Additional include root directory (repeatable)                                    | `[]`        |
-| `-e, --external <ns>=<path>` | External package namespace mapping (repeatable)                                   | `[]`        |
+| `-e, --external <ns>=<path>` | External module mapping, or a whole npm package name (repeatable)                 | `[]`        |
 | `-m, --main <namespace>`     | Re-export one local namespace from the root (automatic for a single local module) | _Unset_     |
 | `--no-models`                | Generate only `metadata.json` without models or services                          | `false`     |
 | `--no-services`              | Generate models and metadata without service factories                            | `false`     |
@@ -73,9 +73,26 @@ Consume an already compiled protocol package instead of recompiling or duplicati
 ```sh
 npx --package @vality/tsthrift-cli tsthrift-cli \
   --input ./proto \
-  --include ./node_modules/@vality/base-proto/proto \
   --external base=@vality/base-proto/base
 ```
+
+The installed package supplies the module's schema: the compiler reads its published `thriftMetadata`
+(and the metadata closure from `loadThriftMetadata`), so no `.thrift` sources are needed and
+`include "proto/base.thrift"` resolves through the package.
+
+The two flags have separate roles: `--include` adds `.thrift` search roots whose modules are compiled
+locally, while `--external` only consumes already built packages. A module mapped by `--external` is
+always read from the package metadata; its `.thrift` file is never parsed, even if it is on `--include`.
+
+To map every module of a protocol package, pass its name without `<ns>=`:
+
+```sh
+npx --package @vality/tsthrift-cli tsthrift-cli --input ./proto --external @vality/bouncer-proto
+```
+
+Each `include` that cannot be found on disk is looked up by its file basename as
+`@vality/bouncer-proto/<module>`, so directory parts such as `proto/` in `include "proto/context.thrift"`
+do not matter. Packages are searched in the order given, and only for includes that are not found through `--input`/`--include`; explicit `<ns>=<path>` mappings always take precedence.
 
 When generating or bundling:
 
@@ -86,8 +103,7 @@ When generating or bundling:
 
 External mappings use the `.thrift` file basename, not a language-specific namespace.
 Each mapping applies to one module; map transitive modules explicitly when they are
-also owned by external packages. The original IDL must remain available through the input/include paths. Unknown mappings
-are rejected. Install the referenced npm package and declare it as a dependency of the
+also owned by external packages. Unknown mappings are rejected, and the referenced npm package must be installed at generation time. Declare the package as a dependency of the
 published protocol package; generation does not edit package manifests.
 
 External and local packages must use compatible IDL revisions and the same `--i64`

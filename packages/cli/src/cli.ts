@@ -14,7 +14,7 @@ Generate metadata, TypeScript models, and service factories.
       --sourcemap        Emit source maps when bundling
       --minify           Minify the bundle
   -I, --include          Additional include root (repeatable)
-  -e, --external         External package namespace mapping <ns>=<pkg/path> (repeatable)
+  -e, --external         External module <ns>=<pkg/path> or a whole npm package <pkg> (repeatable)
   -m, --main             Main namespace to re-export at root (auto if single module)
       --no-models        Generate only metadata.json without models or services
       --no-services      Generate models and metadata without service factories

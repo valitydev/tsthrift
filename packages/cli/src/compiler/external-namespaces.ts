@@ -36,6 +36,22 @@ export function parseExternalArgument(arg: string): [string, ExternalNamespaceCo
   return [namespace, { importPath, package: inferPackageName(importPath) }];
 }
 
+/** Whether a `--external` value names a whole npm package (no `<namespace>=` prefix). */
+export function isExternalPackage(value: string): boolean {
+  return !value.includes("=");
+}
+
+/** Validates a root npm package name given to `--external`. */
+export function parseExternalPackage(value: string): string {
+  const name = value.trim();
+  if (!/^(@[a-z0-9][\w.-]*\/)?[a-z0-9][\w.-]*$/i.test(name)) {
+    throw new Error(
+      `Invalid --external argument "${value}". Expected "<namespace>=<importPath>" or an npm package name`,
+    );
+  }
+  return name;
+}
+
 /** Normalizes user-supplied external namespaces map into a validated Map. */
 export function normalizeExternalNamespaces(
   external?: Record<string, string | ExternalNamespaceConfig> | string[],
@@ -44,7 +60,7 @@ export function normalizeExternalNamespaces(
   if (!external) return map;
 
   if (Array.isArray(external)) {
-    for (const item of external) {
+    for (const item of external.filter((value) => !isExternalPackage(value))) {
       const [name, config] = parseExternalArgument(item);
       if (map.has(name)) {
         throw new Error(`Duplicate external namespace mapping for "${name}"`);

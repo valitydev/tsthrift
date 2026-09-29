@@ -1,9 +1,6 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
 import type { Schema } from "./load-schema.ts";
 import type { I64Mode } from "./i64-mode.ts";
+import { importFromPackage } from "./resolve-package.ts";
 
 /** Rejects incompatible installed protocol packages before publishing a bundle. */
 export async function validateExternalBuild(
@@ -12,22 +9,15 @@ export async function validateExternalBuild(
   i64: I64Mode,
   lowerCaseMethods: boolean,
 ): Promise<void> {
-  const execute = promisify(execFile);
   const checked = new Set<string>();
   for (const program of schema.externalPrograms) {
     const specifier = program.external!.importPath;
     if (checked.has(specifier)) continue;
     checked.add(specifier);
-    const { stdout } = await execute(process.execPath, [
-      "--experimental-import-meta-resolve",
-      "--input-type=module",
-      "-e",
-      "process.stdout.write(import.meta.resolve(process.argv[1], process.argv[2]))",
-      specifier,
-      pathToFileURL(path.join(directory, "package.json")).href,
-    ]);
-    const module = await import(stdout);
-    const build = module.TSTHRIFT_BUILD;
+    const module = await importFromPackage(specifier, directory);
+    const build = module.TSTHRIFT_BUILD as
+      | { metadataVersion?: number; i64?: string; lowerCaseMethods?: boolean }
+      | undefined;
     if (
       !build ||
       build.metadataVersion !== 1 ||

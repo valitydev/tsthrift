@@ -20,7 +20,9 @@ import type { I64Mode } from "./i64-mode.ts";
 import { bundleOutput } from "./bundle.ts";
 import {
   type ExternalNamespaceConfig,
+  isExternalPackage,
   normalizeExternalNamespaces,
+  parseExternalPackage,
 } from "./external-namespaces.ts";
 
 export interface GenerateOptions {
@@ -69,11 +71,16 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
   const externalNamespaces = options.external
     ? normalizeExternalNamespaces(options.external)
     : undefined;
+  const externalPackages = Array.isArray(options.external)
+    ? options.external.filter(isExternalPackage).map(parseExternalPackage)
+    : [];
   const schema = await loadSchema(
     input,
     includes,
     options.allowDuplicateModules,
     externalNamespaces,
+    path.dirname(output),
+    externalPackages,
   );
   const canonicalOutput = await canonicalOutputPath(output);
   const canonicalDist = options.bundle ? await canonicalOutputPath(dist) : dist;
