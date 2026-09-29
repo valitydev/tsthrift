@@ -37,18 +37,18 @@ are compatibility responsibilities owned by tsthrift, even when parsing is deleg
 
 ## Contract inventory
 
-| Surface          | Existing contract                       | Current tsthrift status                                                               |
-| ---------------- | --------------------------------------- | ------------------------------------------------------------------------------------- |
-| Metadata         | Paths/names and legacy AST              | Baseline preserved; actual form consumers pending                                     |
-| i64              | Numeric frontend values                 | Native bigint default or explicit safe-number mode                                    |
-| Collections      | Map, Set, arrays                        | Native codecs preserve composite keys directly                                        |
-| Structs/unions   | Public plain objects                    | Native read/write uses plain objects without class conversion                         |
-| Services         | Observable wrappers and ConnectOptions$ | Native Promise factories, Angular DI tokens, and RxJS adapters (`toObservableClient`) |
-| Metadata loading | Cached metadata$                        | Modular metadata loading via loadMetadata (or monolithic metadata.json when enabled)  |
-| Exports          | Namespace services, errors, logging     | Native module-scoped factories; no drop-in package claim                              |
-| HTTP             | Binary body, endpoint, per-call headers | Shared HTTP adapter exercised by native generated clients                             |
-| Errors           | Declared errors and transport failures  | Native plain declared values; application errors preserve numeric code                |
-| Browser output   | Bundled helpers and Buffer              | Native browser bundle runs in isolated JS context without Node globals                |
+| Surface          | Existing contract                       | Current tsthrift status                                                                    |
+| ---------------- | --------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Metadata         | Paths/names and legacy AST              | Baseline preserved; actual form consumers pending                                          |
+| i64              | Numeric frontend values                 | Native bigint default or explicit safe-number mode                                         |
+| Collections      | Map, Set, arrays                        | Native codecs preserve composite keys directly                                             |
+| Structs/unions   | Public plain objects                    | Native read/write uses plain objects without class conversion                              |
+| Services         | Observable wrappers and ConnectOptions$ | Native Promise factories, Angular DI tokens, and RxJS adapters (`toObservableClient`)      |
+| Metadata loading | Cached metadata$                        | Modular metadata loading via loadThriftMetadata (or monolithic metadata.json when enabled) |
+| Exports          | Namespace services, errors, logging     | Native module-scoped factories; no drop-in package claim                                   |
+| HTTP             | Binary body, endpoint, per-call headers | Shared HTTP adapter exercised by native generated clients                                  |
+| Errors           | Declared errors and transport failures  | Native plain declared values; application errors preserve numeric code                     |
+| Browser output   | Bundled helpers and Buffer              | Native browser bundle runs in isolated JS context without Node globals                     |
 
 Native number mode rejects unsafe i64 values on write and read. Legacy decoding
 could return imprecise numbers; the stricter behavior is intentional and requires

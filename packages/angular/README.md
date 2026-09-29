@@ -36,7 +36,7 @@ Import `provideThriftConfig` and `provideThriftServices` in your standalone appl
 import { ApplicationConfig } from "@angular/core";
 import { provideHttpClient } from "@angular/common/http";
 import { provideThriftConfig, provideThriftServices } from "@vality/tsthrift-angular";
-import { SERVICES_LIST } from "./generated/services.js";
+import { THRIFT_SERVICES_LIST } from "./generated/services.js";
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -46,20 +46,20 @@ export const appConfig: ApplicationConfig = {
       timeoutMs: 15_000,
       woody: true, // enables distributed tracing headers
     }),
-    provideThriftServices(SERVICES_LIST),
+    provideThriftServices(THRIFT_SERVICES_LIST),
   ],
 };
 ```
 
 ### 2. Inject and use clients in components or services
 
-Use `inject` with `getServiceToken` and the service descriptor from generated `SERVICES`:
+Use `inject` with `getServiceToken` and the service descriptor from generated `THRIFT_SERVICES`:
 
 ```ts
 import { Component, inject, OnInit } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { getServiceToken } from "@vality/tsthrift-angular";
-import { SERVICES } from "./generated/services.js";
+import { THRIFT_SERVICES } from "./generated/services.js";
 
 @Component({
   selector: "app-payment-details",
@@ -74,7 +74,7 @@ import { SERVICES } from "./generated/services.js";
 })
 export class PaymentDetailsComponent implements OnInit {
   private paymentService = inject(
-    getServiceToken(SERVICES["payment_processing.PaymentProcessing"]),
+    getServiceToken(THRIFT_SERVICES["payment_processing.PaymentProcessing"]),
   );
 
   // Calling service methods returns cold Observables
@@ -156,13 +156,13 @@ Override configuration (such as distinct endpoints, headers, or timeouts) for an
 
 ```ts
 import { provideThriftService } from "@vality/tsthrift-angular";
-import { SERVICES } from "./generated/services.js";
+import { THRIFT_SERVICES } from "./generated/services.js";
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideThriftConfig({ endpoint: "/api/rpc" }),
     // Specific service with a dedicated endpoint and timeout
-    provideThriftService(SERVICES["reporting.Analytics"], {
+    provideThriftService(THRIFT_SERVICES["reporting.Analytics"], {
       endpoint: "/analytics/rpc",
       timeoutMs: 60_000,
     }),

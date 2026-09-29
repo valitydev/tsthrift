@@ -8,8 +8,8 @@ Pure TypeScript compiler and code generator for Apache Thrift IDL files.
 
 - **Pure TypeScript compiler:** Built with `@vality/tsthrift` and a TypeScript IDL parser; runs anywhere Node.js runs.
 - **TypeScript model generation:** Generates precise interfaces for structs, unions, exceptions, consts, and enums.
-- **Modular split metadata:** Emits lightweight per-namespace metadata modules that lazily load transitive includes on demand.
-- **Service factories & registry:** Generates typed service client factories (`create<Service>`) and registry descriptors (`SERVICES`, `SERVICES_LIST`) compatible with Angular and pure TypeScript.
+- **Modular split metadata:** Emits lightweight per-namespace metadata modules and local `load-metadata.ts` loaders that lazily load transitive includes on demand.
+- **Service factories & registry:** Generates typed service client factories (`create<Service>`) and registry descriptors (`THRIFT_SERVICES`, `THRIFT_SERVICES_LIST`) compatible with Angular and pure TypeScript.
 - **Standalone bundle compilation:** Compiles and bundles generated code into distribution-ready `.mjs` and `.d.mts` files with `--bundle`.
 - **Configurable `i64` representation:** Choose between `bigint` (exact signed 64-bit integers) or safe `number`.
 - **Native UUID support:** Generates TypeScript `string` types for built-in Thrift `uuid` fields, backed by 16-byte fixed-width binary encoding (`WireType.Uuid = 16`).
@@ -85,16 +85,18 @@ When compiling a schema (for example, with namespaces `base` and `payment`), the
 ```text
 generated/
 ├── index.ts                     # Root re-exports of all namespaces and services
-├── metadata.ts                  # Root loadMetadata(namespace) lazy loader
-├── services.ts                  # Global SERVICES and SERVICES_LIST registry
+├── metadata.ts                  # Root loadThriftMetadata(namespace) lazy loader
+├── services.ts                  # Global THRIFT_SERVICES and THRIFT_SERVICES_LIST registry
 ├── base/                        # Namespace directory for `base`
-│   ├── index.ts                 # Namespace entry point (models + metadata)
+│   ├── index.ts                 # Namespace entry point (models + metadata + loader)
 │   ├── models.ts                # TypeScript models, structs, enums, consts
-│   └── metadata.ts              # Local AST metadata module
+│   ├── metadata.ts              # Local AST metadata module
+│   └── load-metadata.ts         # Local transitive metadata loader
 ├── payment/                     # Namespace directory for `payment`
-│   ├── index.ts                 # Namespace entry point (models + services + metadata)
+│   ├── index.ts                 # Namespace entry point (models + services + metadata + loader)
 │   ├── models.ts                # TypeScript models for payment
 │   ├── metadata.ts              # Local AST metadata module
+│   ├── load-metadata.ts         # Local transitive metadata loader
 │   └── services/                # Service interfaces, factories, and descriptors
 │       ├── PaymentProcessing.ts # PaymentProcessing interface, factory, descriptor
 │       └── index.ts

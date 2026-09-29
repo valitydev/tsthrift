@@ -57,11 +57,23 @@ test.each(["number", "bigint"] as const)(
 
     const commonDir = path.join(options.output, "common");
     const commonFiles = await readdir(commonDir);
-    expect(commonFiles.sort()).toEqual(["index.ts", "metadata.ts", "models.ts", "services"]);
+    expect(commonFiles.sort()).toEqual([
+      "index.ts",
+      "load-metadata.ts",
+      "metadata.ts",
+      "models.ts",
+      "services",
+    ]);
 
     const exampleDir = path.join(options.output, "example");
     const exampleFiles = await readdir(exampleDir);
-    expect(exampleFiles.sort()).toEqual(["index.ts", "metadata.ts", "models.ts", "services"]);
+    expect(exampleFiles.sort()).toEqual([
+      "index.ts",
+      "load-metadata.ts",
+      "metadata.ts",
+      "models.ts",
+      "services",
+    ]);
     const exampleServiceFiles = await readdir(path.join(exampleDir, "services"));
     expect(exampleServiceFiles.sort()).toEqual(["Example.ts", "index.ts"]);
 
@@ -87,19 +99,16 @@ test.each(["number", "bigint"] as const)(
     const indexContent = await readFile(path.join(options.output, "index.ts"), "utf8");
     expect(indexContent).not.toContain("export * as common");
     expect(indexContent).toContain(
-      'export { THRIFT_SERVICES, THRIFT_SERVICES_LIST, SERVICES, SERVICES_LIST } from "./services.js";',
+      'export { THRIFT_SERVICES, THRIFT_SERVICES_LIST } from "./services.js";',
     );
-    expect(indexContent).toContain(
-      'export { loadThriftMetadata, loadMetadata } from "./metadata.js";',
-    );
+    expect(indexContent).toContain('export { loadThriftMetadata } from "./metadata.js";');
     expect(indexContent).not.toContain("generateId");
     expect(indexContent).not.toContain("generateTraceId");
 
     const commonEntry = await readFile(path.join(options.output, "common/index.ts"), "utf8");
     expect(commonEntry).toContain('export * from "./models.js";');
-    expect(commonEntry).toContain(
-      'export { metadata as thriftMetadata, metadata } from "./metadata.js";',
-    );
+    expect(commonEntry).toContain('export { thriftMetadata } from "./metadata.js";');
+    expect(commonEntry).toContain('export { loadThriftMetadata } from "./load-metadata.js";');
 
     const exampleEntry = await readFile(path.join(options.output, "example/index.ts"), "utf8");
     expect(exampleEntry).toContain('export * from "./models.js";');
@@ -158,16 +167,26 @@ test("emits modular metadata in namespace directories and loader in root by defa
 
   const common = await readFile(path.join(options.output, "common/metadata.ts"), "utf8");
   expect(common).toContain('"name": "common"');
-  expect(common).toContain("export const metadata");
+  expect(common).toContain("export const thriftMetadata");
 
   const example = await readFile(path.join(options.output, "example/metadata.ts"), "utf8");
   expect(example).toContain('"name": "example"');
-  expect(example).toContain("export const metadata");
+  expect(example).toContain("export const thriftMetadata");
+
+  const commonLoader = await readFile(path.join(options.output, "common/load-metadata.ts"), "utf8");
+  expect(commonLoader).toContain("export function loadThriftMetadata");
+  expect(commonLoader).toContain('import("./metadata.js")');
+
+  const exampleLoader = await readFile(
+    path.join(options.output, "example/load-metadata.ts"),
+    "utf8",
+  );
+  expect(exampleLoader).toContain("export function loadThriftMetadata");
+  expect(exampleLoader).toContain('import("../common/metadata.js")');
 
   const loader = await readFile(path.join(options.output, "metadata.ts"), "utf8");
-  expect(loader).toContain("export const loadMetadata");
-  expect(loader).toContain("createMetadataLoader");
-  expect(loader).toContain('import("./common/metadata.js")');
+  expect(loader).toContain("export function loadThriftMetadata");
+  expect(loader).toContain('import("./common/load-metadata.js")');
 });
 
 test("emits tsconfig.json in generated directory when bundle: true", async () => {

@@ -16,10 +16,10 @@ export async function loadClient(directory, mode, backend = "metadata") {
     return {
       createExampleClient:
         backend === "descriptor"
-          ? root.SERVICES["example.Example"].createService
+          ? root.THRIFT_SERVICES["example.Example"].createService
           : (exampleModule.createExample ?? root.createExample),
       model: exampleModule,
-      SERVICES: root.SERVICES,
+      THRIFT_SERVICES: root.THRIFT_SERVICES,
     };
   }
   const metadata = JSON.parse(await readFile(`${directory}/metadata.json`, "utf8"));

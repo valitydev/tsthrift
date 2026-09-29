@@ -31,21 +31,21 @@ metadata/ (or metadata.json) -> runtime schema resolution -> cached codecs -> Pr
 ## Native client runtime
 
 Native client execution operates dynamically via `createMetadataClient` directly from
-metadata (`loadMetadata` or optional `metadata.json`) without an external Thrift compiler or static code generation for codecs/clients.
+metadata (`loadThriftMetadata` or optional `metadata.json`) without an external Thrift compiler or static code generation for codecs/clients.
 The Binary Protocol reader and writer provide the wire implementation. Static client/codec
 code generation has been replaced with this metadata-driven runtime.
 
 ```text
 Thrift IDL
   -> pinned parser / include graph
-       -> modular metadata/ (loadMetadata per namespace) & optional metadata.json (--metadata-json)
+       -> modular metadata/ (loadThriftMetadata per namespace) & optional metadata.json (--metadata-json)
        -> public TS models, enums, constants (emitted by default)
 ```
 
-The CLI generates TypeScript models, modular metadata modules (`metadata/`) with a
-`loadMetadata(namespace)` loader resolving full transitive include closures, and optional
+The CLI generates TypeScript models, modular metadata modules (`load-metadata.ts` per namespace) with a
+`loadThriftMetadata(namespace)` loader resolving full transitive include closures, and optional
 monolithic `metadata.json` (when `--metadata-json` is provided). Native RPC clients are
-constructed directly at runtime via `createMetadataClient` using either `loadMetadata` or `metadata.json`.
+constructed directly at runtime via `createMetadataClient` using either `loadThriftMetadata` or `metadata.json`.
 
 ## Compiler responsibilities
 

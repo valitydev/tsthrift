@@ -4,7 +4,11 @@ import { loadClient } from "./load-client.mjs";
 import thrift from "thrift";
 import { BinaryReader, BinaryWriter, MessageType, ThriftApplicationError } from "@vality/tsthrift";
 const [directory, mode, backend = "native"] = process.argv.slice(2);
-const { createExampleClient, SERVICES, types, model } = await loadClient(directory, mode, backend);
+const { createExampleClient, THRIFT_SERVICES, types, model } = await loadClient(
+  directory,
+  mode,
+  backend,
+);
 const integer = (value) => (mode === "number" ? Number(value) : BigInt(value));
 const { TBinaryProtocol, TBufferedTransport, fromBigInt, toBigInt } = thrift;
 const big = mode === "number" ? 123n : 9007199254740993n;
@@ -139,7 +143,8 @@ for (const failure of [
     return true;
   });
 }
-if (SERVICES) assert.ok(Array.isArray(await SERVICES["example.Example"].getMetadata()));
+if (THRIFT_SERVICES)
+  assert.ok(Array.isArray(await THRIFT_SERVICES["example.Example"].getMetadata()));
 const other = await createExampleClient({
   endpoint: "http://unused",
   transport: async (bytes) => {

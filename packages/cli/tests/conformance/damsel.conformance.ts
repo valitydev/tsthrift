@@ -98,7 +98,7 @@ test.each(["bigint", "number"] as const)(
   "all supported types and composite keys match generated Java (%s)",
   async (mode) => {
     const { createEcho } = await generated(mode, "alpha/services/Echo.js");
-    const { loadMetadata } = await generated(mode, "metadata.js");
+    const { loadThriftMetadata } = await generated(mode, "metadata.js");
     for (const empty of [false, true]) {
       const scenario = `${empty ? "empty" : "all"}-${mode}`;
       // Explicit mode isolates wire conformance from the separately audited factory-mode defect.
@@ -116,7 +116,7 @@ test.each(["bigint", "number"] as const)(
       await verifyReplyEncoding(
         mode,
         scenario,
-        await loadMetadata("alpha"),
+        await loadThriftMetadata("alpha"),
         "alpha",
         "Echo",
         "echo",
@@ -134,7 +134,7 @@ test.each(["bigint", "number"] as const)(
       mode,
       "damsel/domain_config_v2/services/Repository.js",
     );
-    const { loadMetadata } = await generated(mode, "damsel/metadata.js");
+    const { loadThriftMetadata } = await generated(mode, "damsel/metadata.js");
     const client = createRepository({
       endpoint: "unused",
       transport: await transport(scenario),
@@ -150,7 +150,7 @@ test.each(["bigint", "number"] as const)(
     await verifyReplyEncoding(
       mode,
       scenario,
-      await loadMetadata("domain_config_v2"),
+      await loadThriftMetadata("domain_config_v2"),
       "domain_config_v2",
       "Repository",
       "Commit",
@@ -167,7 +167,7 @@ test.each(["bigint", "number"] as const)(
       mode,
       "damsel/domain_config_v2/services/Repository.js",
     );
-    const { loadMetadata } = await generated(mode, "damsel/metadata.js");
+    const { loadThriftMetadata } = await generated(mode, "damsel/metadata.js");
     const client = createRepository({
       endpoint: "unused",
       transport: await transport(scenario),
@@ -179,7 +179,7 @@ test.each(["bigint", "number"] as const)(
     await verifyReplyEncoding(
       mode,
       scenario,
-      await loadMetadata("domain_config_v2"),
+      await loadThriftMetadata("domain_config_v2"),
       "domain_config_v2",
       "Repository",
       "Commit",
@@ -193,7 +193,7 @@ test.each(["bigint", "number"] as const)(
   async (mode) => {
     const scenario = `failure-${mode}`;
     const { createEcho } = await generated(mode, "alpha/services/Echo.js");
-    const { loadMetadata } = await generated(mode, "metadata.js");
+    const { loadThriftMetadata } = await generated(mode, "metadata.js");
     const client = createEcho({
       endpoint: "unused",
       transport: await transport(scenario),
@@ -203,7 +203,7 @@ test.each(["bigint", "number"] as const)(
     await verifyReplyEncoding(
       mode,
       scenario,
-      await loadMetadata("alpha"),
+      await loadThriftMetadata("alpha"),
       "alpha",
       "Echo",
       "echo",
@@ -214,19 +214,19 @@ test.each(["bigint", "number"] as const)(
 );
 
 test("same service and IDL namespace names remain isolated by source module", async () => {
-  const { SERVICES, loadMetadata } = await generated("bigint", "index.js");
-  const metadata: Metadata[] = await loadMetadata("beta");
-  const alphaMetadata: Metadata[] = await loadMetadata("alpha");
+  const { THRIFT_SERVICES, loadThriftMetadata } = await generated("bigint", "index.js");
+  const metadata: Metadata[] = await loadThriftMetadata("beta");
+  const alphaMetadata: Metadata[] = await loadThriftMetadata("alpha");
   expect(metadata[0]!.ast.namespace?.js).toEqual(alphaMetadata[0]!.ast.namespace?.js);
-  const alpha = SERVICES["alpha.Echo"].createService({
+  const alpha = THRIFT_SERVICES["alpha.Echo"].createService({
     endpoint: "unused",
     transport: await transport("all-bigint"),
   });
-  const beta = SERVICES["beta.Echo"].createService({
+  const beta = THRIFT_SERVICES["beta.Echo"].createService({
     endpoint: "unused",
     transport: await transport("beta"),
   });
-  const sameName = SERVICES["alpha.alpha"].createService({
+  const sameName = THRIFT_SERVICES["alpha.alpha"].createService({
     endpoint: "unused",
     transport: await transport("alpha"),
   });

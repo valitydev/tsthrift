@@ -133,7 +133,7 @@ export function emitProgramServices(
       "  type ThriftServiceError,",
       "  type ThriftSystemError,",
       '} from "@vality/tsthrift";',
-      'import { loadThriftMetadata } from "../../metadata.js";',
+      'import { loadThriftMetadata } from "../load-metadata.js";',
       'import type * as models from "../models.js";',
     ];
 
@@ -162,8 +162,6 @@ export function emitProgramServices(
       '  metadata?: MetadataClientConfig["metadata"];',
       "}",
       "",
-      `const defaultMetadata = () => loadThriftMetadata(${JSON.stringify(program.name)});`,
-      "",
       `/**`,
       ` * Creates a service client for ${serviceName} that lazily initializes metadata and codecs.`,
       ` */`,
@@ -174,7 +172,7 @@ export function emitProgramServices(
       `    serviceName: ${JSON.stringify(serviceName)},`,
       `    namespace: ${JSON.stringify(program.name)},`,
       ...(lowerCaseMethods ? [`    lowerCaseMethods: true,`] : []),
-      `    metadata: config.metadata ?? defaultMetadata,`,
+      `    metadata: config.metadata ?? loadThriftMetadata,`,
       `  });`,
       `}`,
       "",
@@ -185,7 +183,7 @@ export function emitProgramServices(
       `  serviceName: ${JSON.stringify(serviceName)},`,
       `  namespace: ${JSON.stringify(program.name)},`,
       `  createService: create${serviceName},`,
-      `  getMetadata: defaultMetadata,`,
+      `  getMetadata: loadThriftMetadata,`,
       `};`,
       "",
       `/**`,
@@ -255,11 +253,6 @@ export function emitServicesRegistry(schema: Schema): string {
   lines.push(
     "export const THRIFT_SERVICES_LIST: ThriftServiceDescriptor[] = Object.values(THRIFT_SERVICES);",
   );
-  lines.push("/** Alias for THRIFT_SERVICES. */");
-  lines.push("export const SERVICES: ServicesRegistry = THRIFT_SERVICES;");
-  lines.push("");
-  lines.push("/** Alias for THRIFT_SERVICES_LIST. */");
-  lines.push("export const SERVICES_LIST: ThriftServiceDescriptor[] = THRIFT_SERVICES_LIST;");
   lines.push("");
 
   return lines.join("\n");

@@ -65,30 +65,38 @@ test("getTransitiveDependencies collects full transitive graph with root first",
   expect(depsC.map((p) => p.name)).toEqual(["c"]);
 });
 
-test("loadMetadata loads only reachable dependencies and memoizes result", async () => {
+test("loadThriftMetadata loads only reachable dependencies and memoizes result", async () => {
   const options = await setup();
   await generate(options);
 
   const metadataIndexPath = path.join(options.output, "metadata.ts");
-  const { loadMetadata } = await import(pathToFileURL(metadataIndexPath).href);
+  const { loadThriftMetadata } = await import(pathToFileURL(metadataIndexPath).href);
 
   // example depends on common
-  const exampleMetadata: Metadata[] = await loadMetadata("example");
+  const exampleMetadata: Metadata[] = await loadThriftMetadata("example");
   expect(exampleMetadata).toHaveLength(2);
   expect(exampleMetadata.map((m) => m.name)).toEqual(["example", "common"]);
 
   // common has no dependencies
-  const commonMetadata: Metadata[] = await loadMetadata("common");
+  const commonMetadata: Metadata[] = await loadThriftMetadata("common");
   expect(commonMetadata).toHaveLength(1);
   expect(commonMetadata[0]?.name).toBe("common");
 
+  // Namespace local loader works standalone
+  const exampleLoaderPath = path.join(options.output, "example/load-metadata.ts");
+  const { loadThriftMetadata: loadLocalExample } = await import(
+    pathToFileURL(exampleLoaderPath).href
+  );
+  const localExampleMetadata: Metadata[] = await loadLocalExample();
+  expect(localExampleMetadata.map((m) => m.name)).toEqual(["example", "common"]);
+
   // Memoization: same promise returned for subsequent calls
-  const cachedPromise = loadMetadata("example");
-  const anotherPromise = loadMetadata("example");
+  const cachedPromise = loadThriftMetadata("example");
+  const anotherPromise = loadThriftMetadata("example");
   expect(cachedPromise).toBe(anotherPromise);
 
   // Unknown namespace throws descriptive error
-  await expect(loadMetadata("nonexistent")).rejects.toThrow(
+  await expect(loadThriftMetadata("nonexistent")).rejects.toThrow(
     "Unknown metadata namespace: nonexistent",
   );
 });
