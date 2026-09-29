@@ -2,15 +2,19 @@ import { glob, lstat, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import parse from "thrift-parser";
 import type { Metadata, ThriftAst } from "@vality/tsthrift";
+import type { ExternalNamespaceConfig } from "./external-namespaces.ts";
 
 export interface Program extends Metadata {
   filename: string;
   includes: Map<string, Program>;
+  external?: ExternalNamespaceConfig;
 }
 
 export interface Schema {
   roots: Program[];
   programs: Program[];
+  localPrograms: Program[];
+  externalPrograms: Program[];
 }
 
 async function resolveInputFiles(input: string | string[]): Promise<string[]> {
@@ -59,8 +63,17 @@ export async function loadSchema(
   input: string | string[],
   includeRoots: string[] = [],
   allowDuplicateModules?: boolean,
+  externalNamespaces?: Map<string, ExternalNamespaceConfig>,
 ): Promise<Schema> {
   const inputFiles = await resolveInputFiles(input);
+  for (const file of inputFiles) {
+    const rootName = path.basename(file, ".thrift");
+    if (externalNamespaces?.has(rootName)) {
+      throw new Error(
+        `Cannot mark module "${rootName}" as external because it is one of the local compilation roots`,
+      );
+    }
+  }
   const explicitDirs: string[] = [];
   for (const p of Array.isArray(input) ? input : [input]) {
     try {
@@ -121,6 +134,7 @@ export async function loadSchema(
         .join("/"),
       ast,
       includes: new Map(),
+      external: externalNamespaces?.get(name),
     };
     programs.set(filename, program);
     visiting.add(filename);
@@ -149,5 +163,13 @@ export async function loadSchema(
     roots.push(await visit(file));
   }
   roots.sort((a, b) => a.name.localeCompare(b.name));
-  return { roots, programs: [...programs.values()].sort((a, b) => a.path.localeCompare(b.path)) };
+  const allPrograms = [...programs.values()].sort((a, b) => a.path.localeCompare(b.path));
+  const localPrograms = allPrograms.filter((p) => !p.external);
+  const externalPrograms = allPrograms.filter((p) => Boolean(p.external));
+  return {
+    roots,
+    programs: allPrograms,
+    localPrograms,
+    externalPrograms,
+  };
 }

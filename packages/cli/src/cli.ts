@@ -13,6 +13,7 @@ Generate metadata, TypeScript models, and service factories.
   -d, --dist             Bundle output directory (default: dist)
       --no-sourcemap     Disable source maps when bundling
   -I, --include          Additional include root (repeatable)
+  -e, --external         External package namespace mapping <ns>=<pkg/path> (repeatable)
   -m, --main             Main namespace to re-export at root (auto if single module)
       --no-models        Generate only metadata.json without models or services
       --no-services      Generate models and metadata without service factories
@@ -33,6 +34,7 @@ try {
       dist: { type: "string", short: "d" },
       "no-sourcemap": { type: "boolean" },
       include: { type: "string", short: "I", multiple: true },
+      external: { type: "string", short: "e", multiple: true },
       main: { type: "string", short: "m" },
       "no-models": { type: "boolean" },
       "no-services": { type: "boolean" },
@@ -57,6 +59,7 @@ try {
       dist: values.dist,
       sourcemap,
       includes: values.include,
+      external: values.external,
       main: values.main,
       models,
       services,

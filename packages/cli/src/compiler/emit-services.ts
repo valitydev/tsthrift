@@ -62,8 +62,13 @@ export function emitProgramServices(
     if (service.extends) {
       if (service.extends.includes(".")) {
         const [incNamespace, incService] = service.extends.split(".");
-        const incTarget = program.includes.get(incNamespace)!.name;
-        parentImport = `import type {\n  ${incService} as ${incNamespace}_${incService},\n  ${incService}Errors as ${incNamespace}_${incService}Errors,\n} from "../../${incTarget}/services/${incService}.js";\n`;
+        const incProgram = program.includes.get(incNamespace)!;
+        if (incProgram.external) {
+          parentImport = `import type {\n  ${incService} as ${incNamespace}_${incService},\n  ${incService}Errors as ${incNamespace}_${incService}Errors,\n} from ${JSON.stringify(incProgram.external.importPath)};\n`;
+        } else {
+          const incTarget = incProgram.name;
+          parentImport = `import type {\n  ${incService} as ${incNamespace}_${incService},\n  ${incService}Errors as ${incNamespace}_${incService}Errors,\n} from "../../${incTarget}/services/${incService}.js";\n`;
+        }
         parent = ` extends ${incNamespace}_${incService}`;
         parentErrors = ` extends ${incNamespace}_${incService}Errors`;
       } else {
@@ -221,7 +226,7 @@ export function emitServicesRegistry(schema: Schema): string {
   ];
 
   const serviceList: { programName: string; serviceName: string }[] = [];
-  for (const program of schema.programs) {
+  for (const program of schema.localPrograms) {
     for (const serviceName of Object.keys(program.ast.service ?? {})) {
       serviceList.push({ programName: program.name, serviceName });
     }

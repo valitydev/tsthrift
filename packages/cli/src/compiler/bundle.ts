@@ -6,6 +6,7 @@ export interface BundleOptions {
   tsconfig?: string;
   cwd?: string;
   sourcemap?: boolean;
+  externalPackages?: string[];
 }
 
 /** Bundles only generated entries without loading or modifying the consumer's build config. */
@@ -18,6 +19,9 @@ export async function bundleOutput(options: BundleOptions): Promise<void> {
   }
   const entries = Array.isArray(options.entry) ? options.entry : [options.entry];
   const root = path.dirname(entries[0]!);
+  const neverBundle = Array.from(
+    new Set(["@vality/tsthrift", ...(options.externalPackages ?? [])]),
+  );
   await pack.build({
     config: false,
     exports: false,
@@ -36,7 +40,7 @@ export async function bundleOutput(options: BundleOptions): Promise<void> {
     format: "esm",
     platform: "neutral",
     deps: {
-      neverBundle: ["@vality/tsthrift"],
+      neverBundle,
     },
     outExtensions: () => ({ js: ".mjs", dts: ".d.mts" }),
   });

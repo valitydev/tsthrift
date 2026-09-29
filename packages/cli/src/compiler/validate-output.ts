@@ -13,7 +13,8 @@ function lowerFirst(str: string): string {
 /** Rejects names that would overwrite generated paths or collide in public barrels. */
 export function validateOutput(schema: Schema, services: boolean, lowerCaseMethods = false): void {
   const modules = new Set<string>();
-  for (const program of schema.programs) {
+  const programs = schema.localPrograms ?? schema.programs;
+  for (const program of programs) {
     if (modules.has(program.name.toLowerCase()))
       throw new Error(`Generated module path collision: ${program.name}`);
     modules.add(program.name.toLowerCase());

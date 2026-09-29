@@ -7,7 +7,8 @@ export interface EmitMetadataOptions {
 
 /** Preserves the legacy AST, including typedefs and omitted enum values. */
 export function emitMetadata(schema: Schema, options?: EmitMetadataOptions): string {
-  const metadata: Metadata[] = schema.programs.map(({ path, name, ast }) => ({ path, name, ast }));
+  const programs = schema.localPrograms ?? schema.programs;
+  const metadata: Metadata[] = programs.map(({ path, name, ast }) => ({ path, name, ast }));
   return options?.minify
     ? JSON.stringify(metadata) + "\n"
     : JSON.stringify(metadata, null, 2) + "\n";

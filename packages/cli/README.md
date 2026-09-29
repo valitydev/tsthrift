@@ -31,21 +31,22 @@ npx --package @vality/tsthrift-cli tsthrift-cli --input "proto/**/*.thrift" [opt
 
 ### Options
 
-| Flag                        | Description                                                         | Default     |
-| --------------------------- | ------------------------------------------------------------------- | ----------- |
-| `-i, --input <path/glob>`   | Thrift file, directory, or glob pattern (repeatable)                | _Required_  |
-| `-o, --output <dir>`        | Directory for generated TypeScript sources                          | `generated` |
-| `--bundle`                  | Compile and bundle generated TypeScript into distribution directory | `false`     |
-| `-d, --dist <dir>`          | Bundle distribution output directory                                | `dist`      |
-| `--no-sourcemap`            | Disable source map generation when bundling                         | `false`     |
-| `-I, --include <dir>`       | Additional include root directory (repeatable)                      | `[]`        |
-| `--no-models`               | Generate only `metadata.json` without models or services            | `false`     |
-| `--no-services`             | Generate models and metadata without service factories              | `false`     |
-| `--metadata-json`           | Emit monolithic `metadata.json` in output directory                 | `false`     |
-| `--i64 <mode>`              | Public `i64` representation: `bigint` (default) or `number`         | `bigint`    |
-| `--lower-case-methods`      | Generate service client methods starting with a lowercase letter    | `false`     |
-| `--allow-duplicate-modules` | Allow duplicate module basenames across includes (first-wins)       | `false`     |
-| `-h, --help`                | Show help and exit                                                  |             |
+| Flag                         | Description                                                         | Default     |
+| ---------------------------- | ------------------------------------------------------------------- | ----------- |
+| `-i, --input <path/glob>`    | Thrift file, directory, or glob pattern (repeatable)                | _Required_  |
+| `-o, --output <dir>`         | Directory for generated TypeScript sources                          | `generated` |
+| `--bundle`                   | Compile and bundle generated TypeScript into distribution directory | `false`     |
+| `-d, --dist <dir>`           | Bundle distribution output directory                                | `dist`      |
+| `--no-sourcemap`             | Disable source map generation when bundling                         | `false`     |
+| `-I, --include <dir>`        | Additional include root directory (repeatable)                      | `[]`        |
+| `-e, --external <ns>=<path>` | External package namespace mapping (repeatable)                     | `[]`        |
+| `--no-models`                | Generate only `metadata.json` without models or services            | `false`     |
+| `--no-services`              | Generate models and metadata without service factories              | `false`     |
+| `--metadata-json`            | Emit monolithic `metadata.json` in output directory                 | `false`     |
+| `--i64 <mode>`               | Public `i64` representation: `bigint` (default) or `number`         | `bigint`    |
+| `--lower-case-methods`       | Generate service client methods starting with a lowercase letter    | `false`     |
+| `--allow-duplicate-modules`  | Allow duplicate module basenames across includes (first-wins)       | `false`     |
+| `-h, --help`                 | Show help and exit                                                  |             |
 
 ### Examples
 
@@ -62,6 +63,24 @@ Generate TypeScript sources into `./generated` and bundle them into optimized `.
 ```sh
 npx --package @vality/tsthrift-cli tsthrift-cli --input "proto/**/*.thrift" --bundle --dist ./dist
 ```
+
+#### External npm package namespaces
+
+Consume an already compiled protocol package instead of recompiling or duplicating its models:
+
+```sh
+npx --package @vality/tsthrift-cli tsthrift-cli \
+  --input ./proto \
+  --include ./node_modules/@vality/base-proto/proto \
+  --external base=@vality/base-proto/base
+```
+
+When generating or bundling:
+
+- Models and services import directly from `@vality/base-proto/base`.
+- Transitive metadata loaders dynamically resolve external metadata.
+- Root `metadata.ts` emits an `EXTERNAL_NAMESPACES` dictionary descriptor.
+- The external package (`@vality/base-proto`) is automatically excluded from the bundle output (`neverBundle`).
 
 #### With multiple include roots
 
