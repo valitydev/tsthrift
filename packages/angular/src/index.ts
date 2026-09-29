@@ -24,5 +24,4 @@ export {
   deferThriftCall,
   unwrapThriftResult,
   type ObservableClient,
-  type ThriftObservable,
 } from "./rxjs.ts";

@@ -4,7 +4,7 @@ import {
   createEnvironmentInjector,
   ɵINJECTOR_SCOPE,
 } from "@angular/core";
-import { firstValueFrom } from "rxjs";
+import { type Observable, firstValueFrom } from "rxjs";
 import { expect, expectTypeOf, test, vi } from "vite-plus/test";
 import {
   type RequestOptions,
@@ -56,7 +56,7 @@ test("Promise and Observable services coexist in root DI with distinct types and
     const observableClient = injector.get(observableToken);
     expectTypeOf(promiseClient).toEqualTypeOf<Client>();
     const stream = observableClient.echo("cold");
-    expectTypeOf(stream).toEqualTypeOf<api.ThriftObservable<string, Failure>>();
+    expectTypeOf(stream).toEqualTypeOf<Observable<string>>();
     expectTypeOf(observableClient.echo).parameters.toEqualTypeOf<
       [value: string, options?: RequestOptions]
     >();
