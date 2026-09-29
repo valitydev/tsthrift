@@ -1,5 +1,6 @@
-export { createMetadataClient, createLazyMetadataClient } from "./metadata/client.ts";
-export { createMetadataLoader } from "./metadata/loader.ts";
+export { createMetadataClient } from "./metadata/client.ts";
+export { createLazyMetadataClient } from "./metadata/lazy-client.ts";
+export { createMetadataLoader, createNamespaceLoader } from "./metadata/loader.ts";
 export type {
   MetadataImportModule,
   MetadataLoaderFn,
@@ -24,7 +25,6 @@ export type {
   MetadataModule,
   MetadataSource,
   RequestOptions,
-  ThriftRequestOptions,
   HttpTransportConfig,
   ThriftLogParams,
   ThriftMethodError,
@@ -43,7 +43,6 @@ export {
   createWoodyHeaderProvider,
   flattenMeta,
   generateId,
-  generateTraceId,
 } from "./transport/woody.ts";
 export type {
   FlakeIdOptions,
@@ -64,3 +63,5 @@ export {
   THRIFT_METHOD_ARGUMENT_COUNT,
   THRIFT_METHOD_RESULT,
 } from "./transport/method-arguments.ts";
+
+export { validateThriftAst } from "./metadata/validate-ast.ts";

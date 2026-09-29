@@ -94,7 +94,12 @@ export class MetadataCodecs {
         name: field.name,
         codec,
         required: field.option === "required",
-        ...(value === undefined ? {} : { defaultValue: () => structuredClone(value) }),
+        ...(value === undefined
+          ? {}
+          : {
+              defaultValue: () =>
+                value !== null && typeof value === "object" ? structuredClone(value) : value,
+            }),
       };
     });
   }

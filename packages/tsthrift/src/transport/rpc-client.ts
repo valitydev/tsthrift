@@ -1,8 +1,15 @@
+import { callContexts } from "./call-context.ts";
+import { emitLog } from "./logging.ts";
 import { THRIFT_METHOD_ARGUMENT_COUNT } from "./method-arguments.ts";
 import { BinaryReader } from "../runtime/binary-reader.ts";
 import { BinaryWriter } from "../runtime/binary-writer.ts";
 import { MessageType } from "../runtime/wire.ts";
-import { THRIFT_EXCEPTION_INFO, ThriftApplicationError, ThriftProtocolError } from "./errors.ts";
+import {
+  ThriftApplicationError,
+  ThriftProtocolError,
+  ThriftServiceError,
+  isThriftError,
+} from "./errors.ts";
 import { createHttpTransport } from "./http-transport.ts";
 import {
   type HttpTransportConfig,
@@ -26,7 +33,7 @@ export interface MethodCodec {
   args: Codec<Record<string, unknown>>;
   argumentNames: string[];
   result: Codec<Record<string, unknown>>;
-  exceptions: (string | MethodException)[];
+  exceptions: MethodException[];
   returns: boolean;
   oneway: boolean;
 }
@@ -57,18 +64,12 @@ function decodeReply(bytes: Uint8Array, name: string, sequenceId: number, method
   const present = Object.keys(result);
   if (present.length > 1) throw new ThriftProtocolError("Multiple fields in RPC result");
   for (const exception of method.exceptions) {
-    const fieldName = typeof exception === "string" ? exception : exception.name;
-    const typeName = typeof exception === "string" ? exception : exception.type;
-    if (Object.hasOwn(result, fieldName)) {
-      const payload = result[fieldName] as object;
-      if (payload && typeof payload === "object") {
-        Object.defineProperty(payload, THRIFT_EXCEPTION_INFO, {
-          value: { type: typeName, fieldName },
-          enumerable: false,
-          configurable: true,
-        });
-      }
-      throw payload;
+    if (Object.hasOwn(result, exception.name)) {
+      throw new ThriftServiceError(
+        exception.type,
+        exception.name,
+        result[exception.name] as object,
+      );
     }
   }
   if (!method.returns) return undefined;
@@ -92,18 +93,20 @@ export function createRpcClient<T extends object>(
       const options = args[method.argumentNames.length] as RequestOptions | undefined;
       const callArgs = args.slice(0, method.argumentNames.length);
       const wireName = method.wireName ?? name;
+      const correlation: { traceId?: string } = {};
+      const started = performance.now();
+      sequence = sequence === 2147483647 ? 1 : sequence + 1;
+      const sequenceId = sequence;
       const context = {
         name,
         wireName,
         serviceName,
         namespace,
-        args: callArgs,
-        headers: options?.headers,
+        sequenceId,
+        ...(config.logPayloads ? { args: callArgs } : {}),
       };
       try {
-        config.loggingFn?.({ ...context, type: "call" });
-        sequence = sequence === 2147483647 ? 1 : sequence + 1;
-        const sequenceId = sequence;
+        emitLog(config.loggingFn, { ...context, type: "call", durationMs: 0 });
         const writer = new BinaryWriter();
         writer.writeMessageBegin(
           wireName,
@@ -114,14 +117,41 @@ export function createRpcClient<T extends object>(
           writer,
           Object.fromEntries(method.argumentNames.map((arg, i) => [arg, callArgs[i]])),
         );
-        const bytes = await transport(writer.finish(), options);
+        const request = writer.finish();
+        callContexts.set(request, correlation);
+        const bytes = await transport(request, options);
         const response = method.oneway
           ? undefined
           : decodeReply(bytes, wireName, sequenceId, method);
-        config.loggingFn?.({ ...context, type: "success", response });
+        emitLog(config.loggingFn, {
+          ...context,
+          traceId: correlation.traceId,
+          type: "success",
+          durationMs: performance.now() - started,
+          ...(config.logPayloads ? { response } : {}),
+        });
         return response;
       } catch (error) {
-        config.loggingFn?.({ ...context, type: "error", error });
+        const durationMs = performance.now() - started;
+        if (isThriftError(error))
+          error.context = {
+            serviceName,
+            namespace,
+            method: name,
+            sequenceId,
+            durationMs,
+            traceId: correlation.traceId,
+          };
+        emitLog(config.loggingFn, {
+          ...context,
+          traceId: correlation.traceId,
+          type: "error",
+          durationMs,
+          error:
+            error instanceof Error
+              ? { name: error.name, message: error.message }
+              : { name: "UnknownError" },
+        });
         throw error;
       }
     },

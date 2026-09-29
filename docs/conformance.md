@@ -1,4 +1,4 @@
-# Latest Damsel binary conformance
+# Damsel binary conformance
 
 Run the independent generated-code comparison from the repository root:
 
@@ -12,8 +12,8 @@ a JDK **17 or newer** with `java` and `javac` available on PATH, and Apache Mave
 Thrift Java runtime libraries and transitive dependencies are resolved automatically via Maven
 (`packages/cli/tests/conformance/reference/pom.xml`) using `mvn dependency:build-classpath`
 with configurable `LIBTHRIFT_VERSION` (`0.20.0` for Vality Thrift 0.20.1, `0.24.0` for Apache Thrift 0.24.0).
-The task is deliberately uncached and clones the current default-branch HEAD of
-`https://github.com/valitydev/damsel.git` on every run.
+The task is deliberately uncached and fetches the revision committed in
+`.github/damsel-revision` (currently tag `v2.2.47`).
 Normal `vp test` does not need Java, an external compiler, or these downloads.
 Conformance runs in a dedicated two-variant matrix on GitHub Actions CI.
 
@@ -76,8 +76,7 @@ The conformance runner honors the following environment variables:
   Passed from CI matrix; defaults automatically based on the detected compiler variant.
 - `MVN`: Path to the Maven executable. Defaults to `mvn` on PATH.
 - `DAMSEL_REVISION`: Specific Git commit SHA or ref to checkout. When set, performs a shallow
-  fetch (`--depth 1`) of the exact commit. In CI, a dedicated `resolve-damsel` job resolves
-  the current HEAD once and passes the identical SHA to all matrix jobs.
+  fetch (`--depth 1`) of the exact commit. The default is `.github/damsel-revision`.
 - `CONFORMANCE_OUTPUT_DIR`: Fixed directory for test output. When unset, a temporary directory
   under the system temporary directory (`os.tmpdir()`) is used.
 - `KEEP_CONFORMANCE_OUTPUT`: If set to `1`, prevents cleanup of the output directory on success.
@@ -111,24 +110,11 @@ failure or completion (`actions/upload-artifact@v7`).
 
 The eleven conformance cases include both numeric modes and populated/empty value
 variants. Native UUID operates with 16-byte binary wire encoding (WireType 16)
-and RFC 4122 string models.
+and canonical hyphenated UUID strings.
 
 ## Limits and verification status
 
 Generated models and runtime values use `Uint8Array` for binary data and bind the selected `i64Mode` into generated factories. Conformance tests verify serialization fidelity, processor argument decoding, and reply roundtrips against Java reference implementations. These tests focus on wire and protocol conformance, leaving production server deployment and end-to-end frontend integration to downstream consumer verification.
 
-Historical baseline (nine cases before the large-Commit scenarios were added):
-
-- **Damsel revision**: `8d6174bddedc6d9aefa407fdc1d54877b8686ff9` (pinned across both runs).
-- **Vality variant (`vality-0.20.1`)**: Tested with Vality compiler 0.20.1 + Java libthrift 0.20.0
-  and `javax.annotation-api-1.3.2.jar`. All 9 test suites passed with 100% byte-for-byte request/reply
-  equality and Java processor decoding.
-- **Apache variant (`apache-0.24.0`)**: Tested with official Apache compiler 0.24.0 + Java libthrift 0.24.0.
-  All 9 test suites passed with 100% byte-for-byte request/reply equality and Java processor decoding.
-
-Support in `setup.ts` alone is not treated as verification: each variant is verified by full
-test execution through `vp run test:conformance`.
-
-Conformance testing also executes the large 50-object Damsel Commit scenarios: eleven
-cases per compiler/runtime pair, including generated factories without an explicit
-runtime i64Mode override.
+Both compiler/runtime pairs must pass on the exact release candidate. Earlier runs
+and support in `setup.ts` do not establish acceptance of later changes.

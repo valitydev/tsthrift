@@ -35,7 +35,7 @@ export async function bundleOutput(options: BundleOptions): Promise<void> {
     cwd: options.cwd ?? root,
     tsconfig: options.tsconfig,
     dts: true,
-    minify: true,
+    minify: false,
     sourcemap: options.sourcemap ?? true,
     format: "esm",
     platform: "neutral",

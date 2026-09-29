@@ -1,9 +1,10 @@
+import { callContexts } from "./call-context.ts";
 import {
   ThriftConnectionError,
-  ThriftError,
   ThriftHttpError,
   ThriftProtocolError,
   ThriftTimeoutError,
+  isThriftError,
 } from "./errors.ts";
 import type { HttpTransportConfig, RequestOptions, TransportFunction } from "./types.ts";
 import { mergeHeaders, resolveHeaders } from "./headers.ts";
@@ -15,6 +16,13 @@ const DEFAULT_TIMEOUT_MS = 60_000;
 
 /** Creates an HTTP transport with a deadline covering preparation, fetch, and response reading. */
 export function createHttpTransport(config: HttpTransportConfig): TransportFunction {
+  if (
+    !config ||
+    (typeof config.endpoint !== "function" &&
+      (typeof config.endpoint !== "string" || !config.endpoint.trim()))
+  ) {
+    throw new TypeError("Expected a non-empty endpoint or endpoint factory");
+  }
   const fetchFn = config.fetch ?? globalThis.fetch;
   if (typeof fetchFn !== "function") {
     throw new Error("No global fetch found and none provided in HttpTransportConfig");
@@ -56,8 +64,15 @@ export function createHttpTransport(config: HttpTransportConfig): TransportFunct
         baseHeaders,
         options?.headers,
       );
+      const correlation = callContexts.get(payload);
+      if (correlation)
+        correlation.traceId = new Headers(headers).get("x-woody-trace-id") ?? undefined;
       targetEndpoint =
         typeof config.endpoint === "function" ? await config.endpoint() : config.endpoint;
+      if (typeof targetEndpoint !== "string" || !targetEndpoint.trim()) {
+        throw new TypeError("Endpoint factory must return a non-empty string");
+      }
+      controller.signal.throwIfAborted();
       const response = await fetchFn(targetEndpoint, {
         method: "POST",
         headers,
@@ -70,7 +85,7 @@ export function createHttpTransport(config: HttpTransportConfig): TransportFunct
       }
       if (response.status !== 200) {
         const bodyText = new TextDecoder().decode(
-          await readResponseBody(response, controller.signal),
+          await readResponseBody(response, controller.signal, 1024, true),
         );
         throw new ThriftHttpError(response.status, response.statusText, bodyText);
       }
@@ -92,7 +107,7 @@ export function createHttpTransport(config: HttpTransportConfig): TransportFunct
       return await Promise.race([send(), aborted]);
     } catch (error: unknown) {
       if (controller.signal.aborted) throw controller.signal.reason;
-      if (error instanceof ThriftError) throw error;
+      if (isThriftError(error)) throw error;
       const message = error instanceof Error ? error.message : String(error);
       throw new ThriftConnectionError(
         `Thrift HTTP request to ${targetEndpoint} failed: ${message}`,

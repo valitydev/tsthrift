@@ -1,18 +1,12 @@
-import { ThriftError } from "./thrift-error.ts";
+import { ThriftError, isThriftError } from "./thrift-error.ts";
 
-export { ThriftError } from "./thrift-error.ts";
-export {
-  THRIFT_EXCEPTION_INFO,
-  ThriftServiceError,
-  catchServiceError,
-  getThriftExceptionInfo,
-  isThriftServiceError,
-  normalizeThriftError,
-} from "./service-error.ts";
-export type { ThriftExceptionMeta } from "./service-error.ts";
+export { ThriftError, isThriftError } from "./thrift-error.ts";
+export type { ThriftCallContext } from "./thrift-error.ts";
+export { ThriftServiceError, catchServiceError, isThriftServiceError } from "./service-error.ts";
 
 /** Error raised when the server responds with a non-200 HTTP status code (e.g. 4xx or 5xx). */
 export class ThriftHttpError extends ThriftError {
+  public override name = "ThriftHttpError";
   public override readonly isSystem = true as const;
   public override readonly isService = false as const;
 
@@ -21,12 +15,14 @@ export class ThriftHttpError extends ThriftError {
     public readonly statusText: string,
     public readonly body?: string,
   ) {
-    super(`HTTP request failed with status ${status} ${statusText}${body ? `: ${body}` : ""}`);
+    super(`HTTP request failed with status ${status} ${statusText}`);
+    this.body = body?.slice(0, 1024);
   }
 }
 
 /** Error raised when a request exceeds its configured timeout duration. */
 export class ThriftTimeoutError extends ThriftError {
+  public override name = "ThriftTimeoutError";
   public override readonly isSystem = true as const;
   public override readonly isService = false as const;
 
@@ -40,6 +36,7 @@ export class ThriftTimeoutError extends ThriftError {
 
 /** Error raised when network connectivity fails (DNS lookup, connection refused, reset). */
 export class ThriftConnectionError extends ThriftError {
+  public override name = "ThriftConnectionError";
   public override readonly isSystem = true as const;
   public override readonly isService = false as const;
 
@@ -53,6 +50,7 @@ export class ThriftConnectionError extends ThriftError {
 
 /** Error raised when the response format violates protocol expectations (e.g. HTML returned). */
 export class ThriftProtocolError extends ThriftError {
+  public override name = "ThriftProtocolError";
   public override readonly isSystem = true as const;
   public override readonly isService = false as const;
 
@@ -63,6 +61,7 @@ export class ThriftProtocolError extends ThriftError {
 
 /** Error raised when the Thrift server returns a TApplicationException. */
 export class ThriftApplicationError extends ThriftError {
+  public override name = "ThriftApplicationError";
   public override readonly isSystem = true as const;
   public override readonly isService = false as const;
 
@@ -83,13 +82,7 @@ export type ThriftSystemError =
 
 /** Type guard checking if an error is a system/network/protocol Thrift failure. */
 export function isThriftSystemError(error: unknown): error is ThriftSystemError {
-  return (
-    error instanceof ThriftHttpError ||
-    error instanceof ThriftTimeoutError ||
-    error instanceof ThriftConnectionError ||
-    error instanceof ThriftProtocolError ||
-    error instanceof ThriftApplicationError
-  );
+  return isThriftError(error) && error.isSystem === true;
 }
 
 /**

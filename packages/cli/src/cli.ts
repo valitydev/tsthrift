@@ -3,7 +3,7 @@ import { parseArgs } from "node:util";
 import { generate } from "./compiler/generate.ts";
 import { parseI64Mode } from "./compiler/i64-mode.ts";
 
-const help = `Usage: tsthrift --input <path/glob> [options]
+const help = `Usage: tsthrift-cli --input <path/glob> [options]
 
 Generate metadata, TypeScript models, and service factories.
 

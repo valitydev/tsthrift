@@ -108,7 +108,7 @@ export function evaluateDefault(
               depth + 1,
             ),
           );
-        } else if (field.option !== "optional")
+        } else if (field.option === "required")
           throw new Error(`Missing metadata constant field ${field.name}`);
       }
     return Object.fromEntries(values);

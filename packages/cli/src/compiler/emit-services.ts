@@ -1,7 +1,10 @@
-import type { ValueType } from "@vality/tsthrift";
+import { resolveReference, resolveType } from "./resolve-type.ts";
 import type { Program } from "./load-schema.ts";
 import type { I64Mode } from "./i64-mode.ts";
-import type { BinaryTargetType } from "./emit-models.ts";
+import { lowerFirst, reservedWords } from "./identifiers.ts";
+import { tsType } from "./ts-type.ts";
+
+const serviceType = (name: string) => `models.${name}`;
 
 export interface EmittedServiceFile {
   programName: string;
@@ -9,30 +12,6 @@ export interface EmittedServiceFile {
   relativePath: string;
   content: string;
 }
-
-function serviceTsType(type: ValueType, i64: I64Mode, binary: BinaryTargetType): string {
-  if (typeof type !== "string") {
-    if (type.name === "map")
-      return `globalThis.Map<${serviceTsType(type.keyType, i64, binary)}, ${serviceTsType(type.valueType, i64, binary)}>`;
-    return type.name === "set"
-      ? `globalThis.Set<${serviceTsType(type.valueType, i64, binary)}>`
-      : `${serviceTsType(type.valueType, i64, binary)}[]`;
-  }
-  if (type === "void") return "void";
-  if (type === "string") return "string";
-  if (type === "bool") return "boolean";
-  if (type === "i64") return i64;
-  if (["byte", "i8", "i16", "i32", "double"].includes(type)) return "number";
-  if (type === "binary") return binary;
-  if (type === "uuid") return "string";
-  return `models.${type}`;
-}
-
-const reservedWords = new Set(
-  "await break case catch class const continue debugger default delete do else enum export extends false finally for function if import in instanceof new null return super switch this throw true try typeof var void while with yield let static implements interface package private protected public".split(
-    " ",
-  ),
-);
 
 function safeParamName(name: string): string {
   let safe = name;
@@ -42,14 +21,9 @@ function safeParamName(name: string): string {
   return safe;
 }
 
-function lowerFirst(str: string): string {
-  return str.length > 0 ? str.charAt(0).toLowerCase() + str.slice(1) : str;
-}
-
 export function emitProgramServices(
   program: Program,
   i64: I64Mode = "bigint",
-  binary: BinaryTargetType = "Uint8Array",
   lowerCaseMethods = false,
 ): EmittedServiceFile[] {
   const files: EmittedServiceFile[] = [];
@@ -78,6 +52,18 @@ export function emitProgramServices(
       }
     }
 
+    const allMethodNames = new Set<string>();
+    const collectMethods = (owner: Program, name: string): void => {
+      const definition = owner.ast.service![name]!;
+      if (definition.extends) {
+        const parent = resolveReference(owner, definition.extends);
+        collectMethods(parent.program, parent.name);
+      }
+      for (const method of Object.values(definition.functions)) {
+        allMethodNames.add(lowerCaseMethods ? lowerFirst(method.name) : method.name);
+      }
+    };
+    collectMethods(program, serviceName);
     const errorTypes: string[] = [];
     const errorMembers: string[] = [];
     const methods: string[] = [];
@@ -96,7 +82,7 @@ export function emitProgramServices(
       while (paramNames.has(optionsName)) optionsName = `_${optionsName}`;
       const parameters = [
         ...method.args.map(
-          (field) => `${safeParamName(field.name)}: ${serviceTsType(field.type, i64, binary)}`,
+          (field) => `${safeParamName(field.name)}: ${tsType(field.type, i64, serviceType)}`,
         ),
         `${optionsName}?: ThriftRequestOptions`,
       ].join(", ");
@@ -109,8 +95,11 @@ export function emitProgramServices(
       if (method.throws && method.throws.length > 0) {
         const serviceErrors = method.throws.map((field) => {
           const typeStr = typeof field.type === "string" ? field.type : "";
-          const typeName = typeStr.includes(".") ? typeStr.split(".").pop()! : typeStr;
-          const dataType = serviceTsType(field.type, i64, binary);
+          const resolved = resolveType(program, typeStr);
+          if (typeof resolved.type !== "string")
+            throw new TypeError("Expected exception type name");
+          const typeName = `${resolved.program.name}.${resolved.type}`;
+          const dataType = tsType(field.type, i64, serviceType);
           return `ThriftServiceError<${JSON.stringify(typeName)}, ${dataType}>`;
         });
         errorTypes.push(
@@ -121,7 +110,7 @@ export function emitProgramServices(
         errorTypes.push(`export type ${errorTypeName} = ThriftSystemError;`);
       }
 
-      const returnType = serviceTsType(method.type, i64, binary);
+      const returnType = tsType(method.type, i64, serviceType);
       methods.push(`  ${JSON.stringify(methodName)}(${parameters}): Promise<${returnType}>;`);
     }
 
@@ -132,7 +121,7 @@ export function emitProgramServices(
       "  THRIFT_RESULT,",
       "  createLazyMetadataClient,",
       "  type MetadataClientConfig,",
-      "  type ThriftRequestOptions,",
+      "  type RequestOptions as ThriftRequestOptions,",
       "  type ThriftResultClient,",
       "  type ThriftServiceDescriptor,",
       "  type ThriftServiceError,",
@@ -171,6 +160,7 @@ export function emitProgramServices(
       ` * Creates a service client for ${serviceName} that lazily initializes metadata and codecs.`,
       ` */`,
       `export function create${serviceName}(config: ${serviceName}Config): ${serviceName} {`,
+      `  if (!config) throw new TypeError("Expected service configuration");`,
       `  return createLazyMetadataClient<${serviceName}>({`,
       `    ...config,`,
       `    i64Mode: ${JSON.stringify(i64)},`,
@@ -178,7 +168,7 @@ export function emitProgramServices(
       `    namespace: ${JSON.stringify(program.name)},`,
       `    lowerCaseMethods: ${lowerCaseMethods},`,
       `    metadata: config.metadata ?? loadThriftMetadata,`,
-      `  });`,
+      `  }, ${JSON.stringify([...allMethodNames])});`,
       `}`,
       "",
       `/**`,
@@ -190,11 +180,6 @@ export function emitProgramServices(
       `  createService: create${serviceName},`,
       `  getMetadata: loadThriftMetadata,`,
       `};`,
-      "",
-      `/**`,
-      ` * Alias for ${serviceName} descriptor.`,
-      ` */`,
-      `export const ${serviceName}Descriptor: ThriftServiceDescriptor<${serviceName}, ${serviceName}Errors> = ${serviceName};`,
       "",
     );
 

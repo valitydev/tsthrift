@@ -10,6 +10,8 @@ import {
 } from "./wire.ts";
 
 /** Writes unframed, big-endian Thrift Binary Protocol messages. */
+const textEncoder = new TextEncoder();
+
 export class BinaryWriter {
   private bytes: Uint8Array;
   private view: DataView;
@@ -87,7 +89,7 @@ export class BinaryWriter {
 
   writeString(value: string): void {
     if (typeof value !== "string") throw new TypeError("Expected string");
-    this.writeBinary(new TextEncoder().encode(value));
+    this.writeBinary(textEncoder.encode(value));
   }
 
   writeUuid(value: string): void {

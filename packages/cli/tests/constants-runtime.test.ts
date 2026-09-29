@@ -40,7 +40,7 @@ test("emits executable referenced, structured, and nested collection constants",
     const set<common.State> STATES = [common.State.READY]
     const string FORWARD = LATER
     const string LATER = "resolved"
-    struct Empty {}
+    struct Empty { 1: string omitted }
     const Empty EMPTY = {}
   `);
   await writeFile(

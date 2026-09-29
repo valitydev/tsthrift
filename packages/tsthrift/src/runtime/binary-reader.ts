@@ -22,6 +22,8 @@ export interface BinaryReaderOptions {
 }
 
 /** Reads one complete unframed message; streaming belongs to the transport. */
+const textDecoder = new TextDecoder();
+
 export class BinaryReader {
   private readonly view: DataView;
   private offset = 0;
@@ -90,7 +92,9 @@ export class BinaryReader {
   }
 
   readString(): string {
-    return new TextDecoder().decode(this.readBinary());
+    const size = this.readI32();
+    const start = this.take(size);
+    return textDecoder.decode(this.bytes.subarray(start, start + size));
   }
 
   readUuid(): string {
@@ -110,7 +114,7 @@ export class BinaryReader {
     } else {
       if (this.strictRead) throw new Error("Missing binary protocol version");
       const start = this.take(header);
-      name = new TextDecoder().decode(this.bytes.subarray(start, start + header));
+      name = textDecoder.decode(this.bytes.subarray(start, start + header));
       type = this.readByte();
     }
     assertMessageType(type);

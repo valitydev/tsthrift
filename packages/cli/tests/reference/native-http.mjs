@@ -43,7 +43,8 @@ const server = http.createServer(async (req, res) => {
     })(Buffer.concat(chunks));
   } catch (error) {
     res.writeHead(500);
-    res.end(String(error));
+    console.error(error);
+    res.end("internal error");
   }
 });
 await new Promise((resolve, reject) => {

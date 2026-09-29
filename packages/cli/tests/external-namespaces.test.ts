@@ -4,12 +4,12 @@ import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, test } from "vite-plus/test";
+import { generate } from "../src/index.ts";
 import {
-  generate,
   inferPackageName,
   normalizeExternalNamespaces,
   parseExternalArgument,
-} from "../src/index.ts";
+} from "../src/compiler/external-namespaces.ts";
 
 const execute = promisify(execFile);
 const cliBin = path.resolve(import.meta.dirname, "../dist/cli.mjs");
@@ -214,6 +214,16 @@ describe("external namespaces code generation", () => {
 
   test("bundles output without inlining external packages", async () => {
     const { dir, protoDir, depDir, output } = await createFixture();
+    const pkg = path.join(dir, "node_modules/@vality/base-proto");
+    await mkdir(pkg, { recursive: true });
+    await writeFile(
+      path.join(pkg, "package.json"),
+      JSON.stringify({ type: "module", exports: { "./base": { import: "./base.mjs" } } }),
+    );
+    await writeFile(
+      path.join(pkg, "base.mjs"),
+      'export const TSTHRIFT_BUILD = {metadataVersion: 1, i64: "bigint", lowerCaseMethods: false};',
+    );
     const dist = path.join(dir, "dist");
 
     const result = await generate({

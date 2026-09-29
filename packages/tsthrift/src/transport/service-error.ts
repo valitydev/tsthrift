@@ -1,20 +1,4 @@
-import { ThriftError } from "./thrift-error.ts";
-
-export const THRIFT_EXCEPTION_INFO: unique symbol = Symbol.for("tsthrift.exception");
-
-export interface ThriftExceptionMeta {
-  type: string;
-  fieldName: string;
-}
-
-export function getThriftExceptionInfo(error: unknown): ThriftExceptionMeta | undefined {
-  if (error && typeof error === "object") {
-    return (error as Record<symbol, unknown>)[THRIFT_EXCEPTION_INFO] as
-      | ThriftExceptionMeta
-      | undefined;
-  }
-  return undefined;
-}
+import { ThriftError, isThriftError } from "./thrift-error.ts";
 
 /** Error raised when a Thrift RPC returns a declared service exception. */
 export class ThriftServiceError<
@@ -43,11 +27,6 @@ export class ThriftServiceError<
         });
       }
     }
-    Object.defineProperty(this, THRIFT_EXCEPTION_INFO, {
-      value: { type, fieldName },
-      enumerable: false,
-      configurable: true,
-    });
   }
 }
 
@@ -56,8 +35,8 @@ export function isThriftServiceError<TType extends string = string, TData extend
   error: unknown,
   expectedType?: TType,
 ): error is ThriftServiceError<TType, TData> {
-  if (error instanceof ThriftServiceError) {
-    return expectedType === undefined || (error.type as string) === expectedType;
+  if (isThriftError(error) && error.isService === true) {
+    return expectedType === undefined || (error as ThriftServiceError).type === expectedType;
   }
   return false;
 }
@@ -86,18 +65,8 @@ export function catchServiceError<TError extends ThriftServiceError = ThriftServ
   const handler =
     typeof expectedTypeOrHandler === "function" ? expectedTypeOrHandler : maybeHandler!;
 
-  error = normalizeThriftError(error);
-  if (isThriftServiceError<any, any>(error, expectedType)) {
+  if (isThriftServiceError(error, expectedType)) {
     return handler(error as TError);
   }
   return undefined;
-}
-
-/** Wraps tagged RPC payloads while preserving existing wrappers and unrelated errors. */
-export function normalizeThriftError(error: unknown): unknown {
-  if (error instanceof ThriftServiceError) return error;
-  const info = getThriftExceptionInfo(error);
-  return info && error && typeof error === "object"
-    ? new ThriftServiceError(info.type, info.fieldName, error)
-    : error;
 }

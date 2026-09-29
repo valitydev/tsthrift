@@ -1,10 +1,5 @@
 import { type Observable, type ObservableInput, catchError, throwError } from "rxjs";
-import {
-  type ThriftError,
-  type ThriftServiceError,
-  isThriftServiceError,
-  normalizeThriftError,
-} from "@vality/tsthrift";
+import { type ThriftError, type ThriftServiceError, isThriftServiceError } from "@vality/tsthrift";
 
 /**
  * RxJS operator that catches a specific declared Thrift service error by name and routes it to a handler.
@@ -37,9 +32,8 @@ export function catchThriftError(...args: any[]): any {
     return (source$: Observable<any>) =>
       source$.pipe(
         catchError((error) => {
-          const normalized = normalizeThriftError(error);
-          if (isThriftServiceError(normalized, name)) {
-            return handler(normalized);
+          if (isThriftServiceError(error, name)) {
+            return handler(error);
           }
           return throwError(() => error);
         }),
@@ -50,11 +44,10 @@ export function catchThriftError(...args: any[]): any {
     return (source$: Observable<any>) =>
       source$.pipe(
         catchError((error) => {
-          const normalized = normalizeThriftError(error);
-          if (isThriftServiceError(normalized) && Object.hasOwn(handlers, normalized.type)) {
-            const handler = handlers[normalized.type];
+          if (isThriftServiceError(error) && Object.hasOwn(handlers, error.type)) {
+            const handler = handlers[error.type];
             if (typeof handler === "function") {
-              return handler(normalized);
+              return handler(error);
             }
           }
           return throwError(() => error);
@@ -63,13 +56,7 @@ export function catchThriftError(...args: any[]): any {
   }
   if (typeof args[0] === "function") {
     const handler = args[0];
-    return (source$: Observable<any>) =>
-      source$.pipe(catchError((error) => handler(normalizeThriftError(error))));
+    return (source$: Observable<any>) => source$.pipe(catchError((error) => handler(error)));
   }
   throw new TypeError("Invalid arguments passed to catchThriftError");
 }
-
-/**
- * Alias for catchThriftError supporting typed error handling in RxJS.
- */
-export const catchTypedError: typeof catchThriftError = catchThriftError;

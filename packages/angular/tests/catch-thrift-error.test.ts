@@ -1,3 +1,4 @@
+import { wrapObservableClient } from "../src/observable-client.ts";
 import { expect, expectTypeOf, test } from "vite-plus/test";
 import { type Observable, firstValueFrom, of, throwError } from "rxjs";
 import {
@@ -8,7 +9,7 @@ import {
   ThriftServiceError,
   createMetadataClient,
 } from "@vality/tsthrift";
-import { catchThriftError, catchThriftResult, toObservableClient } from "../src/index.ts";
+import { catchThriftError, catchThriftResult } from "../src/index.ts";
 
 const metadata: Metadata[] = [
   {
@@ -51,22 +52,22 @@ test("normalizes decoded RPC exceptions for all handler overloads", async () => 
       return writer.finish();
     },
   });
-  const observable = toObservableClient(client);
+  const observable = wrapObservableClient(client);
   const result = await firstValueFrom(observable.get().pipe(catchThriftResult()));
   expect(result.error).toBeInstanceOf(ThriftServiceError);
   expect((result.error as ThriftServiceError).data).toEqual({ reason: "gone" });
 
-  const handler = (error: ThriftServiceError<"Missing", { reason: string }>) => {
+  const handler = (error: ThriftServiceError<"test.Missing", { reason: string }>) => {
     expect(error).toBeInstanceOf(ThriftServiceError);
-    expect(error.type).toBe("Missing");
+    expect(error.type).toBe("test.Missing");
     expect(error.isService).toBe(true);
     return of(error.data.reason);
   };
   await expect(
-    firstValueFrom(observable.get().pipe(catchThriftError("Missing", handler))),
+    firstValueFrom(observable.get().pipe(catchThriftError("test.Missing", handler))),
   ).resolves.toBe("gone");
   await expect(
-    firstValueFrom(observable.get().pipe(catchThriftError({ Missing: handler }))),
+    firstValueFrom(observable.get().pipe(catchThriftError({ "test.Missing": handler }))),
   ).resolves.toBe("gone");
   await expect(firstValueFrom(observable.get().pipe(catchThriftError(handler)))).resolves.toBe(
     "gone",

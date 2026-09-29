@@ -1,5 +1,5 @@
 import { expect, test, vi } from "vite-plus/test";
-import { createLazyMetadataClient, createMetadataClient } from "../src/metadata/client.ts";
+import { createLazyMetadataClient, createMetadataClient } from "../src/index.ts";
 import { THRIFT_RESULT, toThriftResult } from "../src/index.ts";
 import { MetadataIndex } from "../src/metadata/index.ts";
 import { MetadataCodecs } from "../src/metadata/codecs.ts";
@@ -143,24 +143,27 @@ test("resolves container typedefs in their defining module and relative includes
 test("createLazyMetadataClient returns client synchronously and resolves on first call", async () => {
   const metadata = schema();
   const loader = vi.fn(async () => ({ default: metadata }));
-  const client = createLazyMetadataClient<{ next: (n: bigint) => Promise<bigint> }>({
-    endpoint: "unused",
-    namespace: "example",
-    serviceName: "Example",
-    metadata: loader,
-    transport: async (bytes) => {
-      const reader = new BinaryReader(bytes);
-      const header = reader.readMessageBegin();
-      reader.readFieldBegin();
-      const val = reader.readI64();
-      const writer = new BinaryWriter();
-      writer.writeMessageBegin("next", MessageType.Reply, header.sequenceId);
-      writer.writeFieldBegin(10, 0);
-      writer.writeI64(val * 2n);
-      writer.writeFieldStop();
-      return writer.finish();
+  const client = createLazyMetadataClient<{ next: (n: bigint) => Promise<bigint> }>(
+    {
+      endpoint: "unused",
+      namespace: "example",
+      serviceName: "Example",
+      metadata: loader,
+      transport: async (bytes) => {
+        const reader = new BinaryReader(bytes);
+        const header = reader.readMessageBegin();
+        reader.readFieldBegin();
+        const val = reader.readI64();
+        const writer = new BinaryWriter();
+        writer.writeMessageBegin("next", MessageType.Reply, header.sequenceId);
+        writer.writeFieldBegin(10, 0);
+        writer.writeI64(val * 2n);
+        writer.writeFieldStop();
+        return writer.finish();
+      },
     },
-  });
+    ["next"],
+  );
 
   // Not a Thenable:
   expect((client as any).then).toBeUndefined();

@@ -1,6 +1,6 @@
 import { THRIFT_METHOD_ARGUMENT_COUNT, THRIFT_METHOD_RESULT } from "./method-arguments.ts";
 import type { Metadata } from "../metadata/types.ts";
-import { type ThriftError, normalizeThriftError } from "./errors.ts";
+import type { ThriftError } from "./errors.ts";
 
 /** Result type for safe RPC calls in openapi-fetch style. */
 export type ThriftResult<TData, TError = ThriftError> =
@@ -42,6 +42,8 @@ export interface HttpTransportConfig {
   timeoutMs?: number;
   /** Custom fetch implementation or framework adapter (e.g. Angular HttpClient). */
   fetch?: typeof fetch;
+  /** Include argument and response payloads in logs. Headers are never included. */
+  logPayloads?: boolean;
   /** Optional logging callback invoked on RPC call lifecycle (call, success, error). */
   loggingFn?: (params: ThriftLogParams) => void;
   /** Automatically add service routing header (e.g. 'service: <ServiceName>' if true or custom header name). */
@@ -56,6 +58,9 @@ export interface ThriftLogParams {
   name: string;
   serviceName: string;
   namespace?: string;
+  sequenceId?: number;
+  durationMs?: number;
+  traceId?: string;
   args?: unknown[];
   headers?: Record<string, string>;
   response?: unknown;
@@ -77,19 +82,23 @@ export interface RequestOptions {
 }
 
 /** Alias for RequestOptions with Thrift namespace prefix to avoid identifier collisions. */
-export type ThriftRequestOptions = RequestOptions;
 
 /** Unique symbol used for phantom service error map property. */
-export const THRIFT_ERRORS: unique symbol = Symbol("THRIFT_ERRORS");
+export const THRIFT_ERRORS: unique symbol = Symbol.for("@vality/tsthrift/errors");
 
 /** Unique symbol used to access typed non-throwing Result client on service instance. */
-export const THRIFT_RESULT: unique symbol = Symbol("THRIFT_RESULT");
+export const THRIFT_RESULT: unique symbol = Symbol.for("@vality/tsthrift/result");
 
 /**
  * Maps a service client's methods to methods returning Promise<ThriftResult<Data, MethodError>>.
  * Preserves parameter types and automatically infers precise method errors from THRIFT_ERRORS.
  */
 export type ThriftResultClient<TClient extends object> = {
+  readonly [THRIFT_METHOD_RESULT]: true;
+  readonly [THRIFT_ERRORS]?: TClient extends { readonly [THRIFT_ERRORS]?: infer Errors }
+    ? Errors
+    : Record<string, ThriftError>;
+} & {
   [K in keyof TClient as K extends symbol ? never : K]: TClient[K] extends (
     ...args: infer Args
   ) => Promise<infer R>
@@ -115,7 +124,7 @@ async function toThriftResultPromise<TData, TError = ThriftError>(
     const data = await promise;
     return { data, error: undefined };
   } catch (error) {
-    return { data: undefined, error: normalizeThriftError(error) as TError };
+    return { data: undefined, error: error as TError };
   }
 }
 
@@ -140,6 +149,7 @@ export function toThriftResult(target: any): any {
   }
   return new Proxy(target, {
     get(client, prop, receiver) {
+      if (prop === THRIFT_METHOD_RESULT) return true;
       const orig = Reflect.get(client, prop, receiver);
       if (typeof orig === "function") {
         const call = (...args: unknown[]) => toThriftResultPromise(orig.apply(client, args));
@@ -169,7 +179,7 @@ export interface ThriftServiceDescriptor<TService = unknown, TErrors = any> {
   /** IDL namespace or module name. */
   namespace: string;
   /** Factory creating typed Thrift service proxy instance. */
-  createService: (config?: any) => TService;
+  createService: (config: HttpTransportConfig) => TService;
   /** Lazy loader returning parsed schema metadata. */
   getMetadata: () => Promise<Metadata[]>;
   /** Phantom type property carrying method error map for inference. */

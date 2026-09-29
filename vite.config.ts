@@ -4,7 +4,29 @@ export default defineConfig({
   fmt: {},
   lint: {
     options: { typeAware: true, typeCheck: true },
+    overrides: [
+      {
+        files: ["packages/tsthrift/src/**/*.ts"],
+        rules: {
+          "no-restricted-imports": ["error", { patterns: ["node:*", "buffer", "process"] }],
+          "no-restricted-globals": [
+            "error",
+            "Buffer",
+            "process",
+            "require",
+            "__dirname",
+            "__filename",
+          ],
+        },
+      },
+      {
+        files: ["packages/cli/src/**", "**/tests/**", "scripts/**"],
+        rules: { "no-console": "off" },
+      },
+    ],
     rules: {
+      "typescript/no-explicit-any": "warn",
+      "no-console": "error",
       "sort-imports": [
         "error",
         {

@@ -89,7 +89,7 @@ try {
     } catch (error) {
       serverErrors.push(error);
       res.writeHead(500);
-      res.end(String(error));
+      res.end("internal error");
     }
   });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));

@@ -31,7 +31,7 @@ export async function runBrowserSmoke() {
   const angularFetch = createHttpClientFetch(http);
   const bytes = new Uint8Array([0, 128, 255]);
   for (const fetch of [globalThis.fetch, angularFetch]) {
-    for (const i64Mode of ["number", "bigint"] as const) {
+    for (const i64Mode of ["number"] as const) {
       const client = await createMetadataClient({
         metadata: () => Example.getMetadata(),
         namespace: "example",
@@ -50,6 +50,19 @@ export async function runBrowserSmoke() {
       );
     }
   }
+  let mismatch: unknown;
+  try {
+    await createMetadataClient({
+      metadata: () => Example.getMetadata(),
+      namespace: "example",
+      serviceName: "Example",
+      endpoint,
+      i64Mode: "bigint",
+    });
+  } catch (error) {
+    mismatch = error;
+  }
+  check(mismatch instanceof TypeError, "i64 mode mismatch was not rejected");
   const injector = createEnvironmentInjector(
     [
       provideThriftConfig({ endpoint, fetch: angularFetch, headers: { authorization: "new" } }),

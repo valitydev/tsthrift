@@ -135,7 +135,7 @@ for (const failure of [
 ]) {
   variant = failure;
   await assert.rejects(client.exchange(input, "callback data", 7, options), (error) => {
-    if (failure === "declared") assert.deepEqual(error, { reason: "declared failure" });
+    if (failure === "declared") assert.deepEqual(error.data, { reason: "declared failure" });
     else if (failure === "application") {
       assert.ok(error instanceof ThriftApplicationError);
       assert.equal(error.code, 6);

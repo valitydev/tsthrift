@@ -8,24 +8,22 @@ import {
   createWoodyHeaderProvider,
   createWoodyHeaders,
   generateId,
-  generateTraceId,
   resolveWoodyHeaders,
 } from "../src/index.ts";
 
 describe("Woody headers", () => {
-  test("generateId produces a valid base64-encoded 64-bit Flake ID", () => {
+  test("generateId produces a valid base64-encoded 64-bit ID", () => {
     const id = generateId();
-    expect(generateTraceId).toBe(generateId);
     expect(typeof id).toBe("string");
     // 64-bit Big-Endian number encoded in base-64 has 11 chars
-    expect(id.length).toBe(11);
-    expect(id).toMatch(/^[A-Za-z0-9+/]{11}$/);
+    expect(id.length).toBeLessThanOrEqual(11);
+    expect(id).toMatch(/^[A-Za-z0-9+/]{8,11}$/);
 
     const decoded = bs64.decode(id);
     expect(decoded.length).toBe(8);
   });
 
-  test("generateId generates unique, monotonically increasing IDs", () => {
+  test("generateId generates unique IDs", () => {
     const ids = Array.from({ length: 100 }, () => generateId());
     const unique = new Set(ids);
     expect(unique.size).toBe(100);

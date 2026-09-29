@@ -6,7 +6,7 @@ Pure TypeScript compiler and code generator for Apache Thrift IDL files.
 
 ## Features
 
-- **Pure TypeScript compiler:** Built with `@vality/tsthrift` and a TypeScript IDL parser; runs anywhere Node.js runs.
+- **Pure TypeScript compiler:** Built with `@vality/tsthrift` and a TypeScript IDL parser; requires Node.js ^24.11 or >=26.
 - **TypeScript model generation:** Generates precise interfaces for structs, unions, exceptions, consts, and enums.
 - **Modular split metadata:** Emits lightweight per-namespace metadata modules and local `load-metadata.ts` loaders that lazily load transitive includes on demand.
 - **Service factories & registry:** Generates typed service client factories (`create<Service>`) and registry descriptors (`THRIFT_SERVICES`, `THRIFT_SERVICES_LIST`) compatible with Angular and pure TypeScript.
@@ -216,3 +216,17 @@ when installing dependencies.
 ## License
 
 Apache-2.0
+
+## Generated package compatibility
+
+Every generated root/namespace exports `TSTHRIFT_BUILD` with `metadataVersion`, `i64`,
+and `lowerCaseMethods`. Bundling verifies installed external packages against this marker
+using Node ESM resolution. Plain source generation does not require installed dependencies;
+runtime metadata initialization also rejects incompatible generated settings.
+Regenerate external packages missing the marker before bundling them together.
+Metadata JSON retains the legacy array/AST shape and adds `metadataVersion: 1`.
+The runtime accepts unversioned legacy metadata but rejects unsupported explicit versions.
+
+Only explicit `required` fields and fields with concrete defaults are emitted as required
+properties. Declared exception types use qualified module names. Published output is ESM-only;
+use TypeScript 5.1+ with `node16`, `nodenext`, or `bundler` resolution. Bundles are unminified.

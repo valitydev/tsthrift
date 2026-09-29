@@ -2,6 +2,7 @@ import { defineConfig } from "vite-plus";
 
 export default defineConfig({
   pack: {
+    deps: { neverBundle: ["@vality/tsthrift"] },
     entry: ["src/index.ts", "src/cli.ts"],
     dts: {
       tsgo: {},

@@ -29,6 +29,11 @@ export interface FlakeIdOptions {
   worker?: number;
   epoch?: number;
   seqMask?: number;
+  /**
+   * Reproduce upstream flake-idgen failure semantics: throw when the clock moves backwards
+   * or the per-millisecond sequence is exhausted. By default `next()` never throws.
+   */
+  strict?: boolean;
 }
 
 /**
@@ -42,6 +47,7 @@ export class FlakeId {
   private seq = 0;
   private lastTime = 0;
   private overflow = false;
+  private readonly strict: boolean;
 
   constructor(options: FlakeIdOptions = {}) {
     const id =
@@ -51,9 +57,31 @@ export class FlakeId {
     this.genId = id << 12;
     this.epoch = Number(options.epoch) || 0;
     this.seqMask = options.seqMask || 0xfff;
+    this.strict = options.strict ?? false;
   }
 
   next(): Uint8Array {
+    return this.strict ? this.nextStrict() : this.nextMonotonic();
+  }
+
+  /**
+   * Never throws: a backwards clock keeps the last timestamp, and an exhausted sequence
+   * borrows the next millisecond. (time, seq) strictly increases, so IDs stay unique and
+   * ordered while the bit layout matches flake-idgen.
+   */
+  private nextMonotonic(): Uint8Array {
+    let time = Math.max(Date.now() - this.epoch, this.lastTime);
+    if (time === this.lastTime) {
+      this.seq = (this.seq + 1) & this.seqMask;
+      if (this.seq === 0) time += 1;
+    } else {
+      this.seq = 0;
+    }
+    this.lastTime = time;
+    return this.encode(time);
+  }
+
+  private nextStrict(): Uint8Array {
     const time = Date.now() - this.epoch;
     if (time < this.lastTime) {
       throw new Error(
@@ -74,7 +102,10 @@ export class FlakeId {
       this.seq = 0;
     }
     this.lastTime = time;
+    return this.encode(time);
+  }
 
+  private encode(time: number): Uint8Array {
     const big = (BigInt(time) << 22n) | BigInt(this.genId) | BigInt(this.seq);
     const bytes = new Uint8Array(8);
     new DataView(bytes.buffer).setBigUint64(0, big);
@@ -86,16 +117,11 @@ export const bs64: ReturnType<typeof baseX> = baseX(BASE64_ALPHABET);
 export const defaultFlake: FlakeId = new FlakeId();
 
 /**
- * Generates a unique ID using FlakeId and encodes it in base64.
+ * Generates a 64-bit Flake ID (backend-compatible layout) encoded in the legacy base64 alphabet.
  *
- * Is used for generating unique identifiers for
- * tracing requests, like span IDs and trace IDs.
+ * Used for tracing identifiers such as span IDs and trace IDs. Never throws: clock rollback
+ * and per-millisecond sequence exhaustion are absorbed by the default generator.
  *
  * @returns {string} - The base64-encoded unique ID.
  */
 export const generateId = (): string => bs64.encode(defaultFlake.next());
-
-/**
- * Alias for generateId for Woody RPC tracing.
- */
-export const generateTraceId: typeof generateId = generateId;

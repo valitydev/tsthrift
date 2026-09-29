@@ -135,7 +135,14 @@ export async function prepareConformance(directory: string) {
     (javacVersionRes.stdout || javacVersionRes.stderr).split("\n")[0]?.trim() ?? "unknown";
 
   const checkout = path.join(directory, "damsel");
-  const targetRevision = process.env.DAMSEL_REVISION?.trim();
+  const targetRevision =
+    process.env.DAMSEL_REVISION?.trim() ||
+    (
+      await readFile(
+        path.resolve(import.meta.dirname, "../../../../../.github/damsel-revision"),
+        "utf8",
+      )
+    ).trim();
   if (targetRevision) {
     await run("git", ["init", checkout]);
     await run("git", [

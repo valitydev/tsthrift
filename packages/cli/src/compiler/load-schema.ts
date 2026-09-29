@@ -1,3 +1,4 @@
+import { validateThriftAst } from "@vality/tsthrift";
 import { glob, lstat, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import parse from "thrift-parser";
@@ -115,7 +116,9 @@ export async function loadSchema(
     filenames.set(name, filename);
     let ast: ThriftAst;
     try {
-      ast = parse(await readFile(filename, "utf8")) as unknown as ThriftAst;
+      const parsed: unknown = parse(await readFile(filename, "utf8"));
+      validateThriftAst(parsed);
+      ast = parsed;
     } catch (cause) {
       throw new Error(`Cannot parse ${filename}: ${String(cause)}`, { cause });
     }

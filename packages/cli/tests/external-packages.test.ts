@@ -55,13 +55,23 @@ test.each([
         name: "base-proto",
         type: "module",
         exports: {
-          ".": "./dist/index.mjs",
-          "./base": "./dist/base/index.mjs",
-          "./common": "./dist/common/index.mjs",
+          ".": { import: "./dist/index.mjs" },
+          "./base": { import: "./dist/base/index.mjs" },
+          "./common": { import: "./dist/common/index.mjs" },
         },
       }),
     );
     const dist = path.join(dir, "dist");
+    await expect(
+      generate({
+        input: child,
+        output: path.join(dir, "mismatched"),
+        bundle: true,
+        dist: path.join(dir, "mismatched-dist"),
+        i64: i64 === "bigint" ? "number" : "bigint",
+        external: { base: importPath, common: "base-proto/common" },
+      }),
+    ).rejects.toThrow("Incompatible or missing TSTHRIFT_BUILD");
     await generate({
       input: child,
       i64,

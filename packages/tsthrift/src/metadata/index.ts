@@ -1,4 +1,5 @@
-import type { Field, Metadata, Method, Service, ValueType } from "./types.ts";
+import { validateThriftAst } from "./validate-ast.ts";
+import type { Field, Metadata, Method, ValueType } from "./types.ts";
 
 export type ResolvedEntity =
   | { kind: "primitive"; type: string }
@@ -25,10 +26,32 @@ export class MetadataIndex {
 
   constructor(metadata: Metadata[] = []) {
     for (const item of metadata) {
+      if (
+        !item ||
+        typeof item.name !== "string" ||
+        !item.name ||
+        typeof item.path !== "string" ||
+        !item.path
+      )
+        throw new TypeError("Invalid metadata module identity");
+      if (item.metadataVersion !== undefined && item.metadataVersion !== 1)
+        throw new TypeError("Unsupported metadata version");
+      validateThriftAst(item.ast);
       if (this.byNamespace.has(item.name) || this.byPath.has(item.path))
         throw new Error(`Duplicate metadata module: ${item.name} (${item.path})`);
       this.byNamespace.set(item.name, item);
       this.byPath.set(item.path, item);
+    }
+  }
+
+  validateBuild(i64: "bigint" | "number", lowerCaseMethods: boolean): void {
+    for (const item of this.byNamespace.values()) {
+      if (
+        item.build &&
+        (item.build.i64 !== i64 || item.build.lowerCaseMethods !== lowerCaseMethods)
+      ) {
+        throw new TypeError(`Incompatible generated settings for ${item.name}`);
+      }
     }
   }
 
@@ -61,22 +84,24 @@ export class MetadataIndex {
       return { kind: "primitive", type: rawType };
     }
 
-    const typedef = meta.ast.typedef?.[name];
+    const typedef = Object.hasOwn(meta.ast.typedef ?? {}, name)
+      ? meta.ast.typedef![name]
+      : undefined;
     if (typedef) {
       return this.resolveType(typedef.type, namespace, seen);
     }
 
-    if (meta.ast.enum?.[name]) {
+    if (Object.hasOwn(meta.ast.enum ?? {}, name)) {
       return { kind: "enum", namespace, name };
     }
-    if (meta.ast.struct?.[name]) {
-      return { kind: "struct", namespace, name, fields: meta.ast.struct[name] };
+    if (Object.hasOwn(meta.ast.struct ?? {}, name)) {
+      return { kind: "struct", namespace, name, fields: meta.ast.struct![name]! };
     }
-    if (meta.ast.union?.[name]) {
-      return { kind: "union", namespace, name, fields: meta.ast.union[name] };
+    if (Object.hasOwn(meta.ast.union ?? {}, name)) {
+      return { kind: "union", namespace, name, fields: meta.ast.union![name]! };
     }
-    if (meta.ast.exception?.[name]) {
-      return { kind: "exception", namespace, name, fields: meta.ast.exception[name] };
+    if (Object.hasOwn(meta.ast.exception ?? {}, name)) {
+      return { kind: "exception", namespace, name, fields: meta.ast.exception![name]! };
     }
 
     return { kind: "primitive", type: rawType };
@@ -102,25 +127,7 @@ export class MetadataIndex {
         return { namespace: targetMeta.name, name: actualName };
       }
     }
-    return { namespace: prefix, name: actualName };
-  }
-
-  findService(
-    serviceName: string,
-    preferredNamespace?: string,
-  ): { namespace: string; service: Service } | undefined {
-    if (preferredNamespace) {
-      const meta = this.byNamespace.get(preferredNamespace);
-      if (meta?.ast.service?.[serviceName]) {
-        return { namespace: preferredNamespace, service: meta.ast.service[serviceName]! };
-      }
-    }
-    for (const [ns, meta] of this.byNamespace.entries()) {
-      if (meta.ast.service?.[serviceName]) {
-        return { namespace: ns, service: meta.ast.service[serviceName]! };
-      }
-    }
-    return undefined;
+    throw new Error(`Unknown include ${prefix} in ${currentNamespace}`);
   }
 
   getMethod(

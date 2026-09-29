@@ -1,14 +1,5 @@
 import type { Schema } from "./load-schema.ts";
-
-const reserved = new Set(
-  "await break case catch class const continue debugger default delete do else enum export extends false finally for function if import in instanceof new null return super switch this throw true try typeof var void while with yield let static implements interface package private protected public".split(
-    " ",
-  ),
-);
-
-function lowerFirst(str: string): string {
-  return str.length > 0 ? str.charAt(0).toLowerCase() + str.slice(1) : str;
-}
+import { lowerFirst, reservedWords } from "./identifiers.ts";
 
 /** Rejects names that would overwrite generated paths or collide in public barrels. */
 export function validateOutput(schema: Schema, services: boolean, lowerCaseMethods = false): void {
@@ -19,12 +10,13 @@ export function validateOutput(schema: Schema, services: boolean, lowerCaseMetho
       throw new Error(`Generated module path collision: ${program.name}`);
     modules.add(program.name.toLowerCase());
     if (
-      reserved.has(program.name) ||
+      reservedWords.has(program.name) ||
       ["loadThriftMetadata", "THRIFT_SERVICES", "THRIFT_SERVICES_LIST"].includes(program.name)
     ) {
       throw new Error(`Module name collides with generated export: ${program.name}`);
     }
     const names = new Set<string>([
+      "TSTHRIFT_BUILD",
       "globalThis",
       "TextEncoder",
       "Promise",
@@ -34,7 +26,7 @@ export function validateOutput(schema: Schema, services: boolean, lowerCaseMetho
       "THRIFT_SERVICES_LIST",
     ]);
     const add = (name: string) => {
-      if (reserved.has(name) || names.has(name))
+      if (reservedWords.has(name) || names.has(name))
         throw new Error(`Generated identifier collision: ${program.name}.${name}`);
       names.add(name);
     };
@@ -48,13 +40,7 @@ export function validateOutput(schema: Schema, services: boolean, lowerCaseMetho
       if (paths.has(name.toLowerCase()))
         throw new Error(`Generated service path collision: ${program.name}.${name}`);
       paths.add(name.toLowerCase());
-      for (const generated of [
-        name,
-        `${name}Errors`,
-        `${name}Config`,
-        `${name}Descriptor`,
-        `create${name}`,
-      ]) {
+      for (const generated of [name, `${name}Errors`, `${name}Config`, `create${name}`]) {
         add(generated);
       }
       if (

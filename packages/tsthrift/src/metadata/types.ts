@@ -37,6 +37,9 @@ export interface ThriftAst {
 }
 
 export interface Metadata {
+  /** Missing only for legacy metadata; newly emitted metadata uses version 1. */
+  metadataVersion?: 1;
+  build?: { i64: I64Mode; lowerCaseMethods: boolean };
   path: string;
   name: string;
   ast: ThriftAst;

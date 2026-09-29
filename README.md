@@ -38,22 +38,17 @@ The factory reserves the method names `then` and `promise` to avoid Promise assi
 ## Monorepo packages
 
 - `@vality/tsthrift`: Zero-framework core runtime, Binary Protocol, metadata client, and HTTP transport.
-- `@vality/tsthrift-angular`: Angular dependency injection, providers (`provideThriftServices`, `provideThriftService`), and RxJS adapters (`toObservableClient`, `deferThriftCall`).
+- `@vality/tsthrift-angular`: Angular dependency injection, providers (`provideThriftServices`, `provideThriftService`), and Promise/Observable service factories (`createPromiseService`, `createObservableService`).
 - `@vality/tsthrift-cli`: Pure TypeScript compiler generating models, modular metadata, and framework-agnostic service factories.
 
 ## Framework-agnostic Promise client
 
-Core and Angular bundles target ES2023 for modern Chrome, Firefox, and Safari. TypeScript checks use ES2023 APIs plus DOM types for browser packages; polyfills are not included. The CLI requires Node.js 24 or newer. Published modules use strict ESM with NodeNext resolution.
+Core and Angular bundles target ES2023 for modern Chrome, Firefox, and Safari. TypeScript checks use ES2023 APIs plus DOM types for browser packages; polyfills are not included. The CLI requires Node.js 24.11 or newer within a supported Node release. Published modules use strict ESM with NodeNext resolution.
 
-Generated service clients and runtime clients are pure TypeScript and work in any environment (Node.js, browsers, React, Vue, Web Workers) using standard Web APIs (`fetch`, `AbortSignal`, Promises):
+Generated service clients and runtime clients are pure TypeScript and work in supported environments (Node.js, browsers, React, Vue, Web Workers) using standard Web APIs (`fetch`, `AbortSignal`, Promises):
 
 ```ts
-import {
-  createWoodyHeaders,
-  isThriftServiceError,
-  isThriftSystemError,
-  normalizeThriftError,
-} from "@vality/tsthrift";
+import { createWoodyHeaders, isThriftServiceError, isThriftSystemError } from "@vality/tsthrift";
 import { createPaymentProcessing } from "./generated/payment_processing/index.js";
 
 // 1. Initialize client with tracing and default timeout
@@ -72,11 +67,10 @@ try {
     headers: { "X-Request-Id": "req-123" },
   });
   console.log("Payment received:", payment);
-} catch (cause) {
-  const err = normalizeThriftError(cause);
+} catch (err) {
   if (err instanceof Error && err.name === "AbortError") {
     console.warn("Request was aborted");
-  } else if (isThriftServiceError(err, "PaymentNotFound")) {
+  } else if (isThriftServiceError(err, "payment_processing.PaymentNotFound")) {
     // Declared Thrift IDL service exception with typed payload
     console.warn("Payment not found:", err.data);
   } else if (isThriftSystemError(err)) {
@@ -182,12 +176,28 @@ When running `npm run build`, `tsthrift-cli` generates clean source code in `./g
 
 Values are plain objects, Map (including struct keys), Set, arrays, and Uint8Array for binary.
 Optional empty structs remain present. Bigint preserves signed i64; number mode rejects unsafe
-values. Declared exceptions reject as decoded plain objects; server application
+values. Declared exceptions reject as `ThriftServiceError` with a qualified type name
+and the decoded payload in `data`; server application
 exceptions use `ThriftApplicationError`. A byte transport or fetch implementation
 can be supplied for framework integration.
 
 The client runtime has no Node or Buffer dependency. The official Apache `thrift` package
 is retained solely in test devDependencies to cross-verify wire compatibility.
+
+## Supported environments
+
+Core and Angular target modern Chrome, Firefox, and Safari with ES2023 and Web APIs
+including `fetch`, `AbortSignal`, `structuredClone`, `crypto.getRandomValues`, and BigInt DataView methods.
+The browser release smoke currently runs Chromium; Firefox/Safari execution must be verified by consumers.
+TypeScript consumers require TypeScript 5.1 or newer with `node16`, `nodenext`, or `bundler`
+resolution. Legacy `node` resolution is unsupported. The Angular adapter supports Angular 22 and newer.
+CommonJS test runners need ESM configuration or an ESM transform; no CommonJS build is shipped.
+
+The HTTP transport does not retry RPCs automatically. `timeoutMs: 0` sets an immediate
+timeout. Header providers run for each request. Woody deadlines are optional absolute
+timestamps and depend on clock synchronization; use a provider for per-request values.
+Logging excludes headers and payloads by default. Set `logPayloads: true` only when
+argument/result logging is appropriate. Logger failures do not affect RPC outcomes.
 
 ## Compatibility limits
 
@@ -195,8 +205,8 @@ is retained solely in test devDependencies to cross-verify wire compatibility.
   legacy string declarations or Buffer methods need adaptation.
 - Unsafe integral IDL literals (> 53 bits) remain rejected because the IDL parser (`thrift-parser`) and JSON metadata AST cannot preserve 64-bit integers without precision loss. Runtime RPC values preserve the full 64-bit range via bigint.
 - Native codecs preserve struct-keyed maps directly.
-- Metadata fixtures, generated output, Angular DI providers, and Observable clients have been verified across Angular 16 and 22; live production service deployment and downstream form-consumer acceptance remain pending.
-- Native UUID support operates with 16-byte fixed-width binary encoding (WireType 16) and RFC 4122 canonical string models. Native output is ESM-oriented.
+- Angular 22 and consumer declaration checks are release gates in `test:packages`; production-service and application acceptance belong to downstream integrations.
+- Native UUID support operates with 16-byte fixed-width binary encoding (WireType 16) and canonical hyphenated UUID strings without version/variant restrictions. Packages are ESM-only.
 
 ## Development
 
@@ -210,7 +220,7 @@ vp check
 # Run unit and integration tests
 vp test
 
-# Verify package archives, CLI, and Angular DI (16/22)
+# Verify package archives, CLI, and Angular DI (22)
 vp run test:packages
 
 # Run Chromium browser smoke tests via Playwright

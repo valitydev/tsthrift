@@ -6,7 +6,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { afterEach, expect, test } from "vite-plus/test";
 import { generate } from "../src/index.ts";
-import type { Metadata } from "../src/index.ts";
+import type { Metadata } from "@vality/tsthrift";
 
 const execute = promisify(execFile);
 const tsc = path.resolve(
@@ -47,6 +47,7 @@ test.each(["number", "bigint"] as const)(
     const files = await readdir(options.output);
     expect(files.sort()).toEqual([
       ".tsthrift.json",
+      "build.ts",
       "common",
       "example",
       "index.ts",
@@ -140,6 +141,7 @@ test("generates models without service factories when services: false is passed"
   const files = await readdir(options.output);
   expect(files.sort()).toEqual([
     ".tsthrift.json",
+    "build.ts",
     "common",
     "example",
     "index.ts",
@@ -174,18 +176,18 @@ test("emits modular metadata in namespace directories and loader in root by defa
   expect(example).toContain("export const thriftMetadata");
 
   const commonLoader = await readFile(path.join(options.output, "common/load-metadata.ts"), "utf8");
-  expect(commonLoader).toContain("export function loadThriftMetadata");
+  expect(commonLoader).toContain("export const loadThriftMetadata");
   expect(commonLoader).toContain('import("./metadata.js")');
 
   const exampleLoader = await readFile(
     path.join(options.output, "example/load-metadata.ts"),
     "utf8",
   );
-  expect(exampleLoader).toContain("export function loadThriftMetadata");
+  expect(exampleLoader).toContain("export const loadThriftMetadata");
   expect(exampleLoader).toContain('import("../common/metadata.js")');
 
   const loader = await readFile(path.join(options.output, "metadata.ts"), "utf8");
-  expect(loader).toContain("export function loadThriftMetadata");
+  expect(loader).toContain("export const loadThriftMetadata");
   expect(loader).toContain('import("./common/load-metadata.js")');
 });
 
@@ -329,7 +331,7 @@ test("bundles output into dist/ with types when bundle: true", async () => {
   ).resolves.toBeDefined();
 });
 
-test("bundles output into dist/ with minification by default when bundle: true", async () => {
+test("bundles output into dist/ without minification by default when bundle: true", async () => {
   const options = await setup();
   const dist = path.join(options.output, "../dist");
   await generate({
@@ -348,7 +350,7 @@ test("bundles output into dist/ with minification by default when bundle: true",
     .trim()
     .split("\n")
     .filter((line) => !line.startsWith("//# sourceMappingURL="));
-  expect(codeLines).toHaveLength(1);
+  expect(codeLines.length).toBeGreaterThan(1);
 });
 
 test("supports sourcemap: false to disable source map generation", async () => {

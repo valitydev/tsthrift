@@ -127,5 +127,5 @@ test("supports native uuid field in schema and emits string type", async () => {
   const schema = await source("struct Record { 1: uuid id }");
   validateSchema(schema);
   const models = emitModels(schema.roots[0]!);
-  expect(models).toContain('"id": string;');
+  expect(models).toContain('"id"?: string;');
 });

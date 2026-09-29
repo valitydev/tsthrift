@@ -30,7 +30,12 @@ test("preserves the legacy form metadata contract without model or Apache genera
   const baseline = JSON.parse(
     await readFile(path.join(import.meta.dirname, "fixtures/expected/metadata.json"), "utf8"),
   );
-  expect(actual).toEqual(baseline);
+  expect(
+    actual.map(({ metadataVersion, ...legacy }: { metadataVersion: number }) => {
+      expect(metadataVersion).toBe(1);
+      return legacy;
+    }),
+  ).toEqual(baseline);
   expect(result.compilerVersion).toBeUndefined();
   expect(result.modules.sort()).toEqual(["common", "example"]);
   expect((await readdir(options.output)).sort()).toEqual([".tsthrift.json", "metadata.json"]);

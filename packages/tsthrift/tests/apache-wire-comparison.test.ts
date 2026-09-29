@@ -767,9 +767,9 @@ describe("Apache Thrift 0.24 Wire Protocol Comparison & Verification", () => {
           balances: new Map(),
           signature: new Uint8Array([1]),
         }),
-      ).rejects.toEqual({
-        code: 403,
-        description: "Account frozen",
+      ).rejects.toMatchObject({
+        data: { code: 403, description: "Account frozen" },
+        isService: true,
       });
     });
 

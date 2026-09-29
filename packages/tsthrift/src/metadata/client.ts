@@ -1,4 +1,3 @@
-import { THRIFT_METHOD_ARGUMENT_COUNT } from "../transport/method-arguments.ts";
 import { MetadataIndex } from "./index.ts";
 import type { Field, I64Mode } from "./types.ts";
 import {
@@ -7,12 +6,7 @@ import {
   createRpcClient,
 } from "../transport/rpc-client.ts";
 import { struct } from "../codecs/struct.ts";
-import {
-  type MetadataSource,
-  THRIFT_ERRORS,
-  THRIFT_RESULT,
-  toThriftResult,
-} from "../transport/types.ts";
+import { type MetadataSource } from "../transport/types.ts";
 import { MetadataCodecs } from "./codecs.ts";
 
 export interface MetadataClientConfig extends RpcClientConfig {
@@ -34,6 +28,7 @@ function lowerFirst(str: string): string {
 export async function createMetadataClient<T extends object = DynamicThriftClient>(
   config: MetadataClientConfig,
 ): Promise<T> {
+  if (!config) throw new TypeError("Expected metadata client configuration");
   const mode = config.i64Mode ?? "bigint";
   if (mode !== "bigint" && mode !== "number") throw new Error("Unknown i64 mode");
   let index = config.index;
@@ -46,6 +41,7 @@ export async function createMetadataClient<T extends object = DynamicThriftClien
     if (!Array.isArray(metadata)) throw new TypeError("Expected metadata array");
     index = new MetadataIndex(structuredClone(metadata));
   }
+  index.validateBuild(mode, Boolean(config.lowerCaseMethods));
   const codecs = new MetadataCodecs(index, mode);
   const methods: Record<string, MethodCodec> = Object.create(null);
   const visited = new Set<string>();
@@ -90,8 +86,9 @@ export async function createMetadataClient<T extends object = DynamicThriftClien
         result: struct(`${key}.${method.name}.result`, () => reply),
         exceptions: method.throws.map((field) => {
           const typeStr = typeof field.type === "string" ? field.type : "";
-          const resolved = index.resolveName(typeStr, namespace);
-          return { name: field.name, type: resolved.name };
+          const resolved = index.resolveType(typeStr, namespace);
+          if (resolved.kind !== "exception") throw new TypeError("Expected declared exception");
+          return { name: field.name, type: `${resolved.namespace}.${resolved.name}` };
         }),
         returns: method.type !== "void",
         oneway: method.oneway,
@@ -100,41 +97,4 @@ export async function createMetadataClient<T extends object = DynamicThriftClien
   };
   addService(config.namespace, config.serviceName);
   return createRpcClient<T>(methods, config, config.serviceName, config.namespace);
-}
-
-/**
- * Creates a synchronous proxy client that lazily initializes metadata and codecs
- * on the first RPC method invocation. Ideal for dependency injection (e.g. Angular).
- */
-export function createLazyMetadataClient<T extends object = DynamicThriftClient>(
-  config: MetadataClientConfig,
-): T {
-  let clientPromise: Promise<T> | undefined;
-  const getClient = () => {
-    if (!clientPromise) clientPromise = createMetadataClient<T>(config);
-    return clientPromise;
-  };
-  const client: T = new Proxy(Object.create(null) as T, {
-    get(_target, prop: string | symbol) {
-      if (prop === "then" || prop === THRIFT_ERRORS) return undefined;
-      if (prop === THRIFT_RESULT) return toThriftResult(client as any);
-      if (typeof prop !== "string") return undefined;
-      const getMethod = async () => {
-        const underlyingClient = await getClient();
-        const method = (underlyingClient as Record<string, unknown>)[prop];
-        if (typeof method !== "function") {
-          throw new TypeError(
-            `Method ${prop} not found on client for service ${config.serviceName}`,
-          );
-        }
-        return method;
-      };
-      const call = async (...args: unknown[]) => (await getMethod())(...args);
-      Object.defineProperty(call, THRIFT_METHOD_ARGUMENT_COUNT, {
-        get: () => getMethod().then((method) => (method as any)[THRIFT_METHOD_ARGUMENT_COUNT]),
-      });
-      return call;
-    },
-  });
-  return client;
 }

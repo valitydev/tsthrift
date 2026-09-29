@@ -1,3 +1,4 @@
+import { wrapObservableClient } from "../src/observable-client.ts";
 import { firstValueFrom } from "rxjs";
 import { expect, test } from "vite-plus/test";
 import {
@@ -9,7 +10,7 @@ import {
   createLazyMetadataClient,
   createMetadataClient,
 } from "@vality/tsthrift";
-import { catchThriftResult, toObservableClient } from "../src/rxjs.ts";
+import { catchThriftResult } from "../src/rxjs.ts";
 
 const metadata: Metadata[] = [
   {
@@ -67,10 +68,10 @@ for (const lazy of [false, true]) {
       },
     };
     const raw = lazy
-      ? createLazyMetadataClient<any>(config)
+      ? createLazyMetadataClient<any>(config, ["echo"])
       : await createMetadataClient<any>(config);
-    const client = toObservableClient(raw);
-    const resultClient = toObservableClient(raw[THRIFT_RESULT]);
+    const client = wrapObservableClient(raw);
+    const resultClient = wrapObservableClient(raw[THRIFT_RESULT]);
     expect(
       await firstValueFrom(
         resultClient.echo(
@@ -103,20 +104,23 @@ for (const lazy of [false, true]) {
 test("unsubscription before metadata loads prevents transport execution", async () => {
   let resolve!: (value: Metadata[]) => void;
   let requests = 0;
-  const raw = createLazyMetadataClient({
-    metadata: () =>
-      new Promise<Metadata[]>((r) => {
-        resolve = r;
-      }),
-    namespace: "example",
-    serviceName: "Example",
-    endpoint: "unused",
-    transport: async () => {
-      requests++;
-      return new Uint8Array();
+  const raw = createLazyMetadataClient(
+    {
+      metadata: () =>
+        new Promise<Metadata[]>((r) => {
+          resolve = r;
+        }),
+      namespace: "example",
+      serviceName: "Example",
+      endpoint: "unused",
+      transport: async () => {
+        requests++;
+        return new Uint8Array();
+      },
     },
-  });
-  const sub = toObservableClient(raw).echo({}).subscribe();
+    ["echo"],
+  );
+  const sub = wrapObservableClient(raw).echo({}).subscribe();
   sub.unsubscribe();
   resolve(metadata);
   await new Promise((r) => setTimeout(r, 0));
@@ -149,9 +153,9 @@ for (const lazy of [false, true]) {
       },
     };
     const raw = lazy
-      ? createLazyMetadataClient<any>(config)
+      ? createLazyMetadataClient<any>(config, ["echo"])
       : await createMetadataClient<any>(config);
-    const subscription = toObservableClient(raw[THRIFT_RESULT])
+    const subscription = wrapObservableClient(raw[THRIFT_RESULT])
       .echo({ headers: "IDL headers" })
       .subscribe();
     await pending;
@@ -160,3 +164,31 @@ for (const lazy of [false, true]) {
     expect(signal?.aborted).toBe(true);
   });
 }
+
+test("external clients require explicit counts and preserve result-shaped payloads", async () => {
+  const raw = {
+    echo: async (payload: { headers: string; data: string; error: undefined }) => payload,
+  };
+  const payload = { headers: "IDL", data: "value", error: undefined };
+  await expect(firstValueFrom(wrapObservableClient(raw).echo(payload))).rejects.toThrow(
+    "Missing IDL argument count",
+  );
+  await expect(
+    firstValueFrom(wrapObservableClient(raw, true, { echo: 1 }).echo(payload)),
+  ).resolves.toEqual(payload);
+});
+
+test("Result clients preserve method error types and explicit non-unwrapping", async () => {
+  const { expectTypeOf } = await import("vite-plus/test");
+  const { toThriftResult } = await import("@vality/tsthrift");
+  const raw = { echo: async () => ({ data: "payload", error: undefined }) };
+  const normal = wrapObservableClient(raw, true, { echo: 0 });
+  expectTypeOf(await firstValueFrom(normal.echo())).toEqualTypeOf<{
+    data: string;
+    error: undefined;
+  }>();
+  const safe = wrapObservableClient(toThriftResult(raw), false, { echo: 0 });
+  const result = await firstValueFrom(safe.echo());
+  expect(result).toEqual({ data: { data: "payload", error: undefined }, error: undefined });
+  expectTypeOf(result.data).toEqualTypeOf<{ data: string; error: undefined } | undefined>();
+});

@@ -101,10 +101,10 @@ Inherited service methods share the same client connection configuration.
 
 Replies must match method and sequence ID, use REPLY or EXCEPTION, and contain
 no trailing bytes. Non-void replies require a success field or declared exception.
-Declared exceptions reject with decoded plain objects tagged by `THRIFT_EXCEPTION_INFO`.
-`normalizeThriftError`, `catchServiceError`, and the Promise/Observable Result APIs
-produce `ThriftServiceError` wrappers with the original payload in `data`.
-`isThriftServiceError` only narrows wrappers; use normalization before testing raw rejections.
+Declared exceptions reject with `ThriftServiceError` and a qualified `module.Exception`
+type. The original payload is available in `data`. Shared symbol brands support error
+classification across installed runtime copies. Legacy tagged payloads may still be
+normalized explicitly; new clients always produce wrappers.
 Application exceptions
 use `ThriftApplicationError` with the server's numeric code. Oneway methods send
 ONEWAY and resolve after the transport completes without decoding a reply.
@@ -136,9 +136,9 @@ The official Apache `thrift` package is retained solely in test devDependencies 
 verify Binary Protocol wire compatibility.
 
 The standalone `@vality/tsthrift-angular` package provides Angular DI integration
-(`provideThriftConfig`, `provideThriftServices`, `provideThriftService`, `getServiceToken`,
-`createServiceToken`), HttpClient-to-fetch adapter (`createHttpClientFetch`), and RxJS helpers
-(`toObservableClient`, `deferThriftCall`) for Observable-based consumers. The CLI generates
+(`provideThriftConfig`, `provideThriftServices`, `provideThriftService`, `getServiceToken`),
+HttpClient-to-fetch adapter (`createHttpClientFetch`), and service factories
+(`createPromiseService`, `createObservableService`) selecting Promise or Observable methods. The CLI generates
 pure framework-agnostic service modules and service registry descriptors (`services.ts`).
 
 ## Verification and acceptance
@@ -151,12 +151,6 @@ real local HTTP, concurrent calls, headers, cancellation, timeout, and HTTP erro
 A browser-targeted Vite bundle is executed in an isolated JS context without
 Buffer or process; this is not a live-browser acceptance test.
 
-The 15 reachable Damsel modules at revision
-`8d6174bddedc6d9aefa407fdc1d54877b8686ff9` were generated and compiled in both
-modes; all 14 client descriptors instantiated and SystemAccountSet maps with two
-CurrencyRef keys round-tripped. This establishes generated-artifact behavior,
-not production server, Angular application, or dynamic-form acceptance.
-
 Run `vp install`, `vp run build`, `vp check`, then `vp test`. No external Thrift
 compiler is required; tests execute directly against the native runtime and wire
 verifiers. Native HTTP tests require permission to bind loopback sockets. See
@@ -165,5 +159,18 @@ verifiers. Native HTTP tests require permission to bind loopback sockets. See
 Metadata-only integration runs use a directory containing no generated model,
 codec, or client modules. The same Apache request/reply checks, loopback HTTP,
 and browser bundle execution run in both i64 modes. The browser JS context disables
-string code generation. All 14 Damsel clients at the revision above also initialize
-from the 15-module metadata array alone in both numeric modes.
+string code generation. Damsel coverage is defined by the committed conformance scenarios and pinned revision.
+
+## Metadata and loader boundaries
+
+New metadata carries `metadataVersion: 1`; unversioned legacy arrays remain accepted.
+Both parser output and runtime input are structurally validated. Generated TypeScript
+metadata also records numeric and method-name modes. Runtime initialization checks
+these modes even when the caller supplies a prebuilt `MetadataIndex`.
+Loaders cache successful results and remove rejected promises. Recovery permits another
+load attempt; it does not recover missing deployment chunks or override the browser's
+module cache. Deployments must retain chunks referenced by active clients.
+
+Generated lazy clients receive an allowlist of IDL methods, including inherited methods.
+Unknown properties do not create methods or Angular lifecycle hooks. Direct dynamic
+metadata clients reserve common inspection/lifecycle properties before metadata is loaded.

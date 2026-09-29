@@ -101,7 +101,7 @@ test.each(["bigint", "number"] as const)(
     const { loadThriftMetadata } = await generated(mode, "metadata.js");
     for (const empty of [false, true]) {
       const scenario = `${empty ? "empty" : "all"}-${mode}`;
-      // Explicit mode isolates wire conformance from the separately audited factory-mode defect.
+      // Explicit mode isolates wire conformance from the generated factory mode.
       const client = createEcho({
         endpoint: "unused",
         transport: await transport(scenario),
@@ -199,7 +199,11 @@ test.each(["bigint", "number"] as const)(
       transport: await transport(scenario),
     });
     const failure = { code: 409, reason: "declared failure" };
-    await expect(client.echo(payload(mode))).rejects.toEqual(failure);
+    await expect(client.echo(payload(mode))).rejects.toMatchObject({
+      type: "alpha.Failure",
+      data: failure,
+      isService: true,
+    });
     await verifyReplyEncoding(
       mode,
       scenario,

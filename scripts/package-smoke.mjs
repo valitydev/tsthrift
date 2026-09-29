@@ -32,7 +32,7 @@ try {
   for (const archive of archives) {
     const { stdout } = await run("tar", ["-tf", path.join(directory, archive)]);
     assert.match(stdout, /package\/README.md/);
-    assert.match(stdout, /package\/LICENSE/);
+    if (archive.includes("tsthrift-0")) assert.match(stdout, /package\/THIRD_PARTY_NOTICES.md/);
   }
   await json(path.join(directory, "package.json"), { private: true, type: "module" });
   await run("npm", [
@@ -150,33 +150,59 @@ try {
     }
   `,
   ]);
-  for (const version of ["22.2.0", "16.2.12"]) {
-    if (version === "16.2.12")
-      await run("npm", [
-        "install",
-        "--ignore-scripts",
-        "--no-audit",
-        "--no-fund",
-        `@angular/core@${version}`,
-      ]);
+  await writeFile(
+    path.join(directory, "angular-consumer.mts"),
+    `
+        import { BinaryReader } from "@vality/tsthrift/runtime";
+        import { createObservableService, createPromiseService, provideThriftServices } from "@vality/tsthrift-angular";
+        import { Example } from "tsthrift-smoke-proto/example";
+        const token = createObservableService(Example, { endpoint: "/rpc" });
+        const promiseToken = createPromiseService(Example, { endpoint: "/rpc" });
+        provideThriftServices(token, promiseToken);
+        new BinaryReader(new Uint8Array());
+      `,
+  );
+  for (const resolution of ["node16", "bundler"]) {
+    await json(path.join(directory, "tsconfig.consumer.json"), {
+      compilerOptions: {
+        strict: true,
+        noEmit: true,
+        target: "ES2022",
+        types: [],
+        lib: ["ES2022", "DOM"],
+        module: resolution === "node16" ? "Node16" : "ESNext",
+        moduleResolution: resolution,
+      },
+      files: ["consumer.mts", "angular-consumer.mts"],
+    });
     await run(process.execPath, [
-      "--input-type=module",
-      "-e",
-      `
+      path.join(directory, "node_modules/typescript/lib/tsc.js"),
+      "-p",
+      "tsconfig.consumer.json",
+    ]);
+  }
+  await run(process.execPath, [
+    "--input-type=module",
+    "-e",
+    `
       import assert from 'node:assert/strict';
       import { createEnvironmentInjector } from '@angular/core';
       import { firstValueFrom } from 'rxjs';
-      import { createObservableService, provideThriftConfig, provideThriftServices } from '@vality/tsthrift-angular';
-      const descriptor = { namespace: 'test', serviceName: 'Example', getMetadata: async () => [], createService: config => ({ echo: async value => config.endpoint + ':' + value }) };
+      import { createObservableService, createPromiseService, provideThriftConfig, provideThriftServices } from '@vality/tsthrift-angular';
+      const { THRIFT_METHOD_ARGUMENT_COUNT } = await import('@vality/tsthrift');
+      const descriptor = { namespace: 'test', serviceName: 'Example', getMetadata: async () => [], createService: config => ({ echo: Object.assign(async value => config.endpoint + ':' + value, { [THRIFT_METHOD_ARGUMENT_COUNT]: 1 }) }) };
       const token = createObservableService(descriptor, { endpoint: 'service' });
-      const injector = createEnvironmentInjector([provideThriftConfig({ endpoint: 'global' }), provideThriftServices([token])], null);
-      try { assert.equal(await firstValueFrom(injector.get(token).echo('value')), 'service:value'); }
+      const promiseToken = createPromiseService(descriptor, { endpoint: 'promise' });
+      const injector = createEnvironmentInjector([provideThriftConfig({ endpoint: 'global' }), provideThriftServices([token, promiseToken])], null);
+      try {
+        assert.equal(await firstValueFrom(injector.get(token).echo('value')), 'service:value');
+        assert.equal(await injector.get(promiseToken).echo('value'), 'promise:value');
+      }
       finally { injector.destroy(); }
     `,
-    ]);
-  }
+  ]);
   console.log(
-    "Package smoke passed: installed archives, ESM/require, CLI, bundled protocol, declarations, factories, regeneration, Angular 16/22 DI.",
+    "Package smoke passed: installed archives, ESM/require, CLI, bundled protocol, declarations, factories, regeneration, Angular 22 DI.",
   );
 } finally {
   await rm(directory, { recursive: true, force: true });

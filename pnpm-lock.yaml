@@ -239,7 +239,7 @@ importers:
   packages/angular:
     dependencies:
       '@vality/tsthrift':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../tsthrift
     devDependencies:
       '@angular/common':
@@ -269,6 +269,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@vality/tsthrift':
+        specifier: workspace:^
+        version: link:../tsthrift
       thrift-parser:
         specifier: 'catalog:'
         version: 0.4.2
@@ -282,9 +285,6 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.2
-      '@vality/tsthrift':
-        specifier: workspace:*
-        version: link:../tsthrift
       thrift:
         specifier: 'catalog:'
         version: 0.24.0

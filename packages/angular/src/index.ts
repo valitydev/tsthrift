@@ -2,14 +2,15 @@ export {
   THRIFT_CONFIG,
   THRIFT_SERVICES_REGISTRY,
   getServiceToken,
-  createServiceToken,
   registerServiceToken,
 } from "./tokens.ts";
 export {
   createObservableService,
+  createPromiseService,
   isObservableServiceToken,
   type ObservableServiceToken,
-} from "./observable-service.ts";
+  type PromiseServiceToken,
+} from "./service.ts";
 export {
   provideThriftConfig,
   provideThriftServices,
@@ -20,10 +21,8 @@ export { createHttpClientFetch, type AngularHttpClientLike } from "./http-client
 export {
   catchThriftError,
   catchThriftResult,
-  catchTypedError,
   deferThriftCall,
-  toObservableClient,
-  unwrapResult,
+  unwrapThriftResult,
   type ObservableClient,
   type ThriftObservable,
 } from "./rxjs.ts";

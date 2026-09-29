@@ -30,7 +30,7 @@ export async function verifyBrowserBundle(
     Object.keys(chunk.modules).filter((id) => /node_modules\/(thrift|buffer)\//.test(id)),
   ).toEqual([]);
   const context = vm.createContext(
-    { Uint8Array, DataView, TextEncoder, TextDecoder, Map, Set, URL, structuredClone },
+    { Uint8Array, DataView, TextEncoder, TextDecoder, Map, Set, URL, structuredClone, performance },
     { codeGeneration: { strings: false, wasm: false } },
   );
   vm.runInContext(chunk.code, context);

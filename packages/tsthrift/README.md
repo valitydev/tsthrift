@@ -11,7 +11,7 @@ Pure TypeScript Thrift Binary Protocol runtime, dynamic metadata RPC clients, an
 - **Zero Node/Buffer dependencies:** Runs in browsers, web workers, Node.js, and edge runtimes.
 - **Configurable `i64` precision:** Support for exact `bigint` (default) or safe `number` mode.
 - **Native JavaScript values:** Plain objects for structs/unions/exceptions, `Map` (with support for struct keys), `Set`, arrays, and `Uint8Array` for binary data.
-- **Production HTTP transport:** Fetch-based transport with configurable timeouts, request cancellation (`AbortSignal`), custom headers, and Woody distributed tracing headers.
+- **HTTP transport:** Fetch-based transport with configurable timeouts, request cancellation (`AbortSignal`), custom headers, and Woody distributed tracing headers.
 - **Typed error handling:** Clear distinction between transport/system failures (`ThriftSystemError`) and declared Thrift IDL exceptions (`ThriftServiceError`).
 - **Safe call semantics:** Support for `ThriftResult<TData, TError>` pattern alongside throwing clients.
 
@@ -83,9 +83,9 @@ if (error) {
 ## Error Handling
 
 `ThriftSystemError` is a TypeScript union of the system error classes below,
-not a runtime constructor. Direct RPC clients reject declared exceptions as tagged
-plain payloads. `normalizeThriftError`, `catchServiceError`, and `toThriftResult`
-wrap these as `ThriftServiceError`; `isThriftServiceError` only matches wrappers.
+not a runtime constructor. Direct RPC clients reject declared exceptions as
+`ThriftServiceError` with a qualified `module.Exception` type and original payload
+in `data`. Error guards work across copies of the runtime.
 
 ```
 ThriftError (base class)
@@ -112,10 +112,14 @@ try {
   await client.createPayment(params);
 } catch (err) {
   // Handle declared Thrift service exceptions
-  const handledService = catchServiceError(err, "PaymentNotFound", (serviceErr) => {
-    console.warn("Payment not found:", serviceErr.data);
-    return true;
-  });
+  const handledService = catchServiceError(
+    err,
+    "payment_processing.PaymentNotFound",
+    (serviceErr) => {
+      console.warn("Payment not found:", serviceErr.data);
+      return true;
+    },
+  );
 
   if (handledService) return;
 
@@ -214,3 +218,22 @@ reader.assertDone();
 ## License
 
 Apache-2.0
+
+## Runtime policy
+
+Packages are ESM-only and use ES2023/Web APIs. Consumer declarations require TypeScript
+5.1+ and `node16`, `nodenext`, or `bundler` resolution. No polyfills or automatic RPC
+retries are included. `timeoutMs: 0` means an immediate timeout. Logging never receives
+headers and only includes argument/result payloads when `logPayloads: true`; logger
+failures are isolated. HTTP error details are capped at 1 KiB and excluded from `message`.
+RPC errors and completion logs include service, method, sequence ID, and duration.
+The built-in HTTP transport also captures the final `x-woody-trace-id` when present;
+custom transports and header prefixes must provide their own trace correlation.
+
+`generateId` produces backend-compatible 64-bit Flake IDs in the legacy base64 alphabet.
+`FlakeId.next()` never throws by default: after a clock rollback it keeps the last timestamp,
+and after 4096 IDs in one millisecond it borrows the next one, so tracing never fails a call.
+Output matches `flake-idgen` wherever upstream succeeds; `new FlakeId({ strict: true })`
+reproduces its exceptions.
+Woody deadlines are optional absolute times; use a `deadline` callback or header
+provider to refresh them and account for client/server clock skew.

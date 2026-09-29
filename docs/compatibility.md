@@ -43,11 +43,11 @@ are compatibility responsibilities owned by tsthrift, even when parsing is deleg
 | i64              | Numeric frontend values                 | Native bigint default or explicit safe-number mode                                         |
 | Collections      | Map, Set, arrays                        | Native codecs preserve composite keys directly                                             |
 | Structs/unions   | Public plain objects                    | Native read/write uses plain objects without class conversion                              |
-| Services         | Observable wrappers and ConnectOptions$ | Native Promise factories, Angular DI tokens, and RxJS adapters (`toObservableClient`)      |
+| Services         | Observable wrappers and ConnectOptions$ | Native Promise factories, Angular DI tokens, and Promise/Observable service factories      |
 | Metadata loading | Cached metadata$                        | Modular metadata loading via loadThriftMetadata (or monolithic metadata.json when enabled) |
 | Exports          | Namespace services, errors, logging     | Native module-scoped factories; no drop-in package claim                                   |
 | HTTP             | Binary body, endpoint, per-call headers | Shared HTTP adapter exercised by native generated clients                                  |
-| Errors           | Declared errors and transport failures  | Native plain declared values; application errors preserve numeric code                     |
+| Errors           | Declared errors and transport failures  | Qualified ThriftServiceError wrappers; application errors preserve numeric code            |
 | Browser output   | Bundled helpers and Buffer              | Native browser bundle runs in isolated JS context without Node globals                     |
 
 Native number mode rejects unsafe i64 values on write and read. Legacy decoding
@@ -113,21 +113,11 @@ Vite browser output is executed in an isolated JS context without Buffer or
 process. This verifies bundling and execution without Node globals; live Chromium fetch/Angular XHR smoke tests are executed via `vp run test:browser`.
 Application/form-consumer acceptance remains pending.
 
-Damsel revision `8d6174bddedc6d9aefa407fdc1d54877b8686ff9` was verified in the conformance
-suite against both Vality 0.20.1 and Apache 0.24.0 references. It was also generated from entries
-`domain_config_v2`, `domain`, `payment_processing`, `accounter`, `webhooker`,
-`api_extensions`, and `proxy_provider`. Both numeric modes compiled all 15 reachable
-modules and instantiated all 14 clients. The runtime SystemAccountSet codec
-round-tripped two CurrencyRef map keys. This does not establish compatibility with
-a deployed Damsel server or the full legacy application API.
-
 Native struct decoding validates explicit required fields and skips unknown
 fields. Duplicate known fields, mismatched container element types, and multiple
 known union alternatives are rejected. These checks are stricter than some legacy
-paths. Declared exceptions are rejected as tagged public objects rather than Apache class
-instances. Result APIs and explicit normalization wrap them in `ThriftServiceError`.
-`isThriftServiceError` checks wrappers; raw payload inspection uses
-`getThriftExceptionInfo`. Consumers relying on Apache instanceof need adaptation.
+paths. Declared exceptions use `ThriftServiceError` with a qualified module/type
+name and decoded data. Consumers relying on Apache instanceof need adaptation.
 
 ## Runtime metadata verification
 
@@ -136,8 +126,7 @@ wire/HTTP test scenarios also run from metadata-only output with no generated
 models, codecs, or clients. Both i64 modes cover inherited methods, transitive
 collection typedefs, structured Map keys, binary bytes, errors, and cancellation.
 An isolated browser-targeted bundle executes with string code generation disabled.
-All 14 Damsel services described above initialize directly from their 15 metadata
-modules in both modes. Live consumers and production servers remain unverified.
+Production server and form-consumer acceptance are separate from conformance checks.
 
 Runtime metadata resolution preserves the defining module of collection typedefs
 and resolves relative includes. Enum references are accepted in the legacy parser's
@@ -155,9 +144,11 @@ Authentication and x-woody tracing/identity headers are supplied by surrounding
 client/application code. Tracing IDs in `control-center` and `frontend-thrift-codegen`
 are generated via `generateId()` (`tools/static/utils/generate-id.ts`), producing 64-bit
 Flake IDs encoded in base64 using `base-x` (`ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/`).
-`@vality/tsthrift` provides an identical `generateId` (and aliased `generateTraceId`, `FlakeId`, `bs64`)
-implementation operating directly on `Uint8Array` without requiring Node.js `Buffer` or globals,
-producing 100% byte-for-byte and string-for-string matching IDs across browser and Node runtimes.
+`@vality/tsthrift` preserves that layout and encoding: the default `generateId` uses a
+shared `FlakeId` (generator id 0). `FlakeId.next()` never throws by default: a backwards
+clock keeps the last timestamp and an exhausted per-millisecond sequence borrows the next
+millisecond, so IDs remain unique and ordered. Output is byte-identical to `flake-idgen`
+whenever upstream succeeds; `new FlakeId({ strict: true })` reproduces its exceptions.
 
 The replacement transport must accept those headers per
 call and preserve refresh behavior. Preserve error propagation and request

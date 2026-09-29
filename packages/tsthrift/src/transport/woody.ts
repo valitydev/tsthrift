@@ -23,7 +23,7 @@ export type WoodyMetaProvider = WoodyMetaMap | (() => WoodyMetaMap | Promise<Woo
  * Configuration options for generating Woody RPC tracing headers.
  */
 export interface WoodyHeadersConfig {
-  /** Trace ID or generator function. Defaults to a base64-encoded Flake ID. */
+  /** Trace ID or generator function. Defaults to a base64-encoded random 64-bit ID. */
   traceId?: string | (() => string);
   /** Span ID or generator function. Defaults to traceId if omitted. */
   spanId?: string | (() => string);
@@ -32,7 +32,7 @@ export interface WoodyHeadersConfig {
   /** Woody flags bitmask (e.g. 0 or 1). */
   flags?: number | string;
   /** Absolute deadline (Date, epoch timestamp in ms, or RFC3339 string). */
-  deadline?: Date | number | string;
+  deadline?: Date | number | string | (() => Date | number | string);
   /** Base prefix for standard Woody headers (defaults to 'x-woody-'). */
   prefix?: string;
   /** Prefix for metadata headers. Defaults to '${prefix}meta-' (e.g. 'x-woody-meta-'). */
@@ -41,9 +41,10 @@ export interface WoodyHeadersConfig {
   meta?: WoodyMetaProvider;
 }
 
-import { generateTraceId } from "./generate-id.ts";
+import { mergeHeaders } from "./headers.ts";
+import { generateId } from "./generate-id.ts";
 
-export { BASE64_ALPHABET, FlakeId, bs64, generateId, generateTraceId } from "./generate-id.ts";
+export { BASE64_ALPHABET, FlakeId, bs64, generateId } from "./generate-id.ts";
 export type { FlakeIdOptions } from "./generate-id.ts";
 
 /**
@@ -76,9 +77,7 @@ export function createWoodyHeaders(
   const metaPrefix = config?.metaPrefix ?? `${prefix}meta-`;
 
   const traceId =
-    typeof config?.traceId === "function"
-      ? config.traceId()
-      : (config?.traceId ?? generateTraceId());
+    typeof config?.traceId === "function" ? config.traceId() : (config?.traceId ?? generateId());
 
   headers[`${prefix}trace-id`] = traceId;
 
@@ -95,13 +94,14 @@ export function createWoodyHeaders(
     headers[`${prefix}flags`] = String(config.flags);
   }
 
-  if (config?.deadline !== undefined && config.deadline !== null) {
-    if (config.deadline instanceof Date) {
-      headers[`${prefix}deadline`] = config.deadline.toISOString();
-    } else if (typeof config.deadline === "number") {
-      headers[`${prefix}deadline`] = new Date(config.deadline).toISOString();
+  const deadline = typeof config?.deadline === "function" ? config.deadline() : config?.deadline;
+  if (deadline !== undefined && deadline !== null) {
+    if (deadline instanceof Date) {
+      headers[`${prefix}deadline`] = deadline.toISOString();
+    } else if (typeof deadline === "number") {
+      headers[`${prefix}deadline`] = new Date(deadline).toISOString();
     } else {
-      headers[`${prefix}deadline`] = String(config.deadline);
+      headers[`${prefix}deadline`] = String(deadline);
     }
   }
 
@@ -137,9 +137,6 @@ export function createWoodyHeaderProvider(
 ): (baseHeaders?: Record<string, string>) => Promise<Record<string, string>> {
   return async (baseHeaders = {}) => {
     const woody = await resolveWoodyHeaders(config);
-    return {
-      ...woody,
-      ...baseHeaders,
-    };
+    return mergeHeaders(woody, baseHeaders);
   };
 }

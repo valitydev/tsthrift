@@ -1,13 +1,23 @@
+import { wrapObservableClient } from "../src/observable-client.ts";
 import { describe, expect, test } from "vite-plus/test";
-import { Injector, createEnvironmentInjector, inject, runInInjectionContext } from "@angular/core";
+import {
+  Injector,
+  createEnvironmentInjector,
+  inject,
+  runInInjectionContext,
+  ɵINJECTOR_SCOPE,
+} from "@angular/core";
 import { Observable, catchError, firstValueFrom, of } from "rxjs";
 import {
   THRIFT_ERRORS,
+  THRIFT_METHOD_ARGUMENT_COUNT,
   ThriftHttpError,
   type ThriftServiceDescriptor,
   ThriftServiceError,
   catchServiceError,
   catchSystemError,
+  createHttpTransport,
+  toThriftResult,
 } from "@vality/tsthrift";
 import {
   type AngularHttpClientLike,
@@ -15,17 +25,15 @@ import {
   THRIFT_SERVICES_REGISTRY,
   catchThriftError,
   catchThriftResult,
-  catchTypedError,
   createHttpClientFetch,
   createObservableService,
-  createServiceToken,
   deferThriftCall,
   getServiceToken,
   isObservableServiceToken,
   provideThriftConfig,
   provideThriftService,
   provideThriftServices,
-  toObservableClient,
+  unwrapThriftResult,
 } from "../src/index.ts";
 
 describe("Angular Thrift DI integration", () => {
@@ -42,7 +50,9 @@ describe("Angular Thrift DI integration", () => {
     serviceName: "TestService",
     namespace: "test",
     createService: (config?: any) => ({
-      echo: async (msg: string) => `[${config?.endpoint ?? "default"}] ${msg}`,
+      echo: Object.assign(async (msg: string) => `[${config?.endpoint ?? "default"}] ${msg}`, {
+        [THRIFT_METHOD_ARGUMENT_COUNT]: 1,
+      }),
       config,
     }),
     getMetadata: async () => [],
@@ -51,10 +61,8 @@ describe("Angular Thrift DI integration", () => {
   test("getServiceToken returns stable InjectionToken", () => {
     const token1 = getServiceToken(dummyDescriptor);
     const token2 = getServiceToken(dummyDescriptor);
-    const token3 = createServiceToken(dummyDescriptor);
 
     expect(token1).toBe(token2);
-    expect(token1).toBe(token3);
     expect(token1.toString()).toContain("test.TestService");
   });
 
@@ -120,7 +128,7 @@ describe("Angular Thrift DI integration", () => {
       expect(config).toEqual({ endpoint: "http://example.com/configured" });
 
       const registry = envInjector.get(THRIFT_SERVICES_REGISTRY);
-      expect(registry.has("TestService")).toBe(true);
+      expect(registry.has("TestService")).toBe(false);
       expect(registry.has("test.TestService")).toBe(true);
 
       const clientByToken = inject(getServiceToken(dummyDescriptor));
@@ -192,13 +200,17 @@ describe("Angular Thrift DI integration", () => {
 
     await runInInjectionContext(envInjector, async () => {
       const client = inject(getServiceToken(dummyDescriptor));
-      const headersProvider = client.config?.headers;
-      expect(headersProvider).toBeDefined();
-
-      const resolved =
-        typeof headersProvider === "function" ? await headersProvider({}) : headersProvider;
-
-      expect(resolved?.["service"]).toBe("TestService");
+      let sentHeaders: Headers | undefined;
+      const transport = createHttpTransport({
+        ...client.config,
+        serviceName: dummyDescriptor.serviceName,
+        fetch: async (_url, init) => {
+          sentHeaders = new Headers(init?.headers);
+          return new Response(new Uint8Array());
+        },
+      });
+      await transport(new Uint8Array());
+      expect(sentHeaders?.get("service")).toBe("TestService");
     });
   });
 
@@ -261,12 +273,12 @@ describe("Angular Thrift DI integration", () => {
     expect(calls).toBe(2);
   });
 
-  test("toObservableClient converts client methods to return Observables", async () => {
+  test("wrapObservableClient converts client methods to return Observables", async () => {
     const mockClient = {
       echo: async (msg: string) => `echo:${msg}`,
       value: 42,
     };
-    const obsClient = toObservableClient(mockClient);
+    const obsClient = wrapObservableClient(mockClient, true, { echo: 1 });
     expect(obsClient.value).toBe(42);
 
     const result = await firstValueFrom(obsClient.echo("angular-test"));
@@ -280,7 +292,7 @@ describe("Angular Thrift DI integration", () => {
         throw new Error("failed");
       },
     };
-    const obsClient = toObservableClient(mockClient);
+    const obsClient = wrapObservableClient(mockClient, true, { echo: 1, fail: 0 });
     const res = await firstValueFrom(obsClient.echo("safe-test").pipe(catchThriftResult()));
     expect(res).toEqual({ data: "echo:safe-test", error: undefined });
 
@@ -302,7 +314,7 @@ describe("Angular Thrift DI integration", () => {
         return "payment-ok";
       },
     };
-    const obsClient = toObservableClient(mockClient);
+    const obsClient = wrapObservableClient(mockClient, true, { getPayment: 1 });
 
     // 1. Matched error name is handled
     const handled = await firstValueFrom(
@@ -341,7 +353,7 @@ describe("Angular Thrift DI integration", () => {
         return "ok";
       },
     };
-    const obsClient = toObservableClient(mockClient);
+    const obsClient = wrapObservableClient(mockClient, true, { action: 1 });
 
     const matchOperator = () =>
       catchThriftError({
@@ -361,7 +373,7 @@ describe("Angular Thrift DI integration", () => {
     );
   });
 
-  test("catchThriftError and catchTypedError support general handler function", async () => {
+  test("catchThriftError supports general handler function", async () => {
     const notFoundError = new ThriftServiceError("PaymentNotFound", "paymentNotFound", {
       id: "p2",
     });
@@ -379,33 +391,35 @@ describe("Angular Thrift DI integration", () => {
         throw notFoundError;
       },
     };
-    const obsClient = toObservableClient(mockClient);
+    const obsClient = wrapObservableClient(mockClient, true, { call: 0 });
 
     const res = await firstValueFrom(
       obsClient
         .call()
-        .pipe(catchTypedError<TestErrors["call"]>((err) => of(`caught:${err.data.id}`))),
+        .pipe(catchThriftError<TestErrors["call"]>((err) => of(`caught:${err.data.id}`))),
     );
     expect(res).toBe("caught:p2");
   });
 
-  test("toObservableClient unwraps ThriftResult success and emits data", async () => {
+  test("wrapObservableClient unwraps ThriftResult success and emits data", async () => {
     const mockClient = {
-      compute: async (x: number) => ({ data: x * 2, error: undefined }),
+      compute: async (x: number) => x * 2,
     };
-    const obsClient = toObservableClient(mockClient);
+    const obsClient = wrapObservableClient(toThriftResult(mockClient), true, { compute: 1 });
     const result = await firstValueFrom(obsClient.compute(21));
     expect(result).toBe(42);
   });
 
-  test("toObservableClient unwraps ThriftResult error and throws ThriftServiceError", async () => {
+  test("wrapObservableClient unwraps ThriftResult error and throws ThriftServiceError", async () => {
     const serviceError = new ThriftServiceError("PaymentFailed", "paymentFailed", {
       code: "INSUFFICIENT_FUNDS",
     });
     const mockClient = {
-      pay: async () => ({ data: undefined, error: serviceError }),
+      pay: async () => {
+        throw serviceError;
+      },
     };
-    const obsClient = toObservableClient(mockClient);
+    const obsClient = wrapObservableClient(toThriftResult(mockClient), true, { pay: 0 });
 
     await expect(firstValueFrom(obsClient.pay())).rejects.toThrow(
       "Thrift service error [PaymentFailed]",
@@ -417,9 +431,11 @@ describe("Angular Thrift DI integration", () => {
       code: "LIMIT_EXCEEDED",
     });
     const mockClient = {
-      pay: async () => ({ data: undefined, error: serviceError }),
+      pay: async () => {
+        throw serviceError;
+      },
     };
-    const obsClient = toObservableClient(mockClient);
+    const obsClient = wrapObservableClient(toThriftResult(mockClient), true, { pay: 0 });
 
     let caughtDetail: string | undefined;
     const handled$ = obsClient.pay().pipe(
@@ -440,9 +456,11 @@ describe("Angular Thrift DI integration", () => {
     // Also verify catchSystemError in pipe
     const httpError = new ThriftHttpError(502, "Bad Gateway");
     const mockSysClient = {
-      pay: async () => ({ data: undefined, error: httpError }),
+      pay: async () => {
+        throw httpError;
+      },
     };
-    const obsSysClient = toObservableClient(mockSysClient);
+    const obsSysClient = wrapObservableClient(toThriftResult(mockSysClient), true, { pay: 0 });
 
     let systemStatus: number | undefined;
     const sysHandled$ = obsSysClient.pay().pipe(
@@ -463,15 +481,19 @@ describe("Angular Thrift DI integration", () => {
 
   test("deferThriftCall unwraps ThriftResult and emits error into error channel", async () => {
     const error = new ThriftServiceError("DeferredError", "err", {});
-    const obs = deferThriftCall(async () => ({ data: undefined, error }));
+    const obs = deferThriftCall(async () => ({ data: undefined, error })).pipe(
+      unwrapThriftResult(),
+    );
     await expect(firstValueFrom(obs)).rejects.toThrow("Thrift service error [DeferredError]");
 
-    const okObs = deferThriftCall(async () => ({ data: "deferred-ok", error: undefined }));
+    const okObs = deferThriftCall(async () => ({ data: "deferred-ok", error: undefined })).pipe(
+      unwrapThriftResult(),
+    );
     const okVal = await firstValueFrom(okObs);
     expect(okVal).toBe("deferred-ok");
   });
 
-  test("toObservableClient cancels underlying call via AbortSignal upon unsubscription", async () => {
+  test("wrapObservableClient cancels underlying call via AbortSignal upon unsubscription", async () => {
     let capturedSignal: AbortSignal | undefined;
     let abortedAtUnsubscribe = false;
 
@@ -487,7 +509,7 @@ describe("Angular Thrift DI integration", () => {
       },
     };
 
-    const obsClient = toObservableClient(mockClient);
+    const obsClient = wrapObservableClient(mockClient, true, { longCall: 0 });
     const subscription = obsClient.longCall().subscribe({
       error: () => {},
     });
@@ -530,16 +552,15 @@ describe("Angular Thrift DI integration", () => {
     expect((customServiceToken as any).descriptor).toBe(dummyDescriptor);
     expect((customServiceToken as any).config?.endpoint).toBe("http://example.com/unique-endpoint");
 
-    const injector = Injector.create({ providers: [] });
+    const injector = Injector.create({
+      providers: [{ provide: ɵINJECTOR_SCOPE, useValue: "root" }],
+    });
     await runInInjectionContext(injector, async () => {
       const client = inject(customServiceToken);
       const res = await firstValueFrom(client.echo("hello"));
       expect(res).toBe("[http://example.com/unique-endpoint] hello");
 
-      // Test .promise property access
-      expect(typeof client.promise.echo).toBe("function");
-      const promiseRes = await client.promise.echo("world");
-      expect(promiseRes).toBe("[http://example.com/unique-endpoint] world");
+      expect("promise" in client).toBe(false);
     });
   });
 
@@ -551,6 +572,7 @@ describe("Angular Thrift DI integration", () => {
 
     const envInjector = createEnvironmentInjector(
       [
+        { provide: ɵINJECTOR_SCOPE, useValue: "root" },
         provideThriftConfig({
           endpoint: "http://example.com/base",
           headers: () => ({ Authorization: "Bearer global" }),
@@ -608,7 +630,7 @@ describe("Angular Thrift DI integration", () => {
 
     await runInInjectionContext(envInjector, async () => {
       const registry = envInjector.get(THRIFT_SERVICES_REGISTRY);
-      expect(registry.has("TestService")).toBe(true);
+      expect(registry.has("TestService")).toBe(false);
 
       const client = inject(token);
       const res = await firstValueFrom(client.echo("reg"));

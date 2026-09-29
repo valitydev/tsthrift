@@ -10,6 +10,7 @@ export function createObservableMethod(
   target: any,
   method: (...args: unknown[]) => Promise<unknown>,
   unwrap: boolean,
+  argumentCount?: number,
 ): (...args: unknown[]) => Observable<unknown> {
   return (...args: unknown[]) =>
     new Observable((subscriber) => {
@@ -18,14 +19,11 @@ export function createObservableMethod(
       const onAbort = () => controller.abort(sourceSignal?.reason);
       const invoke = (count?: number) => {
         if (subscriber.closed) return;
-        const last = args[args.length - 1];
-        const position =
-          count ??
-          (last !== null &&
-          typeof last === "object" &&
-          ("signal" in last || "headers" in last || "timeoutMs" in last)
-            ? args.length - 1
-            : args.length);
+        const position = count ?? argumentCount;
+        if (position === undefined)
+          throw new TypeError(
+            "Missing IDL argument count; provide argumentCounts for an external client",
+          );
         const options = args[position] as RequestOptions | undefined;
         sourceSignal = options?.signal;
         if (sourceSignal?.aborted) onAbort();
@@ -38,7 +36,7 @@ export function createObservableMethod(
       const succeed = (result: any) => {
         if (
           unwrap &&
-          (THRIFT_METHOD_RESULT in method || !(THRIFT_METHOD_ARGUMENT_COUNT in method)) &&
+          THRIFT_METHOD_RESULT in method &&
           result !== null &&
           typeof result === "object" &&
           "data" in result &&

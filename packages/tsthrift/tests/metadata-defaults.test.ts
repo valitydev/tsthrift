@@ -86,3 +86,20 @@ test("rejects cyclic constants and unsafe numeric metadata defaults", () => {
     new MetadataCodecs(new MetadataIndex(metadata), "bigint").type("Value", "example"),
   ).toThrow(/Invalid i64 default/);
 });
+
+test("struct defaults may omit fields without explicit requiredness", () => {
+  const metadata: Metadata[] = [
+    {
+      name: "example",
+      path: "example.thrift",
+      ast: {
+        struct: {
+          Empty: [{ id: 1, name: "omitted", type: "string" }],
+          Value: [{ id: 1, name: "empty", type: "Empty", defaultValue: [] }],
+        },
+      },
+    },
+  ];
+  const codec = new MetadataCodecs(new MetadataIndex(metadata), "bigint").type("Value", "example");
+  expect(codec.read(new BinaryReader(new Uint8Array([0])))).toEqual({ empty: {} });
+});

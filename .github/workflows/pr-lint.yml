@@ -18,12 +18,12 @@ jobs:
     if: "!startsWith(github.head_ref, 'changeset-release/') && github.actor != 'dependabot[bot]'"
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
       - name: Setup Vite+ and Node.js
-        uses: voidzero-dev/setup-vp@v1
+        uses: voidzero-dev/setup-vp@v1.21.1
         with:
           node-version: "lts"
           cache: true
@@ -32,7 +32,4 @@ jobs:
         run: vp install
 
       - name: Check changeset status
-        run: |
-          if ! pnpm changeset status --since=origin/${{ github.base_ref || 'main' }}; then
-            echo "::warning title=Missing Changeset::Packages were modified in this PR without a changeset. If this PR should trigger an npm release, please run 'pnpm changeset' to add a release note."
-          fi
+        run: vp exec changeset status --since=origin/${{ github.base_ref || 'master' }}

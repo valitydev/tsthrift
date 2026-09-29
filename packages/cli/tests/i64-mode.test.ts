@@ -43,7 +43,7 @@ async function setup() {
     enum Status { READY = 4 }
     const Status STATE = Status.READY
     const i32 COUNT = 42
-    struct Data { 1: i64 id 2: map<i64, list<i64>> values }
+    struct Data { 1: required i64 id 2: map<i64, list<i64>> values }
     union Choice { 1: i64 id }
     exception Failure { 1: i64 id }
     service Example { i64 next(1: i64 id) }
@@ -72,6 +72,9 @@ test.each([undefined, "number", "bigint"] as const)(
     );
     expect(await readFile(path.join(options.output, "common/models.ts"), "utf8")).toContain(
       `export type Identifier = ${mode};`,
+    );
+    expect(await readFile(path.join(options.output, "common/models.ts"), "utf8")).toContain(
+      '"id"?: Identifier;',
     );
     const compiled = path.join(options.directory, "compiled");
     await execute(process.execPath, [
