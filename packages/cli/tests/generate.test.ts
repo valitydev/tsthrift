@@ -102,7 +102,9 @@ test.each(["number", "bigint"] as const)(
     expect(indexContent).toContain(
       'export { THRIFT_SERVICES, THRIFT_SERVICES_LIST } from "./services.js";',
     );
-    expect(indexContent).toContain('export { loadThriftMetadata } from "./metadata.js";');
+    expect(indexContent).toContain(
+      'export { THRIFT_NAMESPACES, loadThriftMetadata } from "./metadata.js";',
+    );
     expect(indexContent).not.toContain("generateId");
     expect(indexContent).not.toContain("generateTraceId");
 
@@ -460,6 +462,8 @@ test("generate() accepts options without output property", () => {
 test.each([
   ["service index { void ping() }", "path collision"],
   ["struct Promise {}", "identifier collision"],
+  ["struct THRIFT_NAMESPACES {}", "identifier collision"],
+  ["service THRIFT_NAMESPACES { void ping() }", "identifier collision"],
   ["service Example { oneway i32 ping() }", "Invalid oneway"],
   ['struct Data { 1: i32 a = "invalid" }', "Invalid i32 constant"],
 ])("rejects invalid generated API before replacing output: %s", async (source, error) => {
@@ -469,6 +473,14 @@ test.each([
   await writeFile(path.join(options.input, "invalid.thrift"), source);
   await expect(generate(options)).rejects.toThrow(error);
   expect(await readFile(path.join(options.output, "index.ts"), "utf8")).toBe(before);
+});
+
+test("rejects module names colliding with the root namespace list", async () => {
+  const options = await setup();
+  await writeFile(path.join(options.input, "THRIFT_NAMESPACES.thrift"), "struct Payload {}");
+  await expect(generate(options)).rejects.toThrow(
+    "Module name collides with generated export: THRIFT_NAMESPACES",
+  );
 });
 
 test("rejects overlapping bundle paths and refuses unrelated output", async () => {

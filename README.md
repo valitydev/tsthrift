@@ -127,6 +127,11 @@ By default, the CLI generates TypeScript models/interfaces (`<namespace>/models.
 Pass `--bundle` to build the generated sources into ESM `.mjs` and `.d.mts` files in `./dist`, preserving namespace directories and module filenames (configurable via `-d, --dist`).
 Pass `--metadata-json` to also emit monolithic `metadata.json`, `--no-models` to generate only metadata without models or services, or `--no-services` to skip service factories.
 
+Generated package roots export `THRIFT_NAMESPACES`, an alphabetically sorted readonly tuple
+of local and external module names accepted by `loadThriftMetadata`. Names are `.thrift`
+file basenames, matching generated directories. Reading the list does not invoke metadata loaders.
+Modules returned only inside an external loader's dependency closure are not separate root keys.
+
 Input (`-i, --input`) supports directories, specific files, or glob patterns (e.g. `--input "proto/**/*.thrift"`). Repeat `--include` for additional include roots. Pass `-e, --external <ns>=<pkg/path>` to consume already compiled protocol packages as external dependencies. `--i64 number` selects safe numeric values instead of bigint. Pass `--lower-case-methods` to generate service methods starting with a lowercase letter in TypeScript while preserving wire message names.
 Pass `--allow-duplicate-modules` to allow duplicate module basenames across include directories using first-wins shadowing.
 

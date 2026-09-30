@@ -201,7 +201,7 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
           'export { THRIFT_SERVICES, THRIFT_SERVICES_LIST } from "./services.js";',
         );
       }
-      rootIndexLines.push('export { loadThriftMetadata } from "./metadata.js";');
+      rootIndexLines.push('export { THRIFT_NAMESPACES, loadThriftMetadata } from "./metadata.js";');
       if (schema.externalPrograms.length > 0) {
         rootIndexLines.push(
           'export { EXTERNAL_NAMESPACES } from "./metadata.js";',

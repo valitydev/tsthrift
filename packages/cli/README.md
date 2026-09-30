@@ -134,6 +134,21 @@ npx --package @vality/tsthrift-cli tsthrift-cli --input ./proto --i64 number
 
 ## Generated Output Structure
 
+The generated root exports `THRIFT_NAMESPACES`, an alphabetically sorted readonly tuple
+of local and external module names accepted by `loadThriftMetadata`. Names are `.thrift`
+file basenames, matching generated directories, rather than language-specific IDL namespaces.
+Reading the list does not invoke metadata loaders. `EXTERNAL_NAMESPACES` retains external
+module descriptors when external modules are present.
+Modules returned only inside an external loader's dependency closure are not separate root keys.
+
+```ts
+import { THRIFT_NAMESPACES, loadThriftMetadata } from "sample-proto";
+
+for (const namespace of THRIFT_NAMESPACES) {
+  const metadata = await loadThriftMetadata(namespace);
+}
+```
+
 When compiling a schema (for example, with namespaces `base` and `payment`), the output directory contains:
 
 ```text

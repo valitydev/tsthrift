@@ -62,7 +62,7 @@ try {
   await mkdir(protocol);
   await writeFile(
     path.join(protocol, "example.thrift"),
-    'const binary BYTES = "abc"\nstruct Payload { 1: optional i64 id }\nservice Example { i64 echo(1: i64 value) }\n',
+    'namespace js other\nconst binary BYTES = "abc"\nstruct Payload { 1: optional i64 id }\nservice Example { i64 echo(1: i64 value) }\n',
   );
   const runtimeVersion = JSON.parse(
     await readFile(path.join(root, "packages/tsthrift/package.json"), "utf8"),
@@ -112,7 +112,12 @@ try {
   await writeFile(
     path.join(directory, "consumer.mts"),
     `
-    import { BYTES, THRIFT_SERVICES } from "tsthrift-smoke-proto";
+    import { BYTES, THRIFT_NAMESPACES, THRIFT_SERVICES } from "tsthrift-smoke-proto";
+    const namespaces: readonly ["example"] = THRIFT_NAMESPACES;
+    // @ts-expect-error Namespace names are readonly.
+    THRIFT_NAMESPACES.push("example");
+    // @ts-expect-error The namespace union excludes unknown module names.
+    const unknownNamespace: typeof THRIFT_NAMESPACES[number] = "missing";
     import * as example from "tsthrift-smoke-proto/example";
     import { createExample } from "tsthrift-smoke-proto/example";
     const bytes: Uint8Array = BYTES;
@@ -128,7 +133,7 @@ try {
     declare const failure: ThriftMethodError<typeof THRIFT_SERVICES["example.Example"], "echo">;
     // @ts-expect-error Registry errors must not be any.
     const invalid: boolean = failure;
-    void [bytes, payload, promise, THRIFT_SERVICES, example, metadataConfig, invalid];
+    void [bytes, payload, promise, THRIFT_SERVICES, example, metadataConfig, invalid, namespaces, unknownNamespace];
   `,
   );
   await run(path.join(directory, "node_modules/.bin/tsc"), [
@@ -145,11 +150,15 @@ try {
     "-e",
     `
     import assert from 'node:assert/strict';
-    import { BYTES, THRIFT_SERVICES } from 'tsthrift-smoke-proto';
+    import { BYTES, THRIFT_NAMESPACES, THRIFT_SERVICES, loadThriftMetadata } from 'tsthrift-smoke-proto';
     import * as example from 'tsthrift-smoke-proto/example';
     import { createExample } from 'tsthrift-smoke-proto/example';
     import { BinaryReader, BinaryWriter, MessageType } from '@vality/tsthrift';
     assert.ok(BYTES instanceof Uint8Array);
+    assert.deepEqual(THRIFT_NAMESPACES, ['example']);
+    for (const namespace of THRIFT_NAMESPACES) {
+      assert.ok((await loadThriftMetadata(namespace)).some(m => m.name === namespace));
+    }
     const transport = async bytes => {
       const r = new BinaryReader(bytes); const h = r.readMessageBegin();
       r.readFieldBegin(); assert.equal(r.readI64(), 42n);

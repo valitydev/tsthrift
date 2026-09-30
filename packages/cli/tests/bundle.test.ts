@@ -67,13 +67,18 @@ test.each(["number", "bigint"] as const)(
       consumer,
       `import { createExample, Status, type Request } from "./dist/example/index.mjs";
 import type { Identifier } from "./dist/common/index.mjs";
-import { THRIFT_SERVICES, loadThriftMetadata } from "./dist/index.mjs";
+import { THRIFT_NAMESPACES, THRIFT_SERVICES, loadThriftMetadata } from "./dist/index.mjs";
+const namespaces: readonly ["common", "example"] = THRIFT_NAMESPACES;
+// @ts-expect-error Namespace names are readonly.
+THRIFT_NAMESPACES.push("example");
+// @ts-expect-error The namespace union excludes unknown module names.
+const unknownNamespace: typeof THRIFT_NAMESPACES[number] = "missing";
 const id: Identifier = ${i64 === "number" ? "42" : "42n"};
 const request: Request = { id };
 const client = createExample({ endpoint: "unused" });
 const result: Promise<${i64}> = client.next(id);
 const echoed: Promise<Request> = THRIFT_SERVICES["example.Example"].createService({ endpoint: "unused" }).echo(request);
-void [result, echoed, Status.ACTIVE, loadThriftMetadata];
+void [result, echoed, Status.ACTIVE, loadThriftMetadata, namespaces, unknownNamespace];
 `,
     );
     await execute(process.execPath, [
@@ -94,9 +99,13 @@ void [result, echoed, Status.ACTIVE, loadThriftMetadata];
         "-e",
         `import assert from "node:assert/strict";
 import { createExample, Status } from "./dist/example/index.mjs";
-import { THRIFT_SERVICES, loadThriftMetadata } from "./dist/index.mjs";
+import { THRIFT_NAMESPACES, THRIFT_SERVICES, loadThriftMetadata } from "./dist/index.mjs";
 import { BinaryReader, BinaryWriter, MessageType } from "@vality/tsthrift";
 assert.equal(Status.ACTIVE, 4);
+assert.deepEqual(THRIFT_NAMESPACES, ["common", "example"]);
+for (const namespace of THRIFT_NAMESPACES) {
+  assert.ok((await loadThriftMetadata(namespace)).some(m => m.name === namespace));
+}
 assert.deepEqual((await loadThriftMetadata("example")).map(m => m.name).sort(), ["common", "example"]);
 const transport = async bytes => {
   const reader = new BinaryReader(bytes);
@@ -132,4 +141,19 @@ test("keeps metadata imports lazy and namespace-local in unminified distribution
     '"metadataVersion"',
   );
   expect(metadata.trim().split("\n").length).toBeGreaterThan(5);
+  await rm(path.join(options.dist, "example/metadata.mjs"));
+  await rm(path.join(options.dist, "common/metadata.mjs"));
+  await execute(
+    process.execPath,
+    [
+      "--input-type=module",
+      "-e",
+      `import assert from "node:assert/strict";
+import { THRIFT_NAMESPACES, loadThriftMetadata } from "./dist/index.mjs";
+assert.deepEqual(THRIFT_NAMESPACES, ["common", "example"]);
+await assert.rejects(loadThriftMetadata("example"), /Cannot find module/);
+`,
+    ],
+    { cwd: path.dirname(options.output) },
+  );
 });
