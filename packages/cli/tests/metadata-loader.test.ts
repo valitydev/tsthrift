@@ -65,22 +65,34 @@ test("getTransitiveDependencies collects full transitive graph with root first",
   expect(depsC.map((p) => p.name)).toEqual(["c"]);
 });
 
-test("loadThriftMetadata loads only reachable dependencies and memoizes result", async () => {
+test("loadThriftMetadataByNamespaces loads only reachable dependencies and memoizes result", async () => {
   const options = await setup();
   await generate(options);
 
   const metadataIndexPath = path.join(options.output, "metadata.ts");
-  const { loadThriftMetadata } = await import(pathToFileURL(metadataIndexPath).href);
+  const { loadThriftMetadataByNamespaces } = await import(pathToFileURL(metadataIndexPath).href);
 
   // example depends on common
-  const exampleMetadata: Metadata[] = await loadThriftMetadata("example");
+  const exampleMetadata: Metadata[] = await loadThriftMetadataByNamespaces("example");
   expect(exampleMetadata).toHaveLength(2);
   expect(exampleMetadata.map((m) => m.name)).toEqual(["example", "common"]);
 
   // common has no dependencies
-  const commonMetadata: Metadata[] = await loadThriftMetadata("common");
+  const commonMetadata: Metadata[] = await loadThriftMetadataByNamespaces("common");
   expect(commonMetadata).toHaveLength(1);
   expect(commonMetadata[0]?.name).toBe("common");
+
+  const selectedMetadata: Metadata[] = await loadThriftMetadataByNamespaces([
+    "example",
+    "common",
+    "example",
+  ]);
+  expect(selectedMetadata.map((m) => m.name)).toEqual(["example", "common"]);
+  const { THRIFT_NAMESPACES } = await import(pathToFileURL(metadataIndexPath).href);
+  expect(
+    (await loadThriftMetadataByNamespaces(THRIFT_NAMESPACES)).map((m: Metadata) => m.name),
+  ).toEqual(["common", "example"]);
+  expect(await loadThriftMetadataByNamespaces([])).toEqual([]);
 
   // Namespace local loader works standalone
   const exampleLoaderPath = path.join(options.output, "example/load-metadata.ts");
@@ -91,12 +103,12 @@ test("loadThriftMetadata loads only reachable dependencies and memoizes result",
   expect(localExampleMetadata.map((m) => m.name)).toEqual(["example", "common"]);
 
   // Memoization: same promise returned for subsequent calls
-  const cachedPromise = loadThriftMetadata("example");
-  const anotherPromise = loadThriftMetadata("example");
+  const cachedPromise = loadThriftMetadataByNamespaces("example");
+  const anotherPromise = loadThriftMetadataByNamespaces("example");
   expect(cachedPromise).toBe(anotherPromise);
 
   // Unknown namespace throws descriptive error
-  await expect(loadThriftMetadata("nonexistent")).rejects.toThrow(
+  await expect(loadThriftMetadataByNamespaces("nonexistent")).rejects.toThrow(
     "Unknown metadata namespace: nonexistent",
   );
 });

@@ -76,7 +76,7 @@ npx --package @vality/tsthrift-cli tsthrift-cli \
 ```
 
 The installed package supplies the module's schema: the compiler reads its published `thriftMetadata`
-(and the metadata closure from `loadThriftMetadata`), so no `.thrift` sources are needed and
+(and the metadata closure from its root or namespace loader), so no `.thrift` sources are needed and
 `include "proto/base.thrift"` resolves through the package.
 
 The two flags have separate roles: `--include` adds `.thrift` search roots whose modules are compiled
@@ -96,7 +96,7 @@ do not matter. Packages are searched in the order given, and only for includes t
 When generating or bundling:
 
 - Models and services import directly from `@vality/base-proto/base`.
-- Transitive metadata loaders dynamically resolve external metadata and pass the module name to `loadThriftMetadata(namespace)`. Both package-root and namespace-subpath loaders are supported.
+- Transitive metadata loaders dynamically resolve external metadata and pass the module name to root `loadThriftMetadataByNamespaces(namespace)` loaders. Namespace `loadThriftMetadata()` loaders return their full dependency closure; older external root loaders named `loadThriftMetadata` remain supported. Both package-root and namespace-subpath loaders are supported.
 - Root `metadata.ts` emits an `EXTERNAL_NAMESPACES` dictionary descriptor.
 - The external package (`@vality/base-proto`) is automatically excluded from the bundle output, including its subpath imports.
 
@@ -114,7 +114,7 @@ models/services; use namespace subpaths for multi-module packages.
 Generated TypeScript omits external modules and loads their metadata from the package.
 Standalone `metadata.json` includes the complete IDL closure, including external modules,
 so `--no-models` output remains usable without an npm loader. The programmatic
-`metadataPath` option can select a separate metadata entry exporting `loadThriftMetadata`,
+`metadataPath` option can select a separate metadata entry exporting `loadThriftMetadataByNamespaces`, `loadThriftMetadata`,
 `thriftMetadata`, `metadata`, or a default metadata object/array.
 
 #### With multiple include roots
@@ -135,26 +135,35 @@ npx --package @vality/tsthrift-cli tsthrift-cli --input ./proto --i64 number
 ## Generated Output Structure
 
 The generated root exports `THRIFT_NAMESPACES`, an alphabetically sorted readonly tuple
-of local and external module names accepted by `loadThriftMetadata`. Names are `.thrift`
+of local and external module names accepted by `loadThriftMetadataByNamespaces`. Names are `.thrift`
 file basenames, matching generated directories, rather than language-specific IDL namespaces.
 Reading the list does not invoke metadata loaders. `EXTERNAL_NAMESPACES` retains external
 module descriptors when external modules are present.
 Modules returned only inside an external loader's dependency closure are not separate root keys.
 
 ```ts
-import { THRIFT_NAMESPACES, loadThriftMetadata } from "sample-proto";
+import { THRIFT_NAMESPACES, loadThriftMetadataByNamespaces } from "sample-proto";
+import { loadThriftMetadata } from "sample-proto/payment";
 
-for (const namespace of THRIFT_NAMESPACES) {
-  const metadata = await loadThriftMetadata(namespace);
-}
+const selected = await loadThriftMetadataByNamespaces(["base", "payment"]);
+const all = await loadThriftMetadataByNamespaces(THRIFT_NAMESPACES);
+const payment = await loadThriftMetadata();
 ```
+
+The root loader requires a name or readonly list of names from `(typeof THRIFT_NAMESPACES)[number]`.
+Unknown names are rejected by TypeScript. It returns one `Metadata[]`
+containing the selected modules and their transitive dependencies, deduplicated by module name
+in selection/dependency order. An empty list returns `[]`; an unknown name rejects the call.
+Namespace-local loaders keep their zero-argument signature. Successful namespace loads stay
+cached across selections; failed loads can be retried. Root imports previously using
+`loadThriftMetadata` must use `loadThriftMetadataByNamespaces` after regeneration.
 
 When compiling a schema (for example, with namespaces `base` and `payment`), the output directory contains:
 
 ```text
 generated/
 ├── index.ts                     # Metadata loader, service registry, and optional main namespace
-├── metadata.ts                  # Root loadThriftMetadata(namespace) lazy loader
+├── metadata.ts                  # Root loadThriftMetadataByNamespaces lazy loader
 ├── services.ts                  # Global THRIFT_SERVICES and THRIFT_SERVICES_LIST registry
 ├── base/                        # Namespace directory for `base`
 │   ├── index.ts                 # Namespace entry point (models + metadata + loader)

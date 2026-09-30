@@ -67,8 +67,24 @@ test.each(["number", "bigint"] as const)(
       consumer,
       `import { createExample, Status, type Request } from "./dist/example/index.mjs";
 import type { Identifier } from "./dist/common/index.mjs";
-import { THRIFT_NAMESPACES, THRIFT_SERVICES, loadThriftMetadata } from "./dist/index.mjs";
+import { loadThriftMetadata as loadExampleMetadata } from "./dist/example/index.mjs";
+import { THRIFT_NAMESPACES, THRIFT_SERVICES, loadThriftMetadataByNamespaces } from "./dist/index.mjs";
 const namespaces: readonly ["common", "example"] = THRIFT_NAMESPACES;
+const selected = loadThriftMetadataByNamespaces(["example", "common"] as const);
+const all = loadThriftMetadataByNamespaces(THRIFT_NAMESPACES);
+const single = loadThriftMetadataByNamespaces("example");
+// @ts-expect-error The root selector accepts only generated namespace names.
+loadThriftMetadataByNamespaces("missing");
+// @ts-expect-error Every array element must be a generated namespace name.
+loadThriftMetadataByNamespaces(["example", "missing"]);
+const arbitraryNames: readonly string[] = ["example"];
+// @ts-expect-error A broad string array does not guarantee known namespace names.
+loadThriftMetadataByNamespaces(arbitraryNames);
+const local = loadExampleMetadata();
+// @ts-expect-error Namespace-local loaders do not accept a namespace selection.
+loadExampleMetadata(["example"]);
+// @ts-expect-error A root loader requires an explicit namespace selection.
+loadThriftMetadataByNamespaces();
 // @ts-expect-error Namespace names are readonly.
 THRIFT_NAMESPACES.push("example");
 // @ts-expect-error The namespace union excludes unknown module names.
@@ -78,7 +94,7 @@ const request: Request = { id };
 const client = createExample({ endpoint: "unused" });
 const result: Promise<${i64}> = client.next(id);
 const echoed: Promise<Request> = THRIFT_SERVICES["example.Example"].createService({ endpoint: "unused" }).echo(request);
-void [result, echoed, Status.ACTIVE, loadThriftMetadata, namespaces, unknownNamespace];
+void [result, echoed, Status.ACTIVE, loadThriftMetadataByNamespaces, namespaces, unknownNamespace, selected, all, single, local];
 `,
     );
     await execute(process.execPath, [
@@ -99,14 +115,17 @@ void [result, echoed, Status.ACTIVE, loadThriftMetadata, namespaces, unknownName
         "-e",
         `import assert from "node:assert/strict";
 import { createExample, Status } from "./dist/example/index.mjs";
-import { THRIFT_NAMESPACES, THRIFT_SERVICES, loadThriftMetadata } from "./dist/index.mjs";
+import { THRIFT_NAMESPACES, THRIFT_SERVICES, loadThriftMetadataByNamespaces } from "./dist/index.mjs";
 import { BinaryReader, BinaryWriter, MessageType } from "@vality/tsthrift";
 assert.equal(Status.ACTIVE, 4);
 assert.deepEqual(THRIFT_NAMESPACES, ["common", "example"]);
+assert.deepEqual((await loadThriftMetadataByNamespaces(["example", "common", "example"])).map(m => m.name), ["example", "common"]);
+assert.deepEqual((await loadThriftMetadataByNamespaces(THRIFT_NAMESPACES)).map(m => m.name), ["common", "example"]);
+await assert.rejects(loadThriftMetadataByNamespaces(), /Expected a namespace string or an array/);
 for (const namespace of THRIFT_NAMESPACES) {
-  assert.ok((await loadThriftMetadata(namespace)).some(m => m.name === namespace));
+  assert.ok((await loadThriftMetadataByNamespaces(namespace)).some(m => m.name === namespace));
 }
-assert.deepEqual((await loadThriftMetadata("example")).map(m => m.name).sort(), ["common", "example"]);
+assert.deepEqual((await loadThriftMetadataByNamespaces("example")).map(m => m.name).sort(), ["common", "example"]);
 const transport = async bytes => {
   const reader = new BinaryReader(bytes);
   const header = reader.readMessageBegin();
@@ -149,9 +168,9 @@ test("keeps metadata imports lazy and namespace-local in unminified distribution
       "--input-type=module",
       "-e",
       `import assert from "node:assert/strict";
-import { THRIFT_NAMESPACES, loadThriftMetadata } from "./dist/index.mjs";
+import { THRIFT_NAMESPACES, loadThriftMetadataByNamespaces } from "./dist/index.mjs";
 assert.deepEqual(THRIFT_NAMESPACES, ["common", "example"]);
-await assert.rejects(loadThriftMetadata("example"), /Cannot find module/);
+await assert.rejects(loadThriftMetadataByNamespaces("example"), /Cannot find module/);
 `,
     ],
     { cwd: path.dirname(options.output) },

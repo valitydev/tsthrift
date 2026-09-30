@@ -96,12 +96,14 @@ test.each([
       import assert from "node:assert/strict";
       import { BinaryReader, BinaryWriter, MessageType } from "@vality/tsthrift";
       import { createChild, base, loadThriftMetadata } from "./dist/child/index.mjs";
-      import { THRIFT_NAMESPACES, EXTERNAL_NAMESPACES, loadThriftMetadata as loadRoot } from "./dist/index.mjs";
+      import { THRIFT_NAMESPACES, EXTERNAL_NAMESPACES, loadThriftMetadataByNamespaces as loadRoot } from "./dist/index.mjs";
       assert.deepEqual(THRIFT_NAMESPACES, ${JSON.stringify(directCommon ? ["base", "child", "common"] : ["base", "child"])});
       assert.deepEqual(Object.keys(EXTERNAL_NAMESPACES).sort(), ${JSON.stringify(directCommon ? ["base", "common"] : ["base"])});
       for (const namespace of THRIFT_NAMESPACES) {
         assert.ok((await loadRoot(namespace)).some(m => m.name === namespace));
       }
+      assert.deepEqual((await loadRoot(["child", "base", "child"])).map(m => m.name), ["child", "base", "common"]);
+      assert.deepEqual((await loadRoot(THRIFT_NAMESPACES)).map(m => m.name), ["base", "common", "child"]);
       ${directCommon ? "" : 'await assert.rejects(loadRoot("common"), /Unknown metadata namespace: common/);'}
       assert.equal(base.MARKER, "EXTERNAL_PACKAGE_ONLY");
       assert.deepEqual((await loadThriftMetadata()).map(m => m.name), ["child", "base", "common"]);

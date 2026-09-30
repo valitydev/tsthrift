@@ -103,7 +103,7 @@ test.each(["number", "bigint"] as const)(
       'export { THRIFT_SERVICES, THRIFT_SERVICES_LIST } from "./services.js";',
     );
     expect(indexContent).toContain(
-      'export { THRIFT_NAMESPACES, loadThriftMetadata } from "./metadata.js";',
+      'export { THRIFT_NAMESPACES, loadThriftMetadataByNamespaces } from "./metadata.js";',
     );
     expect(indexContent).not.toContain("generateId");
     expect(indexContent).not.toContain("generateTraceId");
@@ -189,7 +189,7 @@ test("emits modular metadata in namespace directories and loader in root by defa
   expect(exampleLoader).toContain('import("../common/metadata.js")');
 
   const loader = await readFile(path.join(options.output, "metadata.ts"), "utf8");
-  expect(loader).toContain("export const loadThriftMetadata");
+  expect(loader).toContain("export const loadThriftMetadataByNamespaces");
   expect(loader).toContain('import("./common/load-metadata.js")');
 });
 
@@ -463,6 +463,8 @@ test.each([
   ["service index { void ping() }", "path collision"],
   ["struct Promise {}", "identifier collision"],
   ["struct THRIFT_NAMESPACES {}", "identifier collision"],
+  ["struct loadThriftMetadataByNamespaces {}", "identifier collision"],
+  ["service loadThriftMetadataByNamespaces { void ping() }", "identifier collision"],
   ["service THRIFT_NAMESPACES { void ping() }", "identifier collision"],
   ["service Example { oneway i32 ping() }", "Invalid oneway"],
   ['struct Data { 1: i32 a = "invalid" }', "Invalid i32 constant"],
@@ -502,7 +504,10 @@ test("re-exports main module at root when specified", async () => {
   await generate({ ...options, main: "example" });
 
   const indexContent = await readFile(path.join(options.output, "index.ts"), "utf8");
-  expect(indexContent).toContain('export * from "./example/index.js";');
+  expect(indexContent).toContain('export * from "./example/models.js";');
+  expect(indexContent).toContain('export * from "./example/services/index.js";');
+  expect(indexContent).toContain('export { thriftMetadata } from "./example/metadata.js";');
+  expect(indexContent).not.toContain('export * from "./example/index.js";');
   expect(indexContent).toContain("THRIFT_SERVICES");
 });
 
@@ -524,7 +529,9 @@ test("automatically re-exports single module at root index", async () => {
   await generate({ input, output });
 
   const indexContent = await readFile(path.join(output, "index.ts"), "utf8");
-  expect(indexContent).toContain('export * from "./single/index.js";');
+  expect(indexContent).toContain('export * from "./single/models.js";');
+  expect(indexContent).toContain('export { thriftMetadata } from "./single/metadata.js";');
+  expect(indexContent).not.toContain('export * from "./single/index.js";');
 });
 
 test("sanitizes reserved parameter names in service method signatures", async () => {

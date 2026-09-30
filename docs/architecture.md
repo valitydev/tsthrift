@@ -44,10 +44,13 @@ Thrift IDL
 ```
 
 The CLI generates TypeScript models, modular metadata modules (`load-metadata.ts` per namespace) with a
-`loadThriftMetadata(namespace)` loader resolving full transitive include closures, and optional
+`loadThriftMetadataByNamespaces(namespace | namespaces)` root loader resolving full transitive include closures, and optional
 monolithic `metadata.json` (when `--metadata-json` is provided).
-Metadata callbacks receive the requested namespace; both namespace-local and
-root loaders can be passed to `createMetadataClient`. External npm modules are
+The root loader requires an explicit selection typed by the `THRIFT_NAMESPACES` name union and deduplicates combined results by module name;
+pass `THRIFT_NAMESPACES` to load all root namespaces. Namespace-local `loadThriftMetadata()`
+loaders keep their zero-argument signature. Metadata callbacks receive the requested namespace;
+pass a namespace-local loader directly or select a known root namespace in a zero-argument callback
+for `createMetadataClient`. External npm modules are
 excluded from generated source/bundles, while standalone JSON retains the full IDL closure. Native RPC clients are
 constructed directly at runtime via `createMetadataClient` using either `loadThriftMetadata` or `metadata.json`.
 

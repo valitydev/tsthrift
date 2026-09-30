@@ -98,7 +98,7 @@ export function emitMetadataLoader(schema: Schema): string {
   }
 
   lines.push(
-    "export const loadThriftMetadata: (namespace: string) => Promise<Metadata[]> = createMetadataLoader({",
+    "export const loadThriftMetadataByNamespaces: (namespace: (typeof THRIFT_NAMESPACES)[number] | readonly (typeof THRIFT_NAMESPACES)[number][]) => Promise<Metadata[]> = createMetadataLoader({",
   );
 
   for (const program of schema.localPrograms) {

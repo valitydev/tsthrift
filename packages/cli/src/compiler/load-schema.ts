@@ -135,7 +135,7 @@ export async function loadSchema(
     let pool: Metadata[];
     try {
       const module = await importFromPackage(specifier, packageRoot);
-      const load = module.loadThriftMetadata;
+      const load = module.loadThriftMetadataByNamespaces ?? module.loadThriftMetadata;
       const loaded =
         typeof load === "function"
           ? await (load as (namespace: string) => Promise<Metadata[]>)(name)

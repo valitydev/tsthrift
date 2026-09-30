@@ -44,6 +44,18 @@ const client = await createMetadataClient({
 const result = await client.getPayment(123456789n);
 ```
 
+### Metadata selection
+
+`createMetadataLoader` returns a loader accepting a required namespace name or readonly list
+of names. List calls combine dependency closures into one `Metadata[]`, deduplicated by module
+name in selection/dependency order. An empty list returns `[]`; unknown names reject the call.
+Allowed names are inferred from the dependency keys. Loads are cached per namespace, and rejected
+loads can be retried. For the `metadata` option of `createMetadataClient`, select a known namespace
+in a zero-argument callback: `metadata: () => loadThriftMetadataByNamespaces("payment")`.
+
+Generated package roots export `loadThriftMetadataByNamespaces`; pass their `THRIFT_NAMESPACES`
+list to load all namespaces. Namespace subpaths export zero-argument `loadThriftMetadata()`.
+
 ### Typed client with generated descriptors
 
 When schemas are compiled using `@vality/tsthrift-cli`, service definitions provide typed client factories and descriptors:
