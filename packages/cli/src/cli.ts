@@ -9,10 +9,9 @@ Generate metadata, TypeScript models, and service factories.
 
   -i, --input            Thrift file, directory, or glob pattern (repeatable)
   -o, --output           Generated TypeScript source directory (default: generated)
-      --bundle           Compile and bundle generated TypeScript into distribution directory
+      --bundle           Bundle generated TypeScript into a distribution directory (ESM + .d.mts)
   -d, --dist             Bundle output directory (default: dist)
       --sourcemap        Emit source maps when bundling
-      --minify           Minify the bundle
   -I, --include          Additional include root (repeatable)
   -e, --external         External module <ns>=<pkg/path> or a whole npm package <pkg> (repeatable)
   -m, --main             Main namespace to re-export at root (auto if single module)
@@ -34,7 +33,6 @@ try {
       bundle: { type: "boolean" },
       dist: { type: "string", short: "d" },
       sourcemap: { type: "boolean" },
-      minify: { type: "boolean" },
       include: { type: "string", short: "I", multiple: true },
       external: { type: "string", short: "e", multiple: true },
       main: { type: "string", short: "m" },
@@ -59,7 +57,6 @@ try {
       bundle: values.bundle,
       dist: values.dist,
       sourcemap: values.sourcemap,
-      minify: values.minify,
       includes: values.include,
       external: values.external,
       main: values.main,

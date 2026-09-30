@@ -81,7 +81,7 @@ test.each([
       external: { base: importPath, common: "base-proto/common" },
     });
     const chunks = await Promise.all(
-      (await readdir(dist))
+      (await readdir(dist, { recursive: true }))
         .filter((file) => file.endsWith(".mjs"))
         .map((file) => readFile(path.join(dist, file), "utf8")),
     );

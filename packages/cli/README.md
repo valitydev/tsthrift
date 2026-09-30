@@ -10,7 +10,7 @@ Pure TypeScript compiler and code generator for Apache Thrift IDL files.
 - **TypeScript model generation:** Generates precise interfaces for structs, unions, exceptions, consts, and enums.
 - **Modular split metadata:** Emits lightweight per-namespace metadata modules and local `load-metadata.ts` loaders that lazily load transitive includes on demand.
 - **Service factories & registry:** Generates typed service client factories (`create<Service>`) and registry descriptors (`THRIFT_SERVICES`, `THRIFT_SERVICES_LIST`) compatible with Angular and pure TypeScript.
-- **Standalone bundle compilation:** Compiles and bundles generated code into distribution-ready `.mjs` and `.d.mts` files with `--bundle`.
+- **Distribution build:** Bundles generated code into a modern ESM package (`.mjs` entries with lazy chunks and `.d.mts` declarations) with `--bundle`.
 - **Configurable `i64` representation:** Choose between `bigint` (exact signed 64-bit integers) or safe `number`.
 - **Native UUID support:** Generates TypeScript `string` types for built-in Thrift `uuid` fields, backed by 16-byte fixed-width binary encoding (`WireType.Uuid = 16`).
 - **Transitive include resolution:** Correctly handles complex include graphs and cross-namespace type references.
@@ -35,10 +35,9 @@ npx --package @vality/tsthrift-cli tsthrift-cli --input "proto/**/*.thrift" [opt
 | ---------------------------- | --------------------------------------------------------------------------------- | ----------- |
 | `-i, --input <path/glob>`    | Thrift file, directory, or glob pattern (repeatable)                              | _Required_  |
 | `-o, --output <dir>`         | Directory for generated TypeScript sources                                        | `generated` |
-| `--bundle`                   | Compile and bundle generated TypeScript into distribution directory               | `false`     |
+| `--bundle`                   | Build the distribution: ESM `.mjs` with lazy chunks and `.d.mts`                  | `false`     |
 | `-d, --dist <dir>`           | Bundle distribution output directory                                              | `dist`      |
 | `--sourcemap`                | Emit source maps when bundling                                                    | `false`     |
-| `--minify`                   | Minify the bundle                                                                 | `false`     |
 | `-I, --include <dir>`        | Additional include root directory (repeatable)                                    | `[]`        |
 | `-e, --external <ns>=<path>` | External module mapping, or a whole npm package name (repeatable)                 | `[]`        |
 | `-m, --main <namespace>`     | Re-export one local namespace from the root (automatic for a single local module) | _Unset_     |
@@ -60,7 +59,7 @@ npx --package @vality/tsthrift-cli tsthrift-cli --input ./proto --output ./src/g
 
 #### Bundled distribution
 
-Generate TypeScript sources into `./generated` and bundle them into optimized `.mjs` and `.d.mts` artifacts in `./dist`:
+Generate TypeScript sources into `./generated` and build them into ESM `.mjs` (with lazy chunks) and `.d.mts` files in `./dist`:
 
 ```sh
 npx --package @vality/tsthrift-cli tsthrift-cli --input "proto/**/*.thrift" --bundle --dist ./dist
@@ -99,7 +98,7 @@ When generating or bundling:
 - Models and services import directly from `@vality/base-proto/base`.
 - Transitive metadata loaders dynamically resolve external metadata and pass the module name to `loadThriftMetadata(namespace)`. Both package-root and namespace-subpath loaders are supported.
 - Root `metadata.ts` emits an `EXTERNAL_NAMESPACES` dictionary descriptor.
-- The external package (`@vality/base-proto`) is automatically excluded from the bundle output (`neverBundle`), including its subpath imports.
+- The external package (`@vality/base-proto`) is automatically excluded from the bundle output, including its subpath imports.
 
 External mappings use the `.thrift` file basename, not a language-specific namespace.
 Each mapping applies to one module; map transitive modules explicitly when they are
@@ -222,7 +221,7 @@ nonempty directories, symbolic links, and additional handwritten files. Outputs
 from earlier versions without a manifest must be moved aside before regeneration.
 Compile sources into a separate directory; do not emit JS beside generated TS.
 
-`--bundle` uses the integrated Vite+ build engine and TypeScript compiler provided directly by `@vality/tsthrift-cli`. It builds only generated entries, ignores consumer Vite configuration, and leaves the consumer package manifest unchanged. Source and bundle paths must not overlap.
+`--bundle` builds a modern ESM package with `tsdown` (rolldown), provided by `@vality/tsthrift-cli`: entry modules (`index.mjs`, `<module>/index.mjs`) with shared code split into chunks, so the metadata behind `import()` stays lazy, plus bundled `.d.mts` declarations. Installed dependencies such as `@vality/tsthrift` and external protocol packages stay external. Output is not minified; source maps are opt-in via `--sourcemap`. It ignores consumer build configuration and leaves the consumer package manifest unchanged. The bundler does not type-check the generated sources. Source and distribution paths must not overlap.
 The package recipe uses example versions; select the published tsthrift versions
 when installing dependencies.
 
@@ -258,4 +257,4 @@ The runtime accepts unversioned legacy metadata but rejects unsupported explicit
 
 Only explicit `required` fields and fields with concrete defaults are emitted as required
 properties. Declared exception types use qualified module names. Published output is ESM-only;
-use TypeScript 5.1+ with `node16`, `nodenext`, or `bundler` resolution. Bundles are unminified.
+use TypeScript 5.1+ with `node16`, `nodenext`, or `bundler` resolution. Bundled output is unminified.

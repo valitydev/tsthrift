@@ -59,7 +59,21 @@ async function installBaseProto(dir: string) {
   await mkdir(pkg, { recursive: true });
   await writeFile(
     path.join(pkg, "package.json"),
-    JSON.stringify({ type: "module", exports: { "./base": { import: "./base.mjs" } } }),
+    JSON.stringify({
+      type: "module",
+      exports: { "./base": { types: "./base.d.mts", import: "./base.mjs" } },
+    }),
+  );
+  await writeFile(
+    path.join(pkg, "base.d.mts"),
+    `import type { Metadata } from "@vality/tsthrift";
+export interface BaseData { "id": string }
+export interface BaseServiceErrors { "getBase": unknown }
+export interface BaseService { "getBase"(id: string): Promise<BaseData> }
+export declare const TSTHRIFT_BUILD: { metadataVersion: 1; i64: "bigint"; lowerCaseMethods: false };
+export declare const thriftMetadata: Metadata;
+export declare const loadThriftMetadata: () => Promise<Metadata[]>;
+`,
   );
   await writeFile(
     path.join(pkg, "base.mjs"),
@@ -275,8 +289,8 @@ describe("external namespaces code generation", () => {
     expect(distFiles).toContain("index.mjs");
     expect(distFiles).toContain("child");
 
-    // Verify external import is preserved as external dependency in the bundle chunks
-    const chunkFiles = distFiles.filter((f) => f.endsWith(".mjs"));
+    // Verify the external import is preserved as a dependency of the compiled files
+    const chunkFiles = (await readdir(dist, { recursive: true })).filter((f) => f.endsWith(".mjs"));
     const allBundleContents = await Promise.all(
       chunkFiles.map((f) => readFile(path.join(dist, f), "utf8")),
     );

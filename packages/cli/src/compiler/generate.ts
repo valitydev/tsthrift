@@ -17,7 +17,7 @@ import {
 } from "../metadata/emit-split-metadata.ts";
 import { parseI64Mode } from "./i64-mode.ts";
 import type { I64Mode } from "./i64-mode.ts";
-import { bundleOutput } from "./bundle.ts";
+import { compileOutput } from "./compile.ts";
 import {
   type ExternalNamespaceConfig,
   isExternalPackage,
@@ -31,7 +31,6 @@ export interface GenerateOptions {
   bundle?: boolean;
   dist?: string;
   sourcemap?: boolean;
-  minify?: boolean;
   includes?: string[];
   external?: Record<string, string | ExternalNamespaceConfig> | string[];
   models?: boolean;
@@ -238,22 +237,12 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
         path.join(staging, "index.ts"),
         ...schema.localPrograms.map((p) => path.join(staging, p.name, "index.ts")),
       ];
-      const externalPackages = Array.from(
-        new Set(
-          schema.externalPrograms
-            .flatMap((p) => [p.external?.package, p.external?.importPath, p.external?.metadataPath])
-            .filter((pkg): pkg is string => Boolean(pkg)),
-        ),
-      );
       await publishOutput(dist, async (stagingDist) => {
-        await bundleOutput({
-          entry: entries,
-          outDir: stagingDist,
+        await compileOutput({
+          entries,
           tsconfig: path.join(staging, "tsconfig.json"),
-          cwd: path.dirname(output),
+          outDir: stagingDist,
           sourcemap: options.sourcemap,
-          minify: options.minify,
-          externalPackages,
         });
       });
     }

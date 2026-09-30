@@ -38,14 +38,15 @@
   "dependencies": {
     "@vality/tsthrift": "workspace:^",
     "thrift-parser": "catalog:",
-    "typescript": "catalog:",
-    "vite-plus": "catalog:"
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
     "thrift": "catalog:",
     "uuid": "catalog:",
-    "vite": "catalog:"
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
   },
   "engines": {
     "node": "^24.11.0 || >=26.0.0"

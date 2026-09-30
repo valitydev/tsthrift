@@ -124,7 +124,7 @@ node packages/cli/dist/cli.mjs --input ./proto
 
 By default, the CLI generates TypeScript models/interfaces (`<namespace>/models.ts`), modular metadata (`<namespace>/metadata.ts`), universal service factories (`<namespace>/services/`), and per-namespace entry points into `./generated` (configurable via `-o, --output`).
 
-Pass `--bundle` to compile the generated sources into an optimized, minified distribution bundle with subpath exports (`index.mjs`, `<namespace>/index.mjs`, and `.d.mts` declarations) in `./dist` (configurable via `-d, --dist`).
+Pass `--bundle` to build the generated sources into ESM `.mjs` (entries `index.mjs`, `<namespace>/index.mjs`, with lazy chunks) and `.d.mts` files in `./dist` (configurable via `-d, --dist`).
 Pass `--metadata-json` to also emit monolithic `metadata.json`, `--no-models` to generate only metadata without models or services, or `--no-services` to skip service factories.
 
 Input (`-i, --input`) supports directories, specific files, or glob patterns (e.g. `--input "proto/**/*.thrift"`). Repeat `--include` for additional include roots. Pass `-e, --external <ns>=<pkg/path>` to consume already compiled protocol packages as external dependencies. `--i64 number` selects safe numeric values instead of bigint. Pass `--lower-case-methods` to generate service methods starting with a lowercase letter in TypeScript while preserving wire message names.
@@ -170,7 +170,7 @@ For protocol repositories that contain `.thrift` specifications and distribute g
 }
 ```
 
-When running `npm run build`, `tsthrift-cli` generates clean source code in `./generated` and compiles the standalone bundle with declaration files into `./dist`, ready for publishing or referencing as a package dependency.
+When running `npm run build`, `tsthrift-cli` generates clean source code in `./generated` and builds them with declaration files into `./dist`, ready for publishing or referencing as a package dependency.
 
 ## Native clients and wire contracts
 
@@ -247,6 +247,6 @@ nonempty directories, symbolic links, and additional handwritten files. Outputs
 from earlier versions without a manifest must be moved aside before regeneration.
 Compile sources into a separate directory; do not emit JS beside generated TS.
 
-`--bundle` uses the integrated Vite+ build engine and TypeScript compiler provided directly by `@vality/tsthrift-cli`. It builds only generated entries, ignores consumer Vite configuration, and leaves the consumer package manifest unchanged. Source and bundle paths must not overlap.
+`--bundle` builds a modern ESM package with `tsdown` (rolldown), provided by `@vality/tsthrift-cli`: entry modules (`index.mjs`, `<module>/index.mjs`) with shared code split into chunks, so the metadata behind `import()` stays lazy, plus bundled `.d.mts` declarations. Installed dependencies such as `@vality/tsthrift` and external protocol packages stay external. Output is not minified; source maps are opt-in via `--sourcemap`. It ignores consumer build configuration and leaves the consumer package manifest unchanged. The bundler does not type-check the generated sources. Source and distribution paths must not overlap.
 The package recipe uses example versions; select the published tsthrift versions
 when installing dependencies.

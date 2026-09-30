@@ -16,7 +16,7 @@
 
 - **`@vality/tsthrift-cli`**:
   - Pure TypeScript Thrift compiler generating models, service definitions, and modular metadata without external Apache Thrift binaries.
-  - Built-in bundling support with minification, sourcemaps, and subpath exports (`--bundle`, `--dist`).
+  - Built-in distribution build (tsdown ESM entries with lazy chunks plus `.d.mts` declarations), optional source maps, and subpath exports (`--bundle`, `--dist`).
   - Support for external protocol namespaces (`--external`) with automated cross-package imports and collision prevention.
   - Configurable method naming (`--lower-case-methods`), `i64` representation, and duplicate module handling.
 

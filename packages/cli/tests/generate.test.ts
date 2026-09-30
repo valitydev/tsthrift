@@ -331,7 +331,7 @@ test("bundles output into dist/ with types when bundle: true", async () => {
   ).resolves.toBeDefined();
 });
 
-test("bundles output into dist/ without minification or source maps by default", async () => {
+test("bundles into dist/ without source maps by default", async () => {
   const options = await setup();
   const dist = path.join(options.output, "../dist");
   await generate({
@@ -344,22 +344,32 @@ test("bundles output into dist/ without minification or source maps by default",
   expect(distFiles).toContain("index.mjs");
   expect(distFiles).toContain("index.d.mts");
   expect(distFiles).not.toContain("index.mjs.map");
-
-  const indexContent = await readFile(path.join(dist, "index.mjs"), "utf8");
-  expect(indexContent.trim().split("\n").length).toBeGreaterThan(1);
+  expect(await readFile(path.join(dist, "index.mjs"), "utf8")).not.toContain("sourceMappingURL");
 });
 
-test("supports sourcemap: true and minify: true when bundling", async () => {
+test("keeps metadata loading lazy in split chunks with unminified output", async () => {
   const options = await setup();
   const dist = path.join(options.output, "../dist");
-  const readable = path.join(options.output, "../dist-readable");
-  await generate({ ...options, bundle: true, dist: readable });
-  await generate({ ...options, bundle: true, dist, sourcemap: true, minify: true });
+  await generate({ ...options, bundle: true, dist });
+
+  const entry = await readFile(path.join(dist, "index.mjs"), "utf8");
+  expect(entry).toMatch(/import\("\.\/[^"]+\.mjs"\)/);
+  expect(entry).not.toContain('"metadataVersion"');
+  expect(entry.trim().split("\n").length).toBeGreaterThan(5);
+  const files = (await readdir(dist)).filter((name) => name.endsWith(".mjs"));
+  const contents = await Promise.all(files.map((name) => readFile(path.join(dist, name), "utf8")));
+  expect(contents.some((content) => content.includes('"metadataVersion"'))).toBe(true);
+  expect(await readdir(dist)).toContain("common");
+});
+
+test("supports sourcemap: true when bundling", async () => {
+  const options = await setup();
+  const dist = path.join(options.output, "../dist");
+  await generate({ ...options, bundle: true, dist, sourcemap: true });
 
   expect(await readdir(dist)).toContain("index.mjs.map");
-  const minified = await readFile(path.join(dist, "index.mjs"), "utf8");
-  const plain = await readFile(path.join(readable, "index.mjs"), "utf8");
-  expect(minified.length).toBeLessThan(plain.length);
+  const map = JSON.parse(await readFile(path.join(dist, "index.mjs.map"), "utf8"));
+  expect(map.sourcesContent?.length).toBeGreaterThan(0);
 });
 
 test("CLI supports --bundle and --dist flags with subpath exports", async () => {
@@ -390,7 +400,7 @@ test("CLI supports --bundle and --dist flags with subpath exports", async () => 
   expect(commonDist).toContain("index.d.mts");
 });
 
-test("CLI supports --bundle with --sourcemap and --minify flags", async () => {
+test("CLI supports --bundle with the --sourcemap flag", async () => {
   const options = await setup();
   const dist = path.join(options.output, "../dist");
   await execute(process.execPath, [
@@ -405,7 +415,6 @@ test("CLI supports --bundle with --sourcemap and --minify flags", async () => {
     "--dist",
     dist,
     "--sourcemap",
-    "--minify",
   ]);
 
   const distFiles = await readdir(dist);
