@@ -9,9 +9,9 @@ Generate metadata, TypeScript models, and service factories.
 
   -i, --input            Thrift file, directory, or glob pattern (repeatable)
   -o, --output           Generated TypeScript source directory (default: generated)
-      --bundle           Bundle generated TypeScript into a distribution directory (ESM + .d.mts)
-  -d, --dist             Bundle output directory (default: dist)
-      --sourcemap        Emit source maps when bundling
+      --bundle           Build ESM + .d.mts preserving generated module paths
+  -d, --dist             Distribution output directory (default: dist)
+      --sourcemap        Emit source maps in the distribution
   -I, --include          Additional include root (repeatable)
   -e, --external         External module <ns>=<pkg/path> or a whole npm package <pkg> (repeatable)
   -m, --main             Main namespace to re-export at root (auto if single module)

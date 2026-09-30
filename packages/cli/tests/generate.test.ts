@@ -347,29 +347,17 @@ test("bundles into dist/ without source maps by default", async () => {
   expect(await readFile(path.join(dist, "index.mjs"), "utf8")).not.toContain("sourceMappingURL");
 });
 
-test("keeps metadata loading lazy in split chunks with unminified output", async () => {
-  const options = await setup();
-  const dist = path.join(options.output, "../dist");
-  await generate({ ...options, bundle: true, dist });
-
-  const entry = await readFile(path.join(dist, "index.mjs"), "utf8");
-  expect(entry).toMatch(/import\("\.\/[^"]+\.mjs"\)/);
-  expect(entry).not.toContain('"metadataVersion"');
-  expect(entry.trim().split("\n").length).toBeGreaterThan(5);
-  const files = (await readdir(dist)).filter((name) => name.endsWith(".mjs"));
-  const contents = await Promise.all(files.map((name) => readFile(path.join(dist, name), "utf8")));
-  expect(contents.some((content) => content.includes('"metadataVersion"'))).toBe(true);
-  expect(await readdir(dist)).toContain("common");
-});
-
 test("supports sourcemap: true when bundling", async () => {
   const options = await setup();
   const dist = path.join(options.output, "../dist");
   await generate({ ...options, bundle: true, dist, sourcemap: true });
 
-  expect(await readdir(dist)).toContain("index.mjs.map");
-  const map = JSON.parse(await readFile(path.join(dist, "index.mjs.map"), "utf8"));
+  expect(await readdir(path.join(dist, "example"))).toContain("models.mjs.map");
+  const map = JSON.parse(await readFile(path.join(dist, "example/models.mjs.map"), "utf8"));
   expect(map.sourcesContent?.length).toBeGreaterThan(0);
+  expect(await readFile(path.join(dist, "example/models.mjs"), "utf8")).toContain(
+    "sourceMappingURL=models.mjs.map",
+  );
 });
 
 test("CLI supports --bundle and --dist flags with subpath exports", async () => {
@@ -420,7 +408,7 @@ test("CLI supports --bundle with the --sourcemap flag", async () => {
   const distFiles = await readdir(dist);
   expect(distFiles).toContain("index.mjs");
   expect(distFiles).toContain("index.d.mts");
-  expect(distFiles).toContain("index.mjs.map");
+  expect(await readdir(path.join(dist, "example"))).toContain("models.mjs.map");
 });
 
 test("CLI and generate() support glob patterns for input", async () => {

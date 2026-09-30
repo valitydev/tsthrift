@@ -62,7 +62,7 @@ try {
   await mkdir(protocol);
   await writeFile(
     path.join(protocol, "example.thrift"),
-    'const binary BYTES = "abc"\nservice Example { i64 echo(1: i64 value) }\n',
+    'const binary BYTES = "abc"\nstruct Payload { 1: optional i64 id }\nservice Example { i64 echo(1: i64 value) }\n',
   );
   const runtimeVersion = JSON.parse(
     await readFile(path.join(root, "packages/tsthrift/package.json"), "utf8"),
@@ -99,6 +99,16 @@ try {
     "--no-fund",
     path.join(directory, "tsthrift-smoke-proto-1.0.0.tgz"),
   ]);
+  const installedDist = path.join(directory, "node_modules/tsthrift-smoke-proto/dist");
+  const installedFiles = await readdir(installedDist, { recursive: true });
+  for (const module of ["example/models", "example/metadata", "example/services/Example"]) {
+    assert.ok(installedFiles.includes(`${module}.mjs`));
+    assert.ok(installedFiles.includes(`${module}.d.mts`));
+  }
+  assert.match(
+    await readFile(path.join(installedDist, "example/models.d.mts"), "utf8"),
+    /export interface Payload/,
+  );
   await writeFile(
     path.join(directory, "consumer.mts"),
     `
@@ -106,6 +116,7 @@ try {
     import * as example from "tsthrift-smoke-proto/example";
     import { createExample } from "tsthrift-smoke-proto/example";
     const bytes: Uint8Array = BYTES;
+    const payload: example.Payload = { id: 42 };
     const promise: Promise<number> = createExample({ endpoint: "unused" }).echo(42);
     // @ts-expect-error Generated method names cannot be overridden at runtime.
     createExample({ endpoint: "unused", lowerCaseMethods: true });
@@ -117,7 +128,7 @@ try {
     declare const failure: ThriftMethodError<typeof THRIFT_SERVICES["example.Example"], "echo">;
     // @ts-expect-error Registry errors must not be any.
     const invalid: boolean = failure;
-    void [bytes, promise, THRIFT_SERVICES, example, metadataConfig, invalid];
+    void [bytes, payload, promise, THRIFT_SERVICES, example, metadataConfig, invalid];
   `,
   );
   await run(path.join(directory, "node_modules/.bin/tsc"), [
