@@ -1,7 +1,9 @@
 import { defineConfig } from "vite-plus";
 
 export default defineConfig({
-  fmt: {},
+  fmt: {
+    ignorePatterns: ["**/CHANGELOG.md"],
+  },
   lint: {
     options: { typeAware: true, typeCheck: true },
     overrides: [

@@ -1,6 +1,6 @@
 {
   "name": "@vality/tsthrift-cli",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Thrift TypeScript model and metadata compiler CLI.",
   "homepage": "https://github.com/valitydev/tsthrift#readme",
   "bugs": {
