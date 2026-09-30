@@ -19,6 +19,17 @@ export interface MetadataClientConfig extends RpcClientConfig {
   lowerCaseMethods?: boolean;
 }
 
+/**
+ * Configuration accepted by generated `create<Service>` factories; the service, namespace, i64 mode
+ * and method naming are fixed by the generator.
+ */
+export interface ServiceClientConfig extends Omit<
+  MetadataClientConfig,
+  "serviceName" | "namespace" | "metadata" | "i64Mode" | "lowerCaseMethods"
+> {
+  metadata?: MetadataClientConfig["metadata"];
+}
+
 export type DynamicThriftClient = Record<string, (...args: unknown[]) => Promise<unknown>>;
 
 /** Builds a client entirely from metadata, without generated modules or eval. */

@@ -41,14 +41,14 @@ export function validateOutput(schema: Schema, services: boolean, lowerCaseMetho
       if (paths.has(name.toLowerCase()))
         throw new Error(`Generated service path collision: ${program.name}.${name}`);
       paths.add(name.toLowerCase());
-      for (const generated of [name, `${name}Errors`, `${name}Config`, `create${name}`]) {
+      for (const generated of [name, `${name}Errors`, `create${name}`]) {
         add(generated);
       }
       if (
         [
           "models",
           "createLazyMetadataClient",
-          "MetadataClientConfig",
+          "ServiceClientConfig",
           "ThriftServiceDescriptor",
           "loadThriftMetadata",
         ].includes(name)

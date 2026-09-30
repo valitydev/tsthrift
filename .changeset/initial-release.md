@@ -11,7 +11,7 @@
   - Runtime metadata client (`createMetadataClient`) and modular metadata loading (`loadThriftMetadata`) supporting external npm packages and subpath exports.
   - Native Thrift Binary Protocol reader/writer with configurable `i64` representation (`bigint` by default, `number` optional).
   - Built-in `UUID` codec for seamless canonical UUID string serialization without external libraries.
-  - Typed service exception handling and non-throwing execution via `toThriftResult`, `THRIFT_ERRORS`, and `THRIFT_RESULT` symbols.
+  - Typed service exception handling and non-throwing execution via `toThriftResult` and the `THRIFT_ERRORS` symbol.
   - Built-in `createWoodyHeaders` and `createWachterHeaders` helpers with customizable header, metadata, and user identity prefixes.
 
 - **`@vality/tsthrift-cli`**:

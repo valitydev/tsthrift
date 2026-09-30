@@ -1,5 +1,4 @@
 import { THRIFT_METHOD_ARGUMENT_COUNT } from "../transport/method-arguments.ts";
-import { THRIFT_RESULT, toThriftResult } from "../transport/types.ts";
 import {
   type DynamicThriftClient,
   type MetadataClientConfig,
@@ -43,6 +42,5 @@ export function createLazyMetadataClient<T extends object = DynamicThriftClient>
     return call;
   };
   const client = Object.fromEntries(methodNames.map((name) => [name, createMethod(name)])) as T;
-  Object.defineProperty(client, THRIFT_RESULT, { get: () => toThriftResult(client) });
   return client;
 }

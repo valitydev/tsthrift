@@ -86,9 +86,6 @@ export interface RequestOptions {
 /** Unique symbol used for phantom service error map property. */
 export const THRIFT_ERRORS: unique symbol = Symbol.for("@vality/tsthrift/errors");
 
-/** Unique symbol used to access typed non-throwing Result client on service instance. */
-export const THRIFT_RESULT: unique symbol = Symbol.for("@vality/tsthrift/result");
-
 /**
  * Maps a service client's methods to methods returning Promise<ThriftResult<Data, MethodError>>.
  * Preserves parameter types and automatically infers precise method errors from THRIFT_ERRORS.

@@ -6,9 +6,9 @@ import {
   BinaryWriter,
   MessageType,
   type Metadata,
-  THRIFT_RESULT,
   createLazyMetadataClient,
   createMetadataClient,
+  toThriftResult,
 } from "@vality/tsthrift";
 import { catchThriftResult } from "../src/rxjs.ts";
 
@@ -71,7 +71,7 @@ for (const lazy of [false, true]) {
       ? createLazyMetadataClient<any>(config, ["echo"])
       : await createMetadataClient<any>(config);
     const client = wrapObservableClient(raw);
-    const resultClient = wrapObservableClient(raw[THRIFT_RESULT]);
+    const resultClient = wrapObservableClient(toThriftResult(raw));
     expect(
       await firstValueFrom(
         resultClient.echo(
@@ -155,7 +155,7 @@ for (const lazy of [false, true]) {
     const raw = lazy
       ? createLazyMetadataClient<any>(config, ["echo"])
       : await createMetadataClient<any>(config);
-    const subscription = wrapObservableClient(raw[THRIFT_RESULT])
+    const subscription = wrapObservableClient(toThriftResult(raw))
       .echo({ headers: "IDL headers" })
       .subscribe();
     await pending;
@@ -180,7 +180,6 @@ test("external clients require explicit counts and preserve result-shaped payloa
 
 test("Result clients preserve method error types and explicit non-unwrapping", async () => {
   const { expectTypeOf } = await import("vite-plus/test");
-  const { toThriftResult } = await import("@vality/tsthrift");
   const raw = { echo: async () => ({ data: "payload", error: undefined }) };
   const normal = wrapObservableClient(raw, true, { echo: 0 });
   expectTypeOf(await firstValueFrom(normal.echo())).toEqualTypeOf<{

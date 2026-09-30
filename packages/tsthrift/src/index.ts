@@ -7,7 +7,11 @@ export type {
   MetadataLoaderOptions,
 } from "./metadata/loader.ts";
 export { MetadataIndex } from "./metadata/index.ts";
-export type { DynamicThriftClient, MetadataClientConfig } from "./metadata/client.ts";
+export type {
+  DynamicThriftClient,
+  MetadataClientConfig,
+  ServiceClientConfig,
+} from "./metadata/client.ts";
 export type {
   Field,
   I64Mode,
@@ -19,7 +23,7 @@ export type {
 } from "./metadata/types.ts";
 export * from "./transport/errors.ts";
 export { createHttpTransport, mergeHeaderProviders } from "./transport/http-transport.ts";
-export { THRIFT_ERRORS, THRIFT_RESULT, toThriftResult, unwrapResult } from "./transport/types.ts";
+export { THRIFT_ERRORS, toThriftResult, unwrapResult } from "./transport/types.ts";
 export type {
   HeaderProvider,
   MetadataModule,

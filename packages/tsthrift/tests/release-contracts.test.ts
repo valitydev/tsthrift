@@ -4,7 +4,7 @@ import {
   FlakeId,
   MessageType,
   type Metadata,
-  THRIFT_RESULT,
+  THRIFT_ERRORS,
   ThriftHttpError,
   ThriftServiceError,
   bs64,
@@ -161,9 +161,9 @@ test("RPC rejects with a qualified error wrapper and preserves context", async (
   });
 });
 
-test("shared errors and Result symbols work across separate runtime copies", async () => {
+test("shared error symbols and brands work across separate runtime copies", async () => {
   const other = await import("../dist/index.mjs");
-  expect(other.THRIFT_RESULT).toBe(THRIFT_RESULT);
+  expect(other.THRIFT_ERRORS).toBe(THRIFT_ERRORS);
   const service = new other.ThriftServiceError("test.Missing", "missing", {});
   expect(service).not.toBeInstanceOf(ThriftServiceError);
   expect(isThriftServiceError(service, "test.Missing")).toBe(true);

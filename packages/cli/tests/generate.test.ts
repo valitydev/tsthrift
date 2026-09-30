@@ -120,7 +120,7 @@ test.each(["number", "bigint"] as const)(
     expect(exampleService).not.toContain("createExampleSafe");
     expect(exampleService).toContain("export interface ExampleErrors extends common_BaseErrors {");
     expect(exampleService).toContain("readonly [THRIFT_ERRORS]?: ExampleErrors;");
-    expect(exampleService).toContain("readonly [THRIFT_RESULT]: ThriftResultClient<Example>;");
+    expect(exampleService).not.toContain("THRIFT_RESULT");
     expect(exampleService).toContain("export type ExampleEchoError =");
     expect(exampleService).toContain("export type ExampleEchoServiceError =");
 
@@ -472,7 +472,6 @@ test("generate() accepts options without output property", () => {
 test.each([
   ["service index { void ping() }", "path collision"],
   ["struct Promise {}", "identifier collision"],
-  ["struct ExampleConfig {} service Example { void ping() }", "identifier collision"],
   ["service Example { oneway i32 ping() }", "Invalid oneway"],
   ['struct Data { 1: i32 a = "invalid" }', "Invalid i32 constant"],
 ])("rejects invalid generated API before replacing output: %s", async (source, error) => {
