@@ -1,0 +1,54 @@
+{
+  "name": "@vality/tsthrift-cli",
+  "version": "0.0.0",
+  "description": "Thrift TypeScript model and metadata compiler CLI.",
+  "homepage": "https://github.com/valitydev/tsthrift#readme",
+  "bugs": {
+    "url": "https://github.com/valitydev/tsthrift/issues"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/valitydev/tsthrift.git"
+  },
+  "bin": {
+    "tsthrift-cli": "./dist/cli.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./cli": "./dist/cli.mjs",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vp pack --sourcemap",
+    "dev": "vp pack --watch --sourcemap",
+    "test": "vp test",
+    "test:conformance": "vp test --config conformance.config.ts",
+    "check": "vp check",
+    "prepublishOnly": "vp run build"
+  },
+  "dependencies": {
+    "@vality/tsthrift": "workspace:^",
+    "thrift-parser": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "thrift": "catalog:",
+    "uuid": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": "^24.11.0 || >=26.0.0"
+  }
+}

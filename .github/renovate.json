@@ -1,0 +1,20 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["local>valitydev/.github:renovate-config"],
+  "packageRules": [
+    {
+      "matchManagers": ["github-actions"],
+      "pinDigests": false
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Pinned Damsel revision used by the conformance suite",
+      "managerFilePatterns": ["/^\\.github/damsel-revision$/"],
+      "matchStrings": ["^(?<currentValue>v[^\\s]+)\\s*$"],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "valitydev/damsel"
+    }
+  ]
+}

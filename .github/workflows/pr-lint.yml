@@ -1,0 +1,35 @@
+name: PR Validation
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  changeset:
+    name: Check Changeset
+    runs-on: ubuntu-latest
+    if: "!startsWith(github.head_ref, 'changeset-release/') && github.actor != 'dependabot[bot]'"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup Vite+ and Node.js
+        uses: voidzero-dev/setup-vp@v1.21.1
+        with:
+          node-version: "lts"
+          cache: true
+
+      - name: Install dependencies
+        run: vp install
+
+      - name: Check changeset status
+        run: vp exec changeset status --since=origin/${{ github.base_ref || 'master' }}

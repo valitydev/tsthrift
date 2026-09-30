@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [master]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  release:
+    name: Release
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          ref: master
+
+      - name: Verify tested revision is still master
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.workflow_run.head_sha }}"
+
+      - name: Setup Vite+ and Node.js
+        uses: voidzero-dev/setup-vp@v1.21.1
+        with:
+          node-version: "lts"
+          cache: true
+
+      - name: Install dependencies
+        run: vp install
+
+      - name: Build all packages
+        run: vp run build
+
+      - name: Create Release Pull Request or Publish to npm
+        id: changesets
+        uses: changesets/action@v2.1.2
+        with:
+          version-script: vp run version-packages
+          publish-script: vp exec changeset publish
+          pr-title: "chore: version packages"
+          commit-message: "chore: version packages"
+          create-github-releases: true
+        env:
+          npm_config_provenance: "true"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

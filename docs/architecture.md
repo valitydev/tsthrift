@@ -1,0 +1,176 @@
+# Architecture
+
+## Runtime metadata clients
+
+`createMetadataClient` constructs a Promise client from a `Metadata[]` schema,
+namespace, service name, and transport configuration. It accepts a static array,
+Promise, or lazy loader. Initialization snapshots metadata and resolves reachable
+service/type definitions once into in-memory codecs. Calls then reuse the common
+native Binary Protocol and request implementation. No generated source modules,
+parser, external compiler, or runtime code generation are required.
+
+The shared MetadataIndex retains a collection typedef's defining namespace and
+resolves relative include paths. MetadataCodecs handles recursive references and
+field IDs. Default evaluation interprets parser expressions as values, resolving
+constant/enum references without eval; collection defaults are cloned per value.
+Duplicate modules, invalid fields, unknown types/services, and inheritance cycles
+fail during initialization before transport execution. The factory requires an
+explicit namespace, so same-named services cannot select the wrong module.
+
+Clients snapshot metadata arrays and loader results. A supplied `MetadataIndex` is reused
+by reference and must remain unchanged. A new schema requires a new client.
+Types/default expansion is bounded, and wire limits match the generated backend.
+The default public type is a dynamic method map returning Promise<unknown>; callers
+may provide a matching existing TS client type. The asynchronous factory rejects
+IDL methods named `then` or `promise`, which would otherwise trigger Promise assimilation.
+
+```text
+metadata/ (or metadata.json) -> runtime schema resolution -> cached codecs -> Promise methods
+                                                                          -> Binary Protocol / HTTP
+```
+
+## Native client runtime
+
+Native client execution operates dynamically via `createMetadataClient` directly from
+metadata (`loadThriftMetadata` or optional `metadata.json`) without an external Thrift compiler or static code generation for codecs/clients.
+The Binary Protocol reader and writer provide the wire implementation. Static client/codec
+code generation has been replaced with this metadata-driven runtime.
+
+```text
+Thrift IDL
+  -> pinned parser / include graph
+       -> modular metadata/ (loadThriftMetadata per namespace) & optional metadata.json (--metadata-json)
+       -> public TS models, enums, constants (emitted by default)
+```
+
+The CLI generates TypeScript models, modular metadata modules (`load-metadata.ts` per namespace) with a
+`loadThriftMetadata(namespace)` loader resolving full transitive include closures, and optional
+monolithic `metadata.json` (when `--metadata-json` is provided).
+Metadata callbacks receive the requested namespace; both namespace-local and
+root loaders can be passed to `createMetadataClient`. External npm modules are
+excluded from generated source/bundles, while standalone JSON retains the full IDL closure. Native RPC clients are
+constructed directly at runtime via `createMetadataClient` using either `loadThriftMetadata` or `metadata.json`.
+
+## Compiler responsibilities
+
+- Schema loading selects entry files and reachable includes.
+- Shared validation and constant evaluation preserve the metadata contract.
+- Model emission selects bigint/number i64 and generates TypeScript models.
+- Output publication stages and replaces each owned directory separately. Source and bundle publication are not a single transaction.
+
+These are source artifacts, not an automatically published protocol package.
+Compile them as ESM with standard TypeScript/JavaScript tooling (`NodeNext` module resolution,
+strict type checking, and `isolatedDeclarations` compatibility for native compilers such as `tsgo`
+and `oxc`); modular metadata files are TypeScript modules and do not require JSON module import support.
+
+## Native value and wire contracts
+
+Public structs, unions, and declared exceptions are plain objects. Codecs read
+and write these values directly without Apache constructors or an AST lookup at
+request time. Maps retain typed keys, including structs; sets use Set and lists
+use arrays. Explicit `{}` remains present, and false/zero/empty strings survive.
+
+`--i64 bigint` preserves the signed 64-bit range. `--i64 number` rejects unsafe
+integers on write and read, including nested values and map keys. Generated service
+factories bind the selected mode and exclude i64Mode from their
+config. Direct metadata clients select it once using MetadataClientConfig.i64Mode.
+The IDL parser (`thrift-parser`) tokenizes integer literals as JavaScript `Number` (IEEE-754 double precision float), and the JSON-compatible metadata AST format does not preserve 64-bit integers. Consequently, integer literals in IDL constants and defaults exceeding safe 53-bit bounds (±(2^53 - 1)) are rejected at compile time to prevent silent precision loss and rounding. The full signed 64-bit range is preserved at runtime through `bigint`.
+
+Native `binary` is Uint8Array, including constants and nested defaults. IDL
+binary string constants are UTF-8 encoded. Generated models and constants use the
+same Uint8Array contract. This requires consumer
+migration where applications currently expect strings or Buffer APIs.
+
+Declared defaults are constructed per value. Only explicitly required fields
+are checked as required on the wire. Unknown fields and incompatible field wire
+types are skipped; absent required fields, duplicate known fields, invalid
+container element types, and multiple known union fields are rejected. Empty
+unions remain representable for schema evolution. Implicit field IDs descend
+from -1; explicit nonpositive IDs are preserved (the Apache equivalent requires
+its negative-field-key option).
+
+Known-value recursion is bounded to 64 levels. Low-level reader byte, collection,
+and skip limits remain active. See [runtime](runtime.md).
+
+## Requests, responses, and errors
+
+Every call owns its writer, response reader, sequence ID, and RequestOptions.
+Options are selected by the IDL argument count, not by inspecting object keys.
+Arguments named `options`, `callback`, or `params` remain ordinary payload data.
+Inherited service methods share the same client connection configuration.
+
+Replies must match method and sequence ID, use REPLY or EXCEPTION, and contain
+no trailing bytes. Non-void replies require a success field or declared exception.
+Declared exceptions reject with `ThriftServiceError` and a qualified `module.Exception`
+type. The original payload is available in `data`. Shared symbol brands support error
+classification across installed runtime copies. Legacy tagged payloads may still be
+normalized explicitly; new clients always produce wrappers.
+Application exceptions
+use `ThriftApplicationError` with the server's numeric code. Oneway methods send
+ONEWAY and resolve after the transport completes without decoding a reply.
+
+`MetadataClientConfig` (and underlying `RpcClientConfig`) accepts endpoint, static/dynamic headers, timeout, fetch,
+logging, and an optional byte `transport`. The default HTTP transport posts
+`application/x-thrift`, merges per-call headers, rejects non-200 responses, and
+bounds header preparation, fetch, and streamed body reading under one deadline,
+and aborts fetch on timeout or caller cancellation. Default fetch response bodies
+are capped at 16 MiB before decoding. Angular HttpClient buffers its body before
+the adapter receives it, so its backend owns network allocation limits. The HTTP
+transport compatibility policy
+also accepts octet-stream and missing response Content-Type. A supplied transport
+owns its own I/O, cancellation, and timeout behavior.
+
+## Runtime/package boundaries
+
+The `@vality/tsthrift` package and `@vality/tsthrift/runtime` follow a Web Standards First (universal)
+contract: all binary serialization, networking (`fetch`, `AbortSignal`, `ReadableStream`), and
+utility operations (`Uint8Array`, `DataView`, `TextEncoder`/`TextDecoder`) use standard ECMAScript
+and Web APIs without Node.js runtime globals or shims. They have no runtime imports of
+Apache Thrift, Buffer, parser, Node, Angular, or RxJS. The core runs natively in browsers,
+Web Workers, and modern Node.js runtimes (`>=24.0.0`). Node.js dependencies are strictly
+isolated to build-time tooling and the `@vality/tsthrift-cli` compiler. `createMetadataClient` loads
+metadata once at initialization and reuses pure TypeScript codecs and binary protocol reader/writer.
+
+The legacy Apache Thrift target and `@vality/tsthrift/apache` runtime have been removed.
+The official Apache `thrift` package is retained solely in test devDependencies to independently
+verify Binary Protocol wire compatibility.
+
+The standalone `@vality/tsthrift-angular` package provides Angular DI integration
+(`provideThriftConfig`, `provideThriftServices`, `provideThriftService`, `getServiceToken`),
+HttpClient-to-fetch adapter (`createHttpClientFetch`), and service factories
+(`createPromiseService`, `createObservableService`) selecting Promise or Observable methods. The CLI generates
+pure framework-agnostic service modules and service registry descriptors (`services.ts`).
+
+## Verification and acceptance
+
+Native integration tests compile emitted TS in bigint and number modes and
+execute it in a separate Node process. Apache Binary Protocol independently
+reads requests and writes replies, including composite map keys, binary values,
+declared/application errors, and response correlation failures. Tests exercise
+real local HTTP, concurrent calls, headers, cancellation, timeout, and HTTP errors.
+A browser-targeted Vite bundle is executed in an isolated JS context without
+Buffer or process; this is not a live-browser acceptance test.
+
+Run `vp install`, `vp run build`, `vp check`, then `vp test`. No external Thrift
+compiler is required; tests execute directly against the native runtime and wire
+verifiers. Native HTTP tests require permission to bind loopback sockets. See
+[compatibility](compatibility.md) for compatibility verification details.
+
+Metadata-only integration runs use a directory containing no generated model,
+codec, or client modules. The same Apache request/reply checks, loopback HTTP,
+and browser bundle execution run in both i64 modes. The browser JS context disables
+string code generation. Damsel coverage is defined by the committed conformance scenarios and pinned revision.
+
+## Metadata and loader boundaries
+
+New metadata carries `metadataVersion: 1`; unversioned legacy arrays remain accepted.
+Both parser output and runtime input are structurally validated. Generated TypeScript
+metadata also records numeric and method-name modes. Runtime initialization checks
+these modes even when the caller supplies a prebuilt `MetadataIndex`.
+Loaders cache successful results and remove rejected promises. Recovery permits another
+load attempt; it does not recover missing deployment chunks or override the browser's
+module cache. Deployments must retain chunks referenced by active clients.
+
+Generated lazy clients receive an allowlist of IDL methods, including inherited methods.
+Unknown properties do not create methods or Angular lifecycle hooks. Direct dynamic
+metadata clients reserve common inspection/lifecycle properties before metadata is loaded.

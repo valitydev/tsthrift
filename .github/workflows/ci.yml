@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Lint, Test & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup Vite+ and Node.js
+        uses: voidzero-dev/setup-vp@v1.21.1
+        with:
+          node-version: "lts"
+          cache: true
+
+      - name: Install dependencies
+        run: vp install
+
+      - name: Audit dependencies
+        run: vp exec pnpm audit --audit-level high
+
+      - name: Build all packages
+        run: vp run build
+
+      - name: Code formatting and type check
+        run: vp check
+
+      - name: Run unit and generated-output tests
+        run: vp test
+
+      - name: Install Chromium
+        run: vp exec playwright install --with-deps chromium
+
+      - name: Verify live browser HTTP and Angular integration
+        run: vp run test:browser
+
+      - name: Verify installed package archives
+        run: vp run test:packages
+
+  conformance:
+    name: Conformance (${{ matrix.name }})
+    needs: [test]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: vality-0.20.1
+            compiler: vality
+            thrift-version: "0.20.1"
+            libthrift-version: "0.20.0"
+          - name: apache-0.24.0
+            compiler: apache
+            thrift-version: "0.24.0"
+            libthrift-version: "0.24.0"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7.0.1
+
+      - name: Read pinned Damsel revision
+        id: damsel
+        run: echo "revision=$(cat .github/damsel-revision)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup JDK
+        uses: actions/setup-java@v6.0.1
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Install Vality Thrift compiler (${{ matrix.thrift-version }})
+        if: matrix.compiler == 'vality'
+        uses: valitydev/action-setup-thrift@v1.0.4
+        with:
+          thrift-version: ${{ matrix.thrift-version }}
+
+      - name: Install official Apache Thrift (${{ matrix.thrift-version }}) via Homebrew
+        if: matrix.compiler == 'apache'
+        run: |
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          brew install thrift
+          echo "$(/home/linuxbrew/.linuxbrew/bin/brew --prefix)/bin" >> "$GITHUB_PATH"
+
+      - name: Verify Thrift compiler version
+        run: test "$(thrift -version)" = "Thrift version ${{ matrix.thrift-version }}"
+
+      - name: Cache Maven repository
+        uses: actions/cache@v6.1.0
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('packages/cli/tests/conformance/reference/pom.xml') }}-${{ matrix.libthrift-version }}
+          restore-keys: |
+            ${{ runner.os }}-maven-${{ hashFiles('packages/cli/tests/conformance/reference/pom.xml') }}-
+            ${{ runner.os }}-maven-
+
+      - name: Setup Vite+ and Node.js
+        uses: voidzero-dev/setup-vp@v1.21.1
+        with:
+          node-version: "lts"
+          cache: true
+
+      - name: Install dependencies
+        run: vp install
+
+      - name: Run Java conformance suite
+        run: vp run test:conformance
+        env:
+          CONFORMANCE_OUTPUT_DIR: ${{ github.workspace }}/conformance-output
+          LIBTHRIFT_VERSION: ${{ matrix.libthrift-version }}
+          DAMSEL_REVISION: ${{ steps.damsel.outputs.revision }}
+          KEEP_CONFORMANCE_OUTPUT: "1"
+
+      - name: Upload conformance diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: conformance-${{ matrix.name }}-${{ steps.damsel.outputs.revision }}
+          path: ${{ github.workspace }}/conformance-output
+          retention-days: 7

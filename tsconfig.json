@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "esnext",
+    "target": "es2023",
     "lib": ["es2023"],
     "moduleDetection": "force",
     "module": "nodenext",
@@ -9,7 +9,6 @@
     "types": ["node"],
     "strict": true,
     "noUnusedLocals": true,
-    "declaration": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "esModuleInterop": true,

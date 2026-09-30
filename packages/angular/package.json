@@ -1,0 +1,51 @@
+{
+  "name": "@vality/tsthrift-angular",
+  "version": "0.0.0",
+  "description": "Angular dependency injection, providers, and RxJS integration for tsthrift.",
+  "homepage": "https://github.com/valitydev/tsthrift#readme",
+  "bugs": {
+    "url": "https://github.com/valitydev/tsthrift/issues"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/valitydev/tsthrift.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vp pack --sourcemap",
+    "dev": "vp pack --watch --sourcemap",
+    "test": "vp test",
+    "check": "vp check",
+    "prepublishOnly": "vp run build"
+  },
+  "dependencies": {
+    "@vality/tsthrift": "workspace:^"
+  },
+  "devDependencies": {
+    "@angular/common": "catalog:",
+    "@angular/compiler": "catalog:",
+    "@angular/core": "catalog:",
+    "@types/node": "catalog:",
+    "rxjs": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "@angular/core": ">=22.0.0",
+    "rxjs": ">=7.0.0"
+  }
+}

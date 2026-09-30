@@ -1,0 +1,49 @@
+{
+  "name": "@vality/tsthrift",
+  "version": "0.0.0",
+  "description": "Thrift client, transport, and runtime for TypeScript and the web.",
+  "homepage": "https://github.com/valitydev/tsthrift#readme",
+  "bugs": {
+    "url": "https://github.com/valitydev/tsthrift/issues"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/valitydev/tsthrift.git"
+  },
+  "files": [
+    "dist",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./runtime": "./dist/runtime.mjs",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vp pack --sourcemap",
+    "dev": "vp pack --watch --sourcemap",
+    "test": "vp test",
+    "check": "vp check",
+    "prepublishOnly": "vp run build"
+  },
+  "dependencies": {
+    "base-x": "catalog:"
+  },
+  "devDependencies": {
+    "@types/flake-idgen": "catalog:",
+    "@types/node": "catalog:",
+    "flake-idgen": "catalog:",
+    "thrift": "catalog:",
+    "typescript": "catalog:",
+    "uuid": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

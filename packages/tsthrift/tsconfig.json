@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["es2023", "dom", "dom.iterable"],
+    "outDir": "./dist",
+    "declaration": true,
+    "isolatedDeclarations": true,
+    "types": []
+  },
+  "include": ["src/**/*.ts"]
+}

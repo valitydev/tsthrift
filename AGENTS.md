@@ -20,8 +20,55 @@ release. Add a tool name to select part of the graph. For example, run
 ## Review Checklist
 
 - [ ] Run `vp install` after pulling remote changes and before getting started.
-- [ ] Run `vp check` and `vp test` to format, lint, type check and test changes.
+- [ ] Run `vp run build` before `vp check` and `vp test`; consumers resolve public package exports from `dist`.
 - [ ] Check if there are `vite.config.ts` tasks or `package.json` scripts necessary for validation, run via `vp run <script>`.
 - [ ] If setup, runtime, or package-manager behavior looks wrong, run `vp env doctor` and include its output when asking for help.
 
 <!--VITE PLUS END-->
+
+## Continuing implementation
+
+Read `docs/architecture.md`, `docs/compatibility.md`, and `docs/conformance.md` before
+changing the generator or transport. Document technical contracts and reproducible
+setup without personal preferences, conversation history, or machine-specific account paths.
+Consult the source revisions in `docs/compatibility.md` when changing compatibility behavior.
+
+### Documentation and task lifecycle
+
+- Permanent documentation in `docs/` and package READMEs must remain concise, objective, and contract-focused.
+- Ephemeral task checklists (such as `tasks.md`) are reserved solely for retaining context within a single feature branch during active development; do not commit or merge them into `master`.
+
+### Change verification criteria
+
+- Inspect the relevant upstream/legacy implementation when touching compatibility.
+- Execute affected generated output, not just source-shape assertions.
+- Check module responsibilities, imports/exports, and `git diff --check`.
+- Keep technical documentation strictly neutral, objective, and reproducible.
+- Distinguish verified artifacts from transport, browser, and consumer acceptance.
+- Maintain Web Standards First purity in `@vality/tsthrift`: zero Node-specific runtime imports or globals (`Buffer`, `node:*`), relying solely on standard ECMAScript and Web standards (`Uint8Array`, `fetch`, `AbortSignal`).
+- Align configurations and emitted models with modern TypeScript standards: strict ESM, `NodeNext` module resolution, and `isolatedDeclarations` compatibility for native toolchains (`tsgo`, `oxc`).
+
+### Public contracts and release checks
+
+- Package TypeScript configurations inherit the root strict settings and enable `isolatedDeclarations` for source declarations.
+- Validate generated models and public package declarations with a strict consumer. Do not use `skipLibCheck` to suppress declaration errors in consumer acceptance checks.
+- Keep README examples aligned with public exports, DI registration, metadata loader signatures, and error wrapper semantics.
+- Verify external namespaces with installed packages, root/subpath imports, transitive metadata, and matching i64/method-name modes.
+- `vp run ready` covers build, static checks, and unit/integration tests. Release acceptance additionally requires `vp run test:packages`, `vp run test:browser`, and both Java conformance variants on the exact candidate revision.
+- Check that published archives contain README. Preserve existing license and attribution text without dedicated license-content tests.
+- If verification is intentionally deferred, report precisely what was and was not executed; earlier green runs do not verify later edits.
+
+### Review invariants
+
+- Preserve read/write symmetry for UUID and binary values (`packages/tsthrift/tests/release-contracts.test.ts`).
+- Rejected loader promises must be evicted; successful loads may remain cached.
+- Shared symbols and error brands must work across installed runtime copies.
+- Generated service errors use qualified names; raw data remains available in `error.data`.
+- Logging cannot change RPC results or expose headers; payload logging is opt-in.
+- Metadata is validated at its boundary: unversioned legacy input is accepted, unknown explicit versions are rejected.
+- Default-requiredness fields are optional in generated models.
+- `@vality/tsthrift` is a regular dependency of the Angular adapter and of protocol packages; duplicate runtime copies must interoperate (shared `Symbol.for` symbols, branded errors).
+- The Angular adapter uses explicit IDL argument counts and Result markers; never infer them from payload keys. Unsubscribe cancels the request.
+- Negative type tests may use `@ts-expect-error` with an explanation. Do not suppress unrelated diagnostics or weaken assertions to pass checks.
+- Run a focused test with `vp test <test-file>`. Build before checks that consume `dist`; package smoke validates installed archives separately.
+- Public-contract changes require a concern-specific changeset. Breaking 0.x contract changes use a minor bump.
