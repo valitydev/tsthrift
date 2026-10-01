@@ -47,8 +47,9 @@ id)` and terminate each struct with `writeFieldStop()`. `readFieldBegin()` retur
 - `skip(type)` consumes unknown values recursively, including nested maps, lists,
   sets, structs, and fixed-width UUID values. Native `writeUuid` and `readUuid` handle 16-byte fixed-width UUIDs (WireType 16).
 
-Native generated `binary` models use Uint8Array, while legacy model declarations used
-string; existing binary consumers require acceptance testing.
+Generated `binary` models use Base64 strings by default; `--binary uint8array`
+selects raw bytes. Metadata codecs convert the selected public representation to
+and from raw wire bytes. Low-level `readBinary`/`writeBinary` remain byte-based.
 Empty structs have a STOP byte; deciding whether an optional struct is absent
 belongs to the metadata codec, which preserves explicitly present `{}`.
 

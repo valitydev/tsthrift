@@ -64,7 +64,22 @@ export interface ThriftLogParams {
   args?: unknown[];
   headers?: Record<string, string>;
   response?: unknown;
-  error?: unknown;
+  error?: ThriftLogError;
+}
+
+/** Serializable failure summary passed to `error` log events. */
+export interface ThriftLogError {
+  /** Error class name or declared exception type. */
+  name: string;
+  message?: string;
+  /** HTTP status of a `ThriftHttpError`. */
+  status?: number;
+  /** `TApplicationException` code of a `ThriftApplicationError`. */
+  code?: number;
+  /** Stack trace; runtime errors carry the frames of the RPC call site. */
+  stack?: string;
+  /** Declared exception fields of a `ThriftServiceError`; present only with `logPayloads`. */
+  data?: object;
 }
 
 /** Per-call request options passed by the caller. */

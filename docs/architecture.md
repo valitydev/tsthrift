@@ -44,10 +44,13 @@ Thrift IDL
 ```
 
 The CLI generates TypeScript models, modular metadata modules (`load-metadata.ts` per namespace) with a
-`loadThriftMetadata(namespace)` loader resolving full transitive include closures, and optional
+`loadThriftMetadataByNamespaces(namespace | namespaces)` root loader resolving full transitive include closures, and optional
 monolithic `metadata.json` (when `--metadata-json` is provided).
-Metadata callbacks receive the requested namespace; both namespace-local and
-root loaders can be passed to `createMetadataClient`. External npm modules are
+The root loader requires an explicit selection typed by the `THRIFT_NAMESPACES` name union and deduplicates combined results by module name;
+pass `THRIFT_NAMESPACES` to load all root namespaces. Namespace-local `loadThriftMetadata()`
+loaders keep their zero-argument signature. Metadata callbacks receive the requested namespace;
+pass a namespace-local loader directly or select a known root namespace in a zero-argument callback
+for `createMetadataClient`. External npm modules are
 excluded from generated source/bundles, while standalone JSON retains the full IDL closure. Native RPC clients are
 constructed directly at runtime via `createMetadataClient` using either `loadThriftMetadata` or `metadata.json`.
 
@@ -76,10 +79,13 @@ factories bind the selected mode and exclude i64Mode from their
 config. Direct metadata clients select it once using MetadataClientConfig.i64Mode.
 The IDL parser (`thrift-parser`) tokenizes integer literals as JavaScript `Number` (IEEE-754 double precision float), and the JSON-compatible metadata AST format does not preserve 64-bit integers. Consequently, integer literals in IDL constants and defaults exceeding safe 53-bit bounds (±(2^53 - 1)) are rejected at compile time to prevent silent precision loss and rounding. The full signed 64-bit range is preserved at runtime through `bigint`.
 
-Native `binary` is Uint8Array, including constants and nested defaults. IDL
-binary string constants are UTF-8 encoded. Generated models and constants use the
-same Uint8Array contract. This requires consumer
-migration where applications currently expect strings or Buffer APIs.
+Public `binary` defaults to `base64` mode with TypeScript `string`; `--binary uint8array` selects raw bytes.
+The mode applies to models, constants, defaults, and RPC values; generated factories
+bind it and exclude `binaryMode` from their configuration. Direct metadata clients
+use `MetadataClientConfig.binaryMode`. Binary Protocol always carries raw bytes.
+IDL binary literals are UTF-8 encoded before representation conversion. Ordinary
+IDL `string` remains UTF-8 text. Build markers and runtime metadata reject mixed modes;
+older build markers without `binary` describe the previous Uint8Array contract.
 
 Declared defaults are constructed per value. Only explicitly required fields
 are checked as required on the wire. Unknown fields and incompatible field wire

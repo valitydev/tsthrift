@@ -1,5 +1,5 @@
 import { validateThriftAst } from "./validate-ast.ts";
-import type { Field, Metadata, Method, ValueType } from "./types.ts";
+import type { BinaryMode, Field, Metadata, Method, ValueType } from "./types.ts";
 
 export type ResolvedEntity =
   | { kind: "primitive"; type: string }
@@ -44,11 +44,17 @@ export class MetadataIndex {
     }
   }
 
-  validateBuild(i64: "bigint" | "number", lowerCaseMethods: boolean): void {
+  validateBuild(
+    i64: "bigint" | "number",
+    lowerCaseMethods: boolean,
+    binary: BinaryMode = "base64",
+  ): void {
     for (const item of this.byNamespace.values()) {
       if (
         item.build &&
-        (item.build.i64 !== i64 || item.build.lowerCaseMethods !== lowerCaseMethods)
+        (item.build.i64 !== i64 ||
+          item.build.lowerCaseMethods !== lowerCaseMethods ||
+          (item.build.binary ?? "uint8array") !== binary)
       ) {
         throw new TypeError(`Incompatible generated settings for ${item.name}`);
       }

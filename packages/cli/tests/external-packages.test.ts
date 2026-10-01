@@ -13,13 +13,17 @@ afterEach(async () => {
 });
 
 test.each([
-  ["base-proto", "bigint"],
-  ["base-proto/base", "bigint"],
-  ["base-proto", "number"],
-  ["base-proto/base", "number"],
+  ["base-proto", "bigint", false],
+  ["base-proto/base", "bigint", false],
+  ["base-proto", "number", false],
+  ["base-proto/base", "number", false],
+  ["base-proto", "bigint", true],
+  ["base-proto/base", "bigint", true],
+  ["base-proto", "number", true],
+  ["base-proto/base", "number", true],
 ] as const)(
-  "executes generated external imports through %s in %s mode without inlining",
-  async (importPath, i64) => {
+  "executes generated external imports through %s in %s mode without inlining (direct common: %s)",
+  async (importPath, i64, directCommon) => {
     const dir = await mkdtemp(path.join(tmpdir(), "tsthrift-external-package-"));
     directories.push(dir);
     await writeFile(path.join(dir, "package.json"), '{"type":"module"}');
@@ -38,7 +42,7 @@ test.each([
     );
     await writeFile(
       child,
-      'include "base.thrift"\nservice Child extends base.Base { i64 echo(1: i64 value) }',
+      `include "base.thrift"\n${directCommon ? 'include "common.thrift"\n' : ""}service Child extends base.Base { i64 echo(1: i64 value) }`,
     );
     const pkg = path.join(dir, "node_modules/base-proto");
     await generate({
@@ -72,6 +76,17 @@ test.each([
         external: { base: importPath, common: "base-proto/common" },
       }),
     ).rejects.toThrow("Incompatible or missing TSTHRIFT_BUILD");
+    await expect(
+      generate({
+        input: child,
+        i64,
+        binary: "uint8array",
+        output: path.join(dir, "binary-mismatched"),
+        bundle: true,
+        dist: path.join(dir, "binary-mismatched-dist"),
+        external: { base: importPath, common: "base-proto/common" },
+      }),
+    ).rejects.toThrow("Incompatible or missing TSTHRIFT_BUILD");
     await generate({
       input: child,
       i64,
@@ -92,7 +107,15 @@ test.each([
       import assert from "node:assert/strict";
       import { BinaryReader, BinaryWriter, MessageType } from "@vality/tsthrift";
       import { createChild, base, loadThriftMetadata } from "./dist/child/index.mjs";
-      import { loadThriftMetadata as loadRoot } from "./dist/index.mjs";
+      import { THRIFT_NAMESPACES, EXTERNAL_NAMESPACES, loadThriftMetadataByNamespaces as loadRoot } from "./dist/index.mjs";
+      assert.deepEqual(THRIFT_NAMESPACES, ${JSON.stringify(directCommon ? ["base", "child", "common"] : ["base", "child"])});
+      assert.deepEqual(Object.keys(EXTERNAL_NAMESPACES).sort(), ${JSON.stringify(directCommon ? ["base", "common"] : ["base"])});
+      for (const namespace of THRIFT_NAMESPACES) {
+        assert.ok((await loadRoot(namespace)).some(m => m.name === namespace));
+      }
+      assert.deepEqual((await loadRoot(["child", "base", "child"])).map(m => m.name), ["child", "base", "common"]);
+      assert.deepEqual((await loadRoot(THRIFT_NAMESPACES)).map(m => m.name), ["base", "common", "child"]);
+      ${directCommon ? "" : 'await assert.rejects(loadRoot("common"), /Unknown metadata namespace: common/);'}
       assert.equal(base.MARKER, "EXTERNAL_PACKAGE_ONLY");
       assert.deepEqual((await loadThriftMetadata()).map(m => m.name), ["child", "base", "common"]);
       assert.deepEqual((await loadRoot("base")).map(m => m.name), ["base", "common"]);

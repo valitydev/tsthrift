@@ -51,7 +51,7 @@ test("metadata loaders and lazy clients recover after a transient load rejection
   const load = createMetadataLoader({ test: async () => ({ loadThriftMetadata: namespace }) });
   const client = createLazyMetadataClient(
     {
-      metadata: load,
+      metadata: () => load("test"),
       namespace: "test",
       serviceName: "Test",
       endpoint: "unused",

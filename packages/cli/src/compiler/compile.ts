@@ -11,9 +11,9 @@ export interface CompileOptions {
 }
 
 /**
- * Builds a modern ESM package: entry modules with shared code split into chunks (so dynamic
- * `import()` stays lazy), unminified, plus bundled `.d.mts` declarations. Imports of installed
- * packages stay external, and the consumer's build configuration and manifest are never read.
+ * Builds an unminified ESM package preserving source module paths and `.d.mts` declarations.
+ * Dynamic `import()` stays lazy, installed packages stay external, and the consumer's build
+ * configuration and manifest are never read.
  */
 export async function compileOutput(options: CompileOptions): Promise<void> {
   const root = path.dirname(options.tsconfig);
@@ -29,6 +29,8 @@ export async function compileOutput(options: CompileOptions): Promise<void> {
     ),
     outDir: options.outDir,
     cwd: root,
+    root,
+    unbundle: true,
     tsconfig: options.tsconfig,
     dts: true,
     minify: false,

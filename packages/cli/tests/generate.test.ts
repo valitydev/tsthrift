@@ -102,7 +102,9 @@ test.each(["number", "bigint"] as const)(
     expect(indexContent).toContain(
       'export { THRIFT_SERVICES, THRIFT_SERVICES_LIST } from "./services.js";',
     );
-    expect(indexContent).toContain('export { loadThriftMetadata } from "./metadata.js";');
+    expect(indexContent).toContain(
+      'export { THRIFT_NAMESPACES, loadThriftMetadataByNamespaces } from "./metadata.js";',
+    );
     expect(indexContent).not.toContain("generateId");
     expect(indexContent).not.toContain("generateTraceId");
 
@@ -187,7 +189,7 @@ test("emits modular metadata in namespace directories and loader in root by defa
   expect(exampleLoader).toContain('import("../common/metadata.js")');
 
   const loader = await readFile(path.join(options.output, "metadata.ts"), "utf8");
-  expect(loader).toContain("export const loadThriftMetadata");
+  expect(loader).toContain("export const loadThriftMetadataByNamespaces");
   expect(loader).toContain('import("./common/load-metadata.js")');
 });
 
@@ -347,29 +349,17 @@ test("bundles into dist/ without source maps by default", async () => {
   expect(await readFile(path.join(dist, "index.mjs"), "utf8")).not.toContain("sourceMappingURL");
 });
 
-test("keeps metadata loading lazy in split chunks with unminified output", async () => {
-  const options = await setup();
-  const dist = path.join(options.output, "../dist");
-  await generate({ ...options, bundle: true, dist });
-
-  const entry = await readFile(path.join(dist, "index.mjs"), "utf8");
-  expect(entry).toMatch(/import\("\.\/[^"]+\.mjs"\)/);
-  expect(entry).not.toContain('"metadataVersion"');
-  expect(entry.trim().split("\n").length).toBeGreaterThan(5);
-  const files = (await readdir(dist)).filter((name) => name.endsWith(".mjs"));
-  const contents = await Promise.all(files.map((name) => readFile(path.join(dist, name), "utf8")));
-  expect(contents.some((content) => content.includes('"metadataVersion"'))).toBe(true);
-  expect(await readdir(dist)).toContain("common");
-});
-
 test("supports sourcemap: true when bundling", async () => {
   const options = await setup();
   const dist = path.join(options.output, "../dist");
   await generate({ ...options, bundle: true, dist, sourcemap: true });
 
-  expect(await readdir(dist)).toContain("index.mjs.map");
-  const map = JSON.parse(await readFile(path.join(dist, "index.mjs.map"), "utf8"));
+  expect(await readdir(path.join(dist, "example"))).toContain("models.mjs.map");
+  const map = JSON.parse(await readFile(path.join(dist, "example/models.mjs.map"), "utf8"));
   expect(map.sourcesContent?.length).toBeGreaterThan(0);
+  expect(await readFile(path.join(dist, "example/models.mjs"), "utf8")).toContain(
+    "sourceMappingURL=models.mjs.map",
+  );
 });
 
 test("CLI supports --bundle and --dist flags with subpath exports", async () => {
@@ -420,7 +410,7 @@ test("CLI supports --bundle with the --sourcemap flag", async () => {
   const distFiles = await readdir(dist);
   expect(distFiles).toContain("index.mjs");
   expect(distFiles).toContain("index.d.mts");
-  expect(distFiles).toContain("index.mjs.map");
+  expect(await readdir(path.join(dist, "example"))).toContain("models.mjs.map");
 });
 
 test("CLI and generate() support glob patterns for input", async () => {
@@ -472,6 +462,10 @@ test("generate() accepts options without output property", () => {
 test.each([
   ["service index { void ping() }", "path collision"],
   ["struct Promise {}", "identifier collision"],
+  ["struct THRIFT_NAMESPACES {}", "identifier collision"],
+  ["struct loadThriftMetadataByNamespaces {}", "identifier collision"],
+  ["service loadThriftMetadataByNamespaces { void ping() }", "identifier collision"],
+  ["service THRIFT_NAMESPACES { void ping() }", "identifier collision"],
   ["service Example { oneway i32 ping() }", "Invalid oneway"],
   ['struct Data { 1: i32 a = "invalid" }', "Invalid i32 constant"],
 ])("rejects invalid generated API before replacing output: %s", async (source, error) => {
@@ -481,6 +475,14 @@ test.each([
   await writeFile(path.join(options.input, "invalid.thrift"), source);
   await expect(generate(options)).rejects.toThrow(error);
   expect(await readFile(path.join(options.output, "index.ts"), "utf8")).toBe(before);
+});
+
+test("rejects module names colliding with the root namespace list", async () => {
+  const options = await setup();
+  await writeFile(path.join(options.input, "THRIFT_NAMESPACES.thrift"), "struct Payload {}");
+  await expect(generate(options)).rejects.toThrow(
+    "Module name collides with generated export: THRIFT_NAMESPACES",
+  );
 });
 
 test("rejects overlapping bundle paths and refuses unrelated output", async () => {
@@ -502,7 +504,10 @@ test("re-exports main module at root when specified", async () => {
   await generate({ ...options, main: "example" });
 
   const indexContent = await readFile(path.join(options.output, "index.ts"), "utf8");
-  expect(indexContent).toContain('export * from "./example/index.js";');
+  expect(indexContent).toContain('export * from "./example/models.js";');
+  expect(indexContent).toContain('export * from "./example/services/index.js";');
+  expect(indexContent).toContain('export { thriftMetadata } from "./example/metadata.js";');
+  expect(indexContent).not.toContain('export * from "./example/index.js";');
   expect(indexContent).toContain("THRIFT_SERVICES");
 });
 
@@ -524,7 +529,9 @@ test("automatically re-exports single module at root index", async () => {
   await generate({ input, output });
 
   const indexContent = await readFile(path.join(output, "index.ts"), "utf8");
-  expect(indexContent).toContain('export * from "./single/index.js";');
+  expect(indexContent).toContain('export * from "./single/models.js";');
+  expect(indexContent).toContain('export { thriftMetadata } from "./single/metadata.js";');
+  expect(indexContent).not.toContain('export * from "./single/index.js";');
 });
 
 test("sanitizes reserved parameter names in service method signatures", async () => {

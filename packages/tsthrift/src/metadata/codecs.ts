@@ -1,5 +1,5 @@
 import { MetadataIndex } from "./index.ts";
-import type { Field, I64Mode, ValueType } from "./types.ts";
+import type { BinaryMode, Field, I64Mode, ValueType } from "./types.ts";
 import * as scalar from "../codecs/scalar.ts";
 import { list, map, set } from "../codecs/collections.ts";
 import { type WireField, struct } from "../codecs/struct.ts";
@@ -13,6 +13,7 @@ export class MetadataCodecs {
   constructor(
     readonly index: MetadataIndex,
     readonly i64Mode: I64Mode,
+    readonly binaryMode: BinaryMode = "base64",
   ) {}
 
   type(type: ValueType, namespace: string, depth = 0): scalar.Codec {
@@ -36,7 +37,7 @@ export class MetadataCodecs {
         case "string":
           return scalar.string;
         case "binary":
-          return scalar.binary;
+          return this.binaryMode === "base64" ? scalar.binaryBase64 : scalar.binary;
         case "uuid":
           return scalar.uuid;
         default:
@@ -88,7 +89,17 @@ export class MetadataCodecs {
       const value =
         field.defaultValue === undefined
           ? undefined
-          : evaluateDefault(this.index, this.i64Mode, field.type, namespace, field.defaultValue);
+          : evaluateDefault(
+              this.index,
+              this.i64Mode,
+              field.type,
+              namespace,
+              field.defaultValue,
+              namespace,
+              new Set(),
+              0,
+              this.binaryMode,
+            );
       return {
         id,
         name: field.name,

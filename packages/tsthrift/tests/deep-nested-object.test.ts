@@ -444,6 +444,7 @@ describe("Binary format on large nested composite objects", () => {
       processTree: (container: TreeContainer) => Promise<TreeContainer>;
     }>({
       endpoint: "unused",
+      binaryMode: "uint8array",
       namespace: "tree",
       serviceName: "TreeService",
       metadata: deepNestedMetadata,
@@ -500,6 +501,7 @@ describe("Binary format on large nested composite objects", () => {
       processTree: (container: TreeContainer) => Promise<TreeContainer>;
     }>({
       endpoint: "unused",
+      binaryMode: "uint8array",
       namespace: "tree",
       serviceName: "TreeService",
       metadata: deepNestedMetadata,
@@ -602,6 +604,7 @@ describe("Binary format on large nested composite objects", () => {
       processTree: (container: TreeContainer) => Promise<TreeContainer>;
     }>({
       endpoint: "unused",
+      binaryMode: "uint8array",
       namespace: "tree",
       serviceName: "TreeService",
       metadata: deepNestedMetadata,
@@ -666,6 +669,7 @@ describe("Binary format on large nested composite objects", () => {
       processTree: (container: TreeContainer) => Promise<TreeContainer>;
     }>({
       endpoint: "unused",
+      binaryMode: "uint8array",
       namespace: "tree",
       serviceName: "TreeService",
       metadata: deepNestedMetadata,

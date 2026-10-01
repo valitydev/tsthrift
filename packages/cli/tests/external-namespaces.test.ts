@@ -21,7 +21,7 @@ afterEach(async () => {
 
 const baseMetadata = {
   metadataVersion: 1,
-  build: { i64: "bigint", lowerCaseMethods: false },
+  build: { i64: "bigint", lowerCaseMethods: false, binary: "base64" },
   name: "base",
   path: "base.thrift",
   ast: {
@@ -70,14 +70,14 @@ async function installBaseProto(dir: string) {
 export interface BaseData { "id": string }
 export interface BaseServiceErrors { "getBase": unknown }
 export interface BaseService { "getBase"(id: string): Promise<BaseData> }
-export declare const TSTHRIFT_BUILD: { metadataVersion: 1; i64: "bigint"; lowerCaseMethods: false };
+export declare const TSTHRIFT_BUILD: { metadataVersion: 1; i64: "bigint"; lowerCaseMethods: false; binary: "base64" };
 export declare const thriftMetadata: Metadata;
 export declare const loadThriftMetadata: () => Promise<Metadata[]>;
 `,
   );
   await writeFile(
     path.join(pkg, "base.mjs"),
-    `export const TSTHRIFT_BUILD = {metadataVersion: 1, i64: "bigint", lowerCaseMethods: false};
+    `export const TSTHRIFT_BUILD = {metadataVersion: 1, i64: "bigint", lowerCaseMethods: false, binary: "base64"};
 export const thriftMetadata = ${JSON.stringify(baseMetadata)};
 export const loadThriftMetadata = async () => [thriftMetadata];`,
   );
@@ -325,7 +325,7 @@ test("keeps external dependencies in standalone JSON metadata", async () => {
 describe("external modules read from installed package metadata", () => {
   const baseMetadata = {
     metadataVersion: 1,
-    build: { i64: "bigint", lowerCaseMethods: false },
+    build: { i64: "bigint", lowerCaseMethods: false, binary: "base64" },
     name: "base",
     path: "proto/base.thrift",
     ast: {

@@ -272,6 +272,7 @@ describe("Binary format with services containing diverse argument types", () => 
 
     const client = await createMetadataClient<MultiArgService>({
       endpoint: "unused",
+      binaryMode: "uint8array",
       namespace: "multi",
       serviceName: "MultiArgService",
       metadata: multiArgMetadata,
@@ -334,6 +335,7 @@ describe("Binary format with services containing diverse argument types", () => 
 
     const client = await createMetadataClient<MultiArgService>({
       endpoint: "unused",
+      binaryMode: "uint8array",
       namespace: "multi",
       serviceName: "MultiArgService",
       metadata: multiArgMetadata,
@@ -515,6 +517,7 @@ describe("Binary format with services containing diverse argument types", () => 
 
     const client = await createMetadataClient<MultiArgService>({
       endpoint: "unused",
+      binaryMode: "uint8array",
       namespace: "multi",
       serviceName: "MultiArgService",
       metadata: multiArgMetadata,
@@ -577,6 +580,7 @@ describe("Binary format with services containing diverse argument types", () => 
 
     const client = await createMetadataClient<MultiArgService>({
       endpoint: "unused",
+      binaryMode: "uint8array",
       namespace: "multi",
       serviceName: "MultiArgService",
       metadata: multiArgMetadata,

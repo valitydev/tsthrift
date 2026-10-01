@@ -10,7 +10,7 @@ Pure TypeScript compiler and code generator for Apache Thrift IDL files.
 - **TypeScript model generation:** Generates precise interfaces for structs, unions, exceptions, consts, and enums.
 - **Modular split metadata:** Emits lightweight per-namespace metadata modules and local `load-metadata.ts` loaders that lazily load transitive includes on demand.
 - **Service factories & registry:** Generates typed service client factories (`create<Service>`) and registry descriptors (`THRIFT_SERVICES`, `THRIFT_SERVICES_LIST`) compatible with Angular and pure TypeScript.
-- **Distribution build:** Bundles generated code into a modern ESM package (`.mjs` entries with lazy chunks and `.d.mts` declarations) with `--bundle`.
+- **Distribution build:** Builds generated code into a modern ESM package (`.mjs` modules and `.d.mts` declarations preserving source paths) with `--bundle`.
 - **Configurable `i64` representation:** Choose between `bigint` (exact signed 64-bit integers) or safe `number`.
 - **Native UUID support:** Generates TypeScript `string` types for built-in Thrift `uuid` fields, backed by 16-byte fixed-width binary encoding (`WireType.Uuid = 16`).
 - **Transitive include resolution:** Correctly handles complex include graphs and cross-namespace type references.
@@ -35,15 +35,16 @@ npx --package @vality/tsthrift-cli tsthrift-cli --input "proto/**/*.thrift" [opt
 | ---------------------------- | --------------------------------------------------------------------------------- | ----------- |
 | `-i, --input <path/glob>`    | Thrift file, directory, or glob pattern (repeatable)                              | _Required_  |
 | `-o, --output <dir>`         | Directory for generated TypeScript sources                                        | `generated` |
-| `--bundle`                   | Build the distribution: ESM `.mjs` with lazy chunks and `.d.mts`                  | `false`     |
-| `-d, --dist <dir>`           | Bundle distribution output directory                                              | `dist`      |
-| `--sourcemap`                | Emit source maps when bundling                                                    | `false`     |
+| `--bundle`                   | Build the distribution: ESM `.mjs` and `.d.mts`, preserving module paths          | `false`     |
+| `-d, --dist <dir>`           | Distribution output directory                                                     | `dist`      |
+| `--sourcemap`                | Emit source maps in the distribution                                              | `false`     |
 | `-I, --include <dir>`        | Additional include root directory (repeatable)                                    | `[]`        |
 | `-e, --external <ns>=<path>` | External module mapping, or a whole npm package name (repeatable)                 | `[]`        |
 | `-m, --main <namespace>`     | Re-export one local namespace from the root (automatic for a single local module) | _Unset_     |
 | `--no-models`                | Generate only `metadata.json` without models or services                          | `false`     |
 | `--no-services`              | Generate models and metadata without service factories                            | `false`     |
 | `--metadata-json`            | Emit monolithic `metadata.json` in output directory                               | `false`     |
+| `--binary <mode>`            | Public `binary` representation: `base64` (`string`) or `uint8array`               | `base64`    |
 | `--i64 <mode>`               | Public `i64` representation: `bigint` (default) or `number`                       | `bigint`    |
 | `--lower-case-methods`       | Generate service client methods starting with a lowercase letter                  | `false`     |
 | `--allow-duplicate-modules`  | Allow duplicate module basenames across includes (first-wins)                     | `false`     |
@@ -57,9 +58,9 @@ npx --package @vality/tsthrift-cli tsthrift-cli --input "proto/**/*.thrift" [opt
 npx --package @vality/tsthrift-cli tsthrift-cli --input ./proto --output ./src/generated
 ```
 
-#### Bundled distribution
+#### Compiled distribution
 
-Generate TypeScript sources into `./generated` and build them into ESM `.mjs` (with lazy chunks) and `.d.mts` files in `./dist`:
+Generate TypeScript sources into `./generated` and build them into ESM `.mjs` and `.d.mts` files in `./dist`, preserving source module paths:
 
 ```sh
 npx --package @vality/tsthrift-cli tsthrift-cli --input "proto/**/*.thrift" --bundle --dist ./dist
@@ -76,7 +77,7 @@ npx --package @vality/tsthrift-cli tsthrift-cli \
 ```
 
 The installed package supplies the module's schema: the compiler reads its published `thriftMetadata`
-(and the metadata closure from `loadThriftMetadata`), so no `.thrift` sources are needed and
+(and the metadata closure from its root or namespace loader), so no `.thrift` sources are needed and
 `include "proto/base.thrift"` resolves through the package.
 
 The two flags have separate roles: `--include` adds `.thrift` search roots whose modules are compiled
@@ -96,7 +97,7 @@ do not matter. Packages are searched in the order given, and only for includes t
 When generating or bundling:
 
 - Models and services import directly from `@vality/base-proto/base`.
-- Transitive metadata loaders dynamically resolve external metadata and pass the module name to `loadThriftMetadata(namespace)`. Both package-root and namespace-subpath loaders are supported.
+- Transitive metadata loaders dynamically resolve external metadata and pass the module name to root `loadThriftMetadataByNamespaces(namespace)` loaders. Namespace `loadThriftMetadata()` loaders return their full dependency closure; older external root loaders named `loadThriftMetadata` remain supported. Both package-root and namespace-subpath loaders are supported.
 - Root `metadata.ts` emits an `EXTERNAL_NAMESPACES` dictionary descriptor.
 - The external package (`@vality/base-proto`) is automatically excluded from the bundle output, including its subpath imports.
 
@@ -106,7 +107,7 @@ also owned by external packages. Unknown mappings are rejected, and the referenc
 published protocol package; generation does not edit package manifests.
 
 External and local packages must use compatible IDL revisions and the same `--i64`
-mode. Inherited service interfaces must also use the same `--lower-case-methods`
+mode and `--binary` representation. Inherited service interfaces must also use the same `--lower-case-methods`
 setting. The CLI does not infer these settings from installed declarations or convert
 between number and bigint models. A package-root mapping must export the referenced
 models/services; use namespace subpaths for multi-module packages.
@@ -114,7 +115,7 @@ models/services; use namespace subpaths for multi-module packages.
 Generated TypeScript omits external modules and loads their metadata from the package.
 Standalone `metadata.json` includes the complete IDL closure, including external modules,
 so `--no-models` output remains usable without an npm loader. The programmatic
-`metadataPath` option can select a separate metadata entry exporting `loadThriftMetadata`,
+`metadataPath` option can select a separate metadata entry exporting `loadThriftMetadataByNamespaces`, `loadThriftMetadata`,
 `thriftMetadata`, `metadata`, or a default metadata object/array.
 
 #### With multiple include roots
@@ -126,6 +127,14 @@ npx --package @vality/tsthrift-cli tsthrift-cli \
   --include ./shared/proto
 ```
 
+#### Binary representation
+
+IDL `binary` generates `string` containing Base64 by default (`--binary base64`). Use
+`--binary uint8array` (or `generate({ ..., binary: "uint8array" })`) for raw bytes.
+This applies to fields, typedefs, collections, constants, defaults, and service
+parameters/results. Generated factories bind the selected mode. Both modes send
+raw bytes on the wire; IDL `string` remains UTF-8 text.
+
 #### Safe number mode for i64
 
 ```sh
@@ -134,12 +143,36 @@ npx --package @vality/tsthrift-cli tsthrift-cli --input ./proto --i64 number
 
 ## Generated Output Structure
 
+The generated root exports `THRIFT_NAMESPACES`, an alphabetically sorted readonly tuple
+of local and external module names accepted by `loadThriftMetadataByNamespaces`. Names are `.thrift`
+file basenames, matching generated directories, rather than language-specific IDL namespaces.
+Reading the list does not invoke metadata loaders. `EXTERNAL_NAMESPACES` retains external
+module descriptors when external modules are present.
+Modules returned only inside an external loader's dependency closure are not separate root keys.
+
+```ts
+import { THRIFT_NAMESPACES, loadThriftMetadataByNamespaces } from "sample-proto";
+import { loadThriftMetadata } from "sample-proto/payment";
+
+const selected = await loadThriftMetadataByNamespaces(["base", "payment"]);
+const all = await loadThriftMetadataByNamespaces(THRIFT_NAMESPACES);
+const payment = await loadThriftMetadata();
+```
+
+The root loader requires a name or readonly list of names from `(typeof THRIFT_NAMESPACES)[number]`.
+Unknown names are rejected by TypeScript. It returns one `Metadata[]`
+containing the selected modules and their transitive dependencies, deduplicated by module name
+in selection/dependency order. An empty list returns `[]`; an unknown name rejects the call.
+Namespace-local loaders keep their zero-argument signature. Successful namespace loads stay
+cached across selections; failed loads can be retried. Root imports previously using
+`loadThriftMetadata` must use `loadThriftMetadataByNamespaces` after regeneration.
+
 When compiling a schema (for example, with namespaces `base` and `payment`), the output directory contains:
 
 ```text
 generated/
 ├── index.ts                     # Metadata loader, service registry, and optional main namespace
-├── metadata.ts                  # Root loadThriftMetadata(namespace) lazy loader
+├── metadata.ts                  # Root loadThriftMetadataByNamespaces lazy loader
 ├── services.ts                  # Global THRIFT_SERVICES and THRIFT_SERVICES_LIST registry
 ├── base/                        # Namespace directory for `base`
 │   ├── index.ts                 # Namespace entry point (models + metadata + loader)
@@ -221,7 +254,7 @@ nonempty directories, symbolic links, and additional handwritten files. Outputs
 from earlier versions without a manifest must be moved aside before regeneration.
 Compile sources into a separate directory; do not emit JS beside generated TS.
 
-`--bundle` builds a modern ESM package with `tsdown` (rolldown), provided by `@vality/tsthrift-cli`: entry modules (`index.mjs`, `<module>/index.mjs`) with shared code split into chunks, so the metadata behind `import()` stays lazy, plus bundled `.d.mts` declarations. Installed dependencies such as `@vality/tsthrift` and external protocol packages stay external. Output is not minified; source maps are opt-in via `--sourcemap`. It ignores consumer build configuration and leaves the consumer package manifest unchanged. The bundler does not type-check the generated sources. Source and distribution paths must not overlap.
+`--bundle` builds a modern ESM package with `tsdown` (rolldown), provided by `@vality/tsthrift-cli`: source module paths are preserved using `unbundle` mode. For example, `<module>/models.ts` becomes `<module>/models.mjs` and `<module>/models.d.mts`; service modules retain their `<module>/services/` paths. Root and namespace entry points remain `index.mjs` and `<module>/index.mjs`. Metadata behind dynamic `import()` stays lazy. Installed dependencies such as `@vality/tsthrift` and external protocol packages stay external. Output is not minified; source maps are opt-in via `--sourcemap`. It ignores consumer build configuration and leaves the consumer package manifest unchanged. The bundler does not type-check the generated sources. Source and distribution paths must not overlap.
 The package recipe uses example versions; select the published tsthrift versions
 when installing dependencies.
 
@@ -248,11 +281,11 @@ Apache-2.0
 ## Generated package compatibility
 
 Every generated root/namespace exports `TSTHRIFT_BUILD` with `metadataVersion`, `i64`,
-and `lowerCaseMethods`. Bundling verifies installed external packages against this marker
+`binary`, and `lowerCaseMethods`. Bundling verifies installed external packages against this marker
 using Node ESM resolution. Plain source generation does not require installed dependencies;
 runtime metadata initialization also rejects incompatible generated settings.
 Regenerate external packages missing the marker before bundling them together.
-Metadata JSON retains the legacy array/AST shape and adds `metadataVersion: 1`.
+Metadata JSON retains the legacy array/AST shape and adds `metadataVersion: 1` and the selected `build` settings.
 The runtime accepts unversioned legacy metadata but rejects unsupported explicit versions.
 
 Only explicit `required` fields and fields with concrete defaults are emitted as required

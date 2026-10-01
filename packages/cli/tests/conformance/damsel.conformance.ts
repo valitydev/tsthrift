@@ -84,7 +84,7 @@ async function verifyReplyEncoding(
   const fields = exception
     ? resolved.method.throws
     : [{ id: 0, name: "success", type: resolved.method.type }];
-  const codecs = new MetadataCodecs(index, mode);
+  const codecs = new MetadataCodecs(index, mode, "uint8array");
   const codec = struct("result", () => codecs.fields(fields, resolved.namespace));
   const writer = new BinaryWriter();
   writer.writeMessageBegin(methodName, MessageType.Reply, 1);
@@ -98,7 +98,7 @@ test.each(["bigint", "number"] as const)(
   "all supported types and composite keys match generated Java (%s)",
   async (mode) => {
     const { createEcho } = await generated(mode, "alpha/services/Echo.js");
-    const { loadThriftMetadata } = await generated(mode, "metadata.js");
+    const { loadThriftMetadataByNamespaces } = await generated(mode, "metadata.js");
     for (const empty of [false, true]) {
       const scenario = `${empty ? "empty" : "all"}-${mode}`;
       // Explicit mode isolates wire conformance from the generated factory mode.
@@ -116,7 +116,7 @@ test.each(["bigint", "number"] as const)(
       await verifyReplyEncoding(
         mode,
         scenario,
-        await loadThriftMetadata("alpha"),
+        await loadThriftMetadataByNamespaces("alpha"),
         "alpha",
         "Echo",
         "echo",
@@ -134,7 +134,7 @@ test.each(["bigint", "number"] as const)(
       mode,
       "damsel/domain_config_v2/services/Repository.js",
     );
-    const { loadThriftMetadata } = await generated(mode, "damsel/metadata.js");
+    const { loadThriftMetadataByNamespaces } = await generated(mode, "damsel/metadata.js");
     const client = createRepository({
       endpoint: "unused",
       transport: await transport(scenario),
@@ -150,7 +150,7 @@ test.each(["bigint", "number"] as const)(
     await verifyReplyEncoding(
       mode,
       scenario,
-      await loadThriftMetadata("domain_config_v2"),
+      await loadThriftMetadataByNamespaces("domain_config_v2"),
       "domain_config_v2",
       "Repository",
       "Commit",
@@ -167,7 +167,7 @@ test.each(["bigint", "number"] as const)(
       mode,
       "damsel/domain_config_v2/services/Repository.js",
     );
-    const { loadThriftMetadata } = await generated(mode, "damsel/metadata.js");
+    const { loadThriftMetadataByNamespaces } = await generated(mode, "damsel/metadata.js");
     const client = createRepository({
       endpoint: "unused",
       transport: await transport(scenario),
@@ -179,7 +179,7 @@ test.each(["bigint", "number"] as const)(
     await verifyReplyEncoding(
       mode,
       scenario,
-      await loadThriftMetadata("domain_config_v2"),
+      await loadThriftMetadataByNamespaces("domain_config_v2"),
       "domain_config_v2",
       "Repository",
       "Commit",
@@ -193,7 +193,7 @@ test.each(["bigint", "number"] as const)(
   async (mode) => {
     const scenario = `failure-${mode}`;
     const { createEcho } = await generated(mode, "alpha/services/Echo.js");
-    const { loadThriftMetadata } = await generated(mode, "metadata.js");
+    const { loadThriftMetadataByNamespaces } = await generated(mode, "metadata.js");
     const client = createEcho({
       endpoint: "unused",
       transport: await transport(scenario),
@@ -207,7 +207,7 @@ test.each(["bigint", "number"] as const)(
     await verifyReplyEncoding(
       mode,
       scenario,
-      await loadThriftMetadata("alpha"),
+      await loadThriftMetadataByNamespaces("alpha"),
       "alpha",
       "Echo",
       "echo",
@@ -218,9 +218,9 @@ test.each(["bigint", "number"] as const)(
 );
 
 test("same service and IDL namespace names remain isolated by source module", async () => {
-  const { THRIFT_SERVICES, loadThriftMetadata } = await generated("bigint", "index.js");
-  const metadata: Metadata[] = await loadThriftMetadata("beta");
-  const alphaMetadata: Metadata[] = await loadThriftMetadata("alpha");
+  const { THRIFT_SERVICES, loadThriftMetadataByNamespaces } = await generated("bigint", "index.js");
+  const metadata: Metadata[] = await loadThriftMetadataByNamespaces("beta");
+  const alphaMetadata: Metadata[] = await loadThriftMetadataByNamespaces("alpha");
   expect(metadata[0]!.ast.namespace?.js).toEqual(alphaMetadata[0]!.ast.namespace?.js);
   const alpha = THRIFT_SERVICES["alpha.Echo"].createService({
     endpoint: "unused",

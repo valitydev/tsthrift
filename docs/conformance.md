@@ -86,6 +86,8 @@ The conformance runner honors the following environment variables:
 CI runs both variants in a matrix (`vality-0.20.1` and `apache-0.24.0`) on GitHub Actions
 with Maven caching (`actions/cache@v6` on `~/.m2/repository`) and automated artifact upload on
 failure or completion (`actions/upload-artifact@v7`).
+The Apache compiler is built from the exact release tag selected by the matrix;
+both jobs verify the compiler version before running tests.
 
 ## Coverage
 
@@ -114,7 +116,7 @@ and canonical hyphenated UUID strings.
 
 ## Limits and verification status
 
-Generated models and runtime values use `Uint8Array` for binary data and bind the selected `i64Mode` into generated factories. Conformance tests verify serialization fidelity, processor argument decoding, and reply roundtrips against Java reference implementations. These tests focus on wire and protocol conformance, leaving production server deployment and end-to-end frontend integration to downstream consumer verification.
+The conformance setup explicitly selects `--binary uint8array`; generated models and runtime values use `Uint8Array` for binary data and bind the selected `i64Mode` into generated factories. Conformance tests verify serialization fidelity, processor argument decoding, and reply roundtrips against Java reference implementations. These tests focus on wire and protocol conformance, leaving production server deployment and end-to-end frontend integration to downstream consumer verification.
 
 Both compiler/runtime pairs must pass on the exact release candidate. Earlier runs
 and support in `setup.ts` do not establish acceptance of later changes.

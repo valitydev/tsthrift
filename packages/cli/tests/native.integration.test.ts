@@ -81,6 +81,7 @@ test.each(["bigint", "number"] as const)(
         input,
         output,
         i64,
+        binary: "uint8array",
         metadataJson: true,
       });
       const compiled = path.join(directory, "compiled");
@@ -121,7 +122,7 @@ test.each(["bigint", "number"] as const)(
         entry,
         `import { createMetadataClient } from "@vality/tsthrift";
         import metadata from "./generated/metadata.json";
-        export function createExample(config) { return createMetadataClient({ ...config, metadata, namespace: "example", serviceName: "Example", i64Mode: "${i64}" }); }
+        export function createExample(config) { return createMetadataClient({ ...config, metadata, namespace: "example", serviceName: "Example", i64Mode: "${i64}", binaryMode: "uint8array" }); }
         export const createExampleClient = createExample;`,
       );
       await verifyBrowserBundle(output, entry);

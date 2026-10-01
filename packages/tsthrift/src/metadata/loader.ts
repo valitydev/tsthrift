@@ -1,20 +1,30 @@
 import type { Metadata } from "./types.ts";
 
-export type MetadataImportModule =
+export type MetadataImportModule<Namespace extends string = string> =
   | Metadata
   | Metadata[]
   | { default: Metadata | Metadata[] }
   | { metadata: Metadata | Metadata[] }
   | { thriftMetadata: Metadata }
-  | { loadThriftMetadata: (namespace: string) => Promise<Metadata[]> };
-export type MetadataLoaderFn = () => Promise<MetadataImportModule | MetadataImportModule[]>;
+  | {
+      loadThriftMetadataByNamespaces: (namespace: Namespace) => Promise<Metadata[]>;
+    }
+  | { loadThriftMetadata: (namespace: Namespace) => Promise<Metadata[]> };
+export type MetadataLoaderFn<Namespace extends string = string> = () => Promise<
+  MetadataImportModule<Namespace> | MetadataImportModule<Namespace>[]
+>;
 
 export interface MetadataLoaderOptions {
   cache?: Map<string, Promise<Metadata[]>>;
 }
 
-async function unwrapModule(module: MetadataImportModule, namespace: string): Promise<Metadata[]> {
+async function unwrapModule<Namespace extends string>(
+  module: MetadataImportModule<Namespace>,
+  namespace: Namespace,
+): Promise<Metadata[]> {
   if (Array.isArray(module)) return module;
+  if ("loadThriftMetadataByNamespaces" in module)
+    return module.loadThriftMetadataByNamespaces(namespace);
   if ("loadThriftMetadata" in module) return module.loadThriftMetadata(namespace);
   const metadata =
     "thriftMetadata" in module
@@ -27,13 +37,13 @@ async function unwrapModule(module: MetadataImportModule, namespace: string): Pr
   return Array.isArray(metadata) ? metadata : [metadata];
 }
 
-/** Caches successful loads and allows retry after a rejected load. */
-export function createMetadataLoader(
-  loaders: Record<string, MetadataLoaderFn>,
+/** Loads selected namespaces, caching successful loads and allowing retries after rejection. */
+export function createMetadataLoader<Namespace extends string>(
+  loaders: { [Name in Namespace]: MetadataLoaderFn<Name> },
   options?: MetadataLoaderOptions,
-): (namespace: string) => Promise<Metadata[]> {
+): (namespace: Namespace | readonly Namespace[]) => Promise<Metadata[]> {
   const cache = options?.cache ?? new Map<string, Promise<Metadata[]>>();
-  return (namespace) => {
+  const load = (namespace: Namespace): Promise<Metadata[]> => {
     const existing = cache.get(namespace);
     if (existing) return existing;
     if (!Object.hasOwn(loaders, namespace)) {
@@ -57,23 +67,31 @@ export function createMetadataLoader(
     cache.set(namespace, pending);
     return pending;
   };
+  return (namespaces) => {
+    if (typeof namespaces === "string") return load(namespaces);
+    const selected: readonly Namespace[] = namespaces;
+    if (!Array.isArray(namespaces) || !namespaces.every((name) => typeof name === "string")) {
+      return Promise.reject(
+        new TypeError("Expected a namespace string or an array of namespace strings"),
+      );
+    }
+    return Promise.all([...new Set(selected)].map(load)).then((groups) => {
+      const modules = new Map<string, Metadata>();
+      for (const metadata of groups.flat()) modules.set(metadata.name, metadata);
+      return [...modules.values()];
+    });
+  };
 }
 
 /** Resolves a generated namespace's dependency closure through the shared loader. */
-export function createNamespaceLoader(
-  dependencies: Record<string, MetadataLoaderFn>,
-): () => Promise<Metadata[]> {
+export function createNamespaceLoader<Namespace extends string>(dependencies: {
+  [Name in Namespace]: MetadataLoaderFn<Name>;
+}): () => Promise<Metadata[]> {
   const load = createMetadataLoader(dependencies);
   let pending: Promise<Metadata[]> | undefined;
   return () =>
-    (pending ??= Promise.all(Object.keys(dependencies).map(load))
-      .then((groups) => {
-        const modules = new Map<string, Metadata>();
-        for (const metadata of groups.flat()) modules.set(metadata.name, metadata);
-        return [...modules.values()];
-      })
-      .catch((error: unknown) => {
-        pending = undefined;
-        throw error;
-      }));
+    (pending ??= load(Object.keys(dependencies) as Namespace[]).catch((error: unknown) => {
+      pending = undefined;
+      throw error;
+    }));
 }

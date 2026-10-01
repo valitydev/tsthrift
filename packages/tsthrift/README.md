@@ -10,7 +10,7 @@ Pure TypeScript Thrift Binary Protocol runtime, dynamic metadata RPC clients, an
 - **Pure TypeScript Binary Protocol:** Native `BinaryReader` and `BinaryWriter` implementing Thrift Binary Protocol over `Uint8Array`.
 - **Zero Node/Buffer dependencies:** Runs in browsers, web workers, Node.js, and edge runtimes.
 - **Configurable `i64` precision:** Support for exact `bigint` (default) or safe `number` mode.
-- **Native JavaScript values:** Plain objects for structs/unions/exceptions, `Map` (with support for struct keys), `Set`, arrays, and `Uint8Array` for binary data.
+- **Native JavaScript values:** Plain objects for structs/unions/exceptions, `Map` (with support for struct keys), `Set`, arrays, and Base64 strings for binary data by default (`binaryMode: "uint8array"` selects raw bytes).
 - **HTTP transport:** Fetch-based transport with configurable timeouts, request cancellation (`AbortSignal`), custom headers, and Woody distributed tracing headers.
 - **Typed error handling:** Clear distinction between transport/system failures (`ThriftSystemError`) and declared Thrift IDL exceptions (`ThriftServiceError`).
 - **Safe call semantics:** Support for `ThriftResult<TData, TError>` pattern alongside throwing clients.
@@ -37,12 +37,25 @@ const client = await createMetadataClient({
   serviceName: "PaymentProcessing",
   endpoint: "/rpc/payment",
   i64Mode: "bigint", // "bigint" (default) or "number"
+  binaryMode: "base64", // Base64 (default); "uint8array" for raw bytes
   timeoutMs: 15_000,
 });
 
 // Invoke methods
 const result = await client.getPayment(123456789n);
 ```
+
+### Metadata selection
+
+`createMetadataLoader` returns a loader accepting a required namespace name or readonly list
+of names. List calls combine dependency closures into one `Metadata[]`, deduplicated by module
+name in selection/dependency order. An empty list returns `[]`; unknown names reject the call.
+Allowed names are inferred from the dependency keys. Loads are cached per namespace, and rejected
+loads can be retried. For the `metadata` option of `createMetadataClient`, select a known namespace
+in a zero-argument callback: `metadata: () => loadThriftMetadataByNamespaces("payment")`.
+
+Generated package roots export `loadThriftMetadataByNamespaces`; pass their `THRIFT_NAMESPACES`
+list to load all namespaces. Namespace subpaths export zero-argument `loadThriftMetadata()`.
 
 ### Typed client with generated descriptors
 
@@ -86,6 +99,9 @@ if (error) {
 not a runtime constructor. Direct RPC clients reject declared exceptions as
 `ThriftServiceError` with a qualified `module.Exception` type and original payload
 in `data`. Error guards work across copies of the runtime.
+
+Errors raised by the runtime carry the stack of the RPC call site instead of internal
+transport frames, including calls through lazy metadata clients.
 
 ```
 ThriftError (base class)
@@ -134,13 +150,14 @@ try {
 
 `HttpTransportConfig` options:
 
-| Option      | Type                                          | Description                                                     |
-| ----------- | --------------------------------------------- | --------------------------------------------------------------- |
-| `endpoint`  | `string \| (() => string \| Promise<string>)` | Target endpoint URL or sync/async URL factory.                  |
-| `headers`   | `HeaderProvider`                              | Static header object or async factory receiving base headers.   |
-| `timeoutMs` | `number`                                      | Request timeout in milliseconds (default: `60_000`).            |
-| `fetch`     | `typeof fetch`                                | Custom fetch implementation or framework bridge.                |
-| `loggingFn` | `(params: ThriftLogParams) => void`           | Lifecycle logging callback for call, success, and error events. |
+| Option        | Type                                          | Description                                                              |
+| ------------- | --------------------------------------------- | ------------------------------------------------------------------------ |
+| `endpoint`    | `string \| (() => string \| Promise<string>)` | Target endpoint URL or sync/async URL factory.                           |
+| `headers`     | `HeaderProvider`                              | Static header object or async factory receiving base headers.            |
+| `timeoutMs`   | `number`                                      | Request timeout in milliseconds (default: `60_000`).                     |
+| `fetch`       | `typeof fetch`                                | Custom fetch implementation or framework bridge.                         |
+| `loggingFn`   | `(params: ThriftLogParams) => void`           | Lifecycle logging callback for call, success, and error events.          |
+| `logPayloads` | `boolean`                                     | Include arguments, responses, and declared exception data in log events. |
 
 ### Per-call options
 
@@ -183,6 +200,49 @@ const client = await createMetadataClient({
   }),
 });
 ```
+
+## Logging
+
+`loggingFn` receives `call`, `success`, and `error` events with the service, method,
+namespace, sequence ID, duration, and trace ID. Error events carry a `ThriftLogError`
+summary: `name`, `message`, call-site `stack`, HTTP `status`, and `TApplicationException`
+`code`. Arguments,
+responses, and declared exception `data` are included only with `logPayloads: true`.
+Headers and HTTP response bodies are never logged.
+
+`@vality/tsthrift/devtools` provides a console logger for development. Use
+`combineLoggers` to add application loggers; falsy entries are skipped and each logger
+is isolated from failures of the others.
+
+```ts
+import { combineLoggers } from "@vality/tsthrift";
+import { createConsoleLogger } from "@vality/tsthrift/devtools";
+
+const config = {
+  endpoint: "/wachter",
+  logPayloads: isDev,
+  loggingFn: combineLoggers(isDev && createConsoleLogger(), reportErrors),
+};
+```
+
+`createConsoleLogger` options: `console` (output sink, default `globalThis.console`),
+`success` (log successful calls, default `true`),
+and `calls` (log call starts, default `false`). Failures
+are printed as an `Error` whose stack points to the call site, followed by any `status`,
+`code`, or `data` details.
+
+## Binary values
+
+IDL `string` remains UTF-8 text. IDL `binary` is a Base64 string by default (`binaryMode: "base64"`);
+`binaryMode: "uint8array"` selects raw bytes for direct metadata clients.
+Generated factories bind the CLI's `--binary` mode and cannot override it at runtime.
+Both modes send identical raw bytes in Binary Protocol; Base64 is not sent as text.
+Use `binaryToString(bytes, "base64")` and `toBinary(value, "base64")` for conversion.
+IDL binary constants/defaults encode the literal as UTF-8 bytes before converting
+to the selected representation. Low-level `readBinary`/`writeBinary` still use `Uint8Array`.
+Regenerate protocol packages when adopting the new default. Older build markers
+without a binary mode describe `uint8array`; unversioned metadata needs an explicit
+`binaryMode: "uint8array"` to retain the earlier metadata runtime behavior.
 
 ## Low-Level Runtime API (`@vality/tsthrift/runtime`)
 

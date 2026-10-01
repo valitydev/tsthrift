@@ -12,7 +12,13 @@ export function validateOutput(schema: Schema, services: boolean, lowerCaseMetho
     modules.add(program.name.toLowerCase());
     if (
       reservedWords.has(program.name) ||
-      ["loadThriftMetadata", "THRIFT_SERVICES", "THRIFT_SERVICES_LIST"].includes(program.name)
+      [
+        "loadThriftMetadata",
+        "loadThriftMetadataByNamespaces",
+        "THRIFT_NAMESPACES",
+        "THRIFT_SERVICES",
+        "THRIFT_SERVICES_LIST",
+      ].includes(program.name)
     ) {
       throw new Error(`Module name collides with generated export: ${program.name}`);
     }
@@ -22,7 +28,9 @@ export function validateOutput(schema: Schema, services: boolean, lowerCaseMetho
       "TextEncoder",
       "Promise",
       "loadThriftMetadata",
+      "loadThriftMetadataByNamespaces",
       "thriftMetadata",
+      "THRIFT_NAMESPACES",
       "THRIFT_SERVICES",
       "THRIFT_SERVICES_LIST",
     ]);
@@ -51,6 +59,7 @@ export function validateOutput(schema: Schema, services: boolean, lowerCaseMetho
           "ServiceClientConfig",
           "ThriftServiceDescriptor",
           "loadThriftMetadata",
+          "loadThriftMetadataByNamespaces",
         ].includes(name)
       ) {
         throw new Error(`Generated service identifier collision: ${program.name}.${name}`);

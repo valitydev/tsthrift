@@ -1,5 +1,5 @@
 import { MetadataIndex } from "./index.ts";
-import type { Field, I64Mode } from "./types.ts";
+import type { BinaryMode, Field, I64Mode } from "./types.ts";
 import {
   type MethodCodec,
   type RpcClientConfig,
@@ -16,16 +16,17 @@ export interface MetadataClientConfig extends RpcClientConfig {
   namespace: string;
   serviceName: string;
   i64Mode?: I64Mode;
+  binaryMode?: BinaryMode;
   lowerCaseMethods?: boolean;
 }
 
 /**
- * Configuration accepted by generated `create<Service>` factories; the service, namespace, i64 mode
+ * Configuration accepted by generated `create<Service>` factories; the service, namespace, binary/i64 modes
  * and method naming are fixed by the generator.
  */
 export interface ServiceClientConfig extends Omit<
   MetadataClientConfig,
-  "serviceName" | "namespace" | "metadata" | "i64Mode" | "lowerCaseMethods"
+  "serviceName" | "namespace" | "metadata" | "i64Mode" | "binaryMode" | "lowerCaseMethods"
 > {
   metadata?: MetadataClientConfig["metadata"];
 }
@@ -39,6 +40,9 @@ export async function createMetadataClient<T extends object = DynamicThriftClien
   if (!config) throw new TypeError("Expected metadata client configuration");
   const mode = config.i64Mode ?? "bigint";
   if (mode !== "bigint" && mode !== "number") throw new Error("Unknown i64 mode");
+  const binaryMode = config.binaryMode ?? "base64";
+  if (binaryMode !== "base64" && binaryMode !== "uint8array")
+    throw new Error("Unknown binary mode");
   let index = config.index;
   if (!index) {
     if (!config.metadata) throw new TypeError("Expected metadata or index in config");
@@ -49,8 +53,8 @@ export async function createMetadataClient<T extends object = DynamicThriftClien
     if (!Array.isArray(metadata)) throw new TypeError("Expected metadata array");
     index = new MetadataIndex(structuredClone(metadata));
   }
-  index.validateBuild(mode, Boolean(config.lowerCaseMethods));
-  const codecs = new MetadataCodecs(index, mode);
+  index.validateBuild(mode, Boolean(config.lowerCaseMethods), binaryMode);
+  const codecs = new MetadataCodecs(index, mode, binaryMode);
   const methods: Record<string, MethodCodec> = Object.create(null);
   const visited = new Set<string>();
   const addService = (namespace: string, name: string) => {

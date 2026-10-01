@@ -39,10 +39,13 @@ export interface ThriftAst {
 export interface Metadata {
   /** Missing only for legacy metadata; newly emitted metadata uses version 1. */
   metadataVersion?: 1;
-  build?: { i64: I64Mode; lowerCaseMethods: boolean };
+  build?: { i64: I64Mode; lowerCaseMethods: boolean; binary?: BinaryMode };
   path: string;
   name: string;
   ast: ThriftAst;
 }
+
+/** Public representation of IDL binary: Base64 string or raw bytes. */
+export type BinaryMode = "base64" | "uint8array";
 
 export type I64Mode = "bigint" | "number";
