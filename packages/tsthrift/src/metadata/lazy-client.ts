@@ -1,3 +1,4 @@
+import { runWithCallSite } from "../transport/call-context.ts";
 import { THRIFT_METHOD_ARGUMENT_COUNT } from "../transport/method-arguments.ts";
 import {
   type DynamicThriftClient,
@@ -31,7 +32,12 @@ export function createLazyMetadataClient<T extends object = DynamicThriftClient>
         throw new TypeError(`Method ${name} not found on client for service ${config.serviceName}`);
       return method;
     };
-    const call = async (...args: unknown[]) => (await getMethod())(...args);
+    const call = async (...args: unknown[]) => {
+      // Captured before awaiting the client so runtime errors point to the caller.
+      const callSite = new Error();
+      const method = (await getMethod()) as (...args: unknown[]) => unknown;
+      return runWithCallSite(callSite, () => method(...args));
+    };
     Object.defineProperty(call, THRIFT_METHOD_ARGUMENT_COUNT, {
       get: () =>
         getMethod().then(

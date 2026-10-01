@@ -99,6 +99,9 @@ not a runtime constructor. Direct RPC clients reject declared exceptions as
 `ThriftServiceError` with a qualified `module.Exception` type and original payload
 in `data`. Error guards work across copies of the runtime.
 
+Errors raised by the runtime carry the stack of the RPC call site instead of internal
+transport frames, including calls through lazy metadata clients.
+
 ```
 ThriftError (base class)
 ├── ThriftSystemError
@@ -146,13 +149,14 @@ try {
 
 `HttpTransportConfig` options:
 
-| Option      | Type                                          | Description                                                     |
-| ----------- | --------------------------------------------- | --------------------------------------------------------------- |
-| `endpoint`  | `string \| (() => string \| Promise<string>)` | Target endpoint URL or sync/async URL factory.                  |
-| `headers`   | `HeaderProvider`                              | Static header object or async factory receiving base headers.   |
-| `timeoutMs` | `number`                                      | Request timeout in milliseconds (default: `60_000`).            |
-| `fetch`     | `typeof fetch`                                | Custom fetch implementation or framework bridge.                |
-| `loggingFn` | `(params: ThriftLogParams) => void`           | Lifecycle logging callback for call, success, and error events. |
+| Option        | Type                                          | Description                                                              |
+| ------------- | --------------------------------------------- | ------------------------------------------------------------------------ |
+| `endpoint`    | `string \| (() => string \| Promise<string>)` | Target endpoint URL or sync/async URL factory.                           |
+| `headers`     | `HeaderProvider`                              | Static header object or async factory receiving base headers.            |
+| `timeoutMs`   | `number`                                      | Request timeout in milliseconds (default: `60_000`).                     |
+| `fetch`       | `typeof fetch`                                | Custom fetch implementation or framework bridge.                         |
+| `loggingFn`   | `(params: ThriftLogParams) => void`           | Lifecycle logging callback for call, success, and error events.          |
+| `logPayloads` | `boolean`                                     | Include arguments, responses, and declared exception data in log events. |
 
 ### Per-call options
 
@@ -195,6 +199,36 @@ const client = await createMetadataClient({
   }),
 });
 ```
+
+## Logging
+
+`loggingFn` receives `call`, `success`, and `error` events with the service, method,
+namespace, sequence ID, duration, and trace ID. Error events carry a `ThriftLogError`
+summary: `name`, `message`, call-site `stack`, HTTP `status`, and `TApplicationException`
+`code`. Arguments,
+responses, and declared exception `data` are included only with `logPayloads: true`.
+Headers and HTTP response bodies are never logged.
+
+`@vality/tsthrift/devtools` provides a console logger for development. Use
+`combineLoggers` to add application loggers; falsy entries are skipped and each logger
+is isolated from failures of the others.
+
+```ts
+import { combineLoggers } from "@vality/tsthrift";
+import { createConsoleLogger } from "@vality/tsthrift/devtools";
+
+const config = {
+  endpoint: "/wachter",
+  logPayloads: isDev,
+  loggingFn: combineLoggers(isDev && createConsoleLogger(), reportErrors),
+};
+```
+
+`createConsoleLogger` options: `console` (output sink, default `globalThis.console`),
+`success` (log successful calls, default `true`),
+and `calls` (log call starts, default `false`). Failures
+are printed as an `Error` whose stack points to the call site, followed by any `status`,
+`code`, or `data` details.
 
 ## Low-Level Runtime API (`@vality/tsthrift/runtime`)
 

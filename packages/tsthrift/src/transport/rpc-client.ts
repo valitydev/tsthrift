@@ -1,5 +1,5 @@
-import { callContexts } from "./call-context.ts";
-import { emitLog } from "./logging.ts";
+import { applyCallSite, callContexts, takeCallSite } from "./call-context.ts";
+import { emitLog, toLogError } from "./logging.ts";
 import { THRIFT_METHOD_ARGUMENT_COUNT } from "./method-arguments.ts";
 import { BinaryReader } from "../runtime/binary-reader.ts";
 import { BinaryWriter } from "../runtime/binary-writer.ts";
@@ -84,6 +84,7 @@ export function createRpcClient<T extends object>(
   const entries = Object.entries(methods).map(([name, method]) => [
     name,
     async (...args: unknown[]) => {
+      const callSite = takeCallSite();
       const options = args[method.argumentNames.length] as RequestOptions | undefined;
       const callArgs = args.slice(0, method.argumentNames.length);
       const wireName = method.wireName ?? name;
@@ -127,7 +128,8 @@ export function createRpcClient<T extends object>(
         return response;
       } catch (error) {
         const durationMs = performance.now() - started;
-        if (isThriftError(error))
+        if (isThriftError(error)) {
+          applyCallSite(error, callSite);
           error.context = {
             serviceName,
             namespace,
@@ -136,15 +138,13 @@ export function createRpcClient<T extends object>(
             durationMs,
             traceId: correlation.traceId,
           };
+        }
         emitLog(config.loggingFn, {
           ...context,
           traceId: correlation.traceId,
           type: "error",
           durationMs,
-          error:
-            error instanceof Error
-              ? { name: error.name, message: error.message }
-              : { name: "UnknownError" },
+          error: toLogError(error, config.logPayloads),
         });
         throw error;
       }
