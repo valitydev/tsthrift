@@ -13,6 +13,7 @@ export type {
   ServiceClientConfig,
 } from "./metadata/client.ts";
 export type {
+  BinaryMode,
   Field,
   I64Mode,
   Metadata,

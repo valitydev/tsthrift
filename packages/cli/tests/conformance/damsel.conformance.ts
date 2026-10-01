@@ -84,7 +84,7 @@ async function verifyReplyEncoding(
   const fields = exception
     ? resolved.method.throws
     : [{ id: 0, name: "success", type: resolved.method.type }];
-  const codecs = new MetadataCodecs(index, mode);
+  const codecs = new MetadataCodecs(index, mode, "uint8array");
   const codec = struct("result", () => codecs.fields(fields, resolved.namespace));
   const writer = new BinaryWriter();
   writer.writeMessageBegin(methodName, MessageType.Reply, 1);

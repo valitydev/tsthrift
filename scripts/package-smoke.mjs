@@ -120,7 +120,7 @@ try {
     const unknownNamespace: typeof THRIFT_NAMESPACES[number] = "missing";
     import * as example from "tsthrift-smoke-proto/example";
     import { createExample } from "tsthrift-smoke-proto/example";
-    const bytes: Uint8Array = BYTES;
+    const bytes: string = BYTES;
     const payload: example.Payload = { id: 42 };
     const promise: Promise<number> = createExample({ endpoint: "unused" }).echo(42);
     // @ts-expect-error Generated method names cannot be overridden at runtime.
@@ -171,7 +171,7 @@ try {
     import * as example from 'tsthrift-smoke-proto/example';
     import { createExample } from 'tsthrift-smoke-proto/example';
     import { BinaryReader, BinaryWriter, MessageType } from '@vality/tsthrift';
-    assert.ok(BYTES instanceof Uint8Array);
+    assert.equal(BYTES, "YWJj");
     assert.ok(!('loadThriftMetadata' in await import('tsthrift-smoke-proto')));
     assert.deepEqual(THRIFT_NAMESPACES, ['example']);
     assert.deepEqual((await example.loadThriftMetadata()).map(m => m.name), ['example']);

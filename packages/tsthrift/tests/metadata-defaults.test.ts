@@ -55,7 +55,10 @@ const schema = (): Metadata[] => [
 test.each(["number", "bigint"] as const)(
   "evaluates recursive defaults in %s mode without sharing values",
   (mode) => {
-    const codec = new MetadataCodecs(new MetadataIndex(schema()), mode).type("Value", "example");
+    const codec = new MetadataCodecs(new MetadataIndex(schema()), mode, "uint8array").type(
+      "Value",
+      "example",
+    );
     const first = codec.read(new BinaryReader(new Uint8Array([0])));
     const second = codec.read(new BinaryReader(new Uint8Array([0])));
     expect(first).toEqual({

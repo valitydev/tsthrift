@@ -76,6 +76,17 @@ test.each([
         external: { base: importPath, common: "base-proto/common" },
       }),
     ).rejects.toThrow("Incompatible or missing TSTHRIFT_BUILD");
+    await expect(
+      generate({
+        input: child,
+        i64,
+        binary: "uint8array",
+        output: path.join(dir, "binary-mismatched"),
+        bundle: true,
+        dist: path.join(dir, "binary-mismatched-dist"),
+        external: { base: importPath, common: "base-proto/common" },
+      }),
+    ).rejects.toThrow("Incompatible or missing TSTHRIFT_BUILD");
     await generate({
       input: child,
       i64,

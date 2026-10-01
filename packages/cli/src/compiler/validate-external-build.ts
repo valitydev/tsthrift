@@ -1,3 +1,4 @@
+import type { BinaryMode } from "@vality/tsthrift";
 import type { Schema } from "./load-schema.ts";
 import type { I64Mode } from "./i64-mode.ts";
 import { importFromPackage } from "./resolve-package.ts";
@@ -8,6 +9,7 @@ export async function validateExternalBuild(
   directory: string,
   i64: I64Mode,
   lowerCaseMethods: boolean,
+  binary: BinaryMode,
 ): Promise<void> {
   const checked = new Set<string>();
   for (const program of schema.externalPrograms) {
@@ -16,13 +18,14 @@ export async function validateExternalBuild(
     checked.add(specifier);
     const module = await importFromPackage(specifier, directory);
     const build = module.TSTHRIFT_BUILD as
-      | { metadataVersion?: number; i64?: string; lowerCaseMethods?: boolean }
+      | { metadataVersion?: number; i64?: string; lowerCaseMethods?: boolean; binary?: string }
       | undefined;
     if (
       !build ||
       build.metadataVersion !== 1 ||
       build.i64 !== i64 ||
-      build.lowerCaseMethods !== lowerCaseMethods
+      build.lowerCaseMethods !== lowerCaseMethods ||
+      (build.binary ?? "uint8array") !== binary
     ) {
       throw new TypeError(
         `Incompatible or missing TSTHRIFT_BUILD in external package ${specifier}`,

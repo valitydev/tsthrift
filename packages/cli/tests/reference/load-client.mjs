@@ -34,6 +34,7 @@ export async function loadClient(directory, mode, backend = "metadata") {
       namespace: "example",
       serviceName: "Example",
       i64Mode: mode,
+      binaryMode: "uint8array",
     });
   return {
     createExample,

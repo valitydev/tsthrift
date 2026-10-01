@@ -39,6 +39,7 @@ export async function runBrowserSmoke() {
         endpoint,
         fetch,
         i64Mode,
+        binaryMode: "uint8array",
         headers: { Authorization: "old" },
       });
       const result = await client.echo(bytes, i64Mode === "number" ? 42 : 42n, {

@@ -31,10 +31,13 @@ test("preserves the legacy form metadata contract without model or Apache genera
     await readFile(path.join(import.meta.dirname, "fixtures/expected/metadata.json"), "utf8"),
   );
   expect(
-    actual.map(({ metadataVersion, ...legacy }: { metadataVersion: number }) => {
-      expect(metadataVersion).toBe(1);
-      return legacy;
-    }),
+    actual.map(
+      ({ metadataVersion, build, ...legacy }: { metadataVersion: number; build: unknown }) => {
+        expect(build).toEqual({ i64: "bigint", lowerCaseMethods: false, binary: "base64" });
+        expect(metadataVersion).toBe(1);
+        return legacy;
+      },
+    ),
   ).toEqual(baseline);
   expect(result.compilerVersion).toBeUndefined();
   expect(result.modules.sort()).toEqual(["common", "example"]);

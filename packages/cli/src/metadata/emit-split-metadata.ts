@@ -1,3 +1,4 @@
+import type { Metadata } from "@vality/tsthrift";
 import type { Program, Schema } from "../compiler/load-schema.ts";
 import { getTransitiveDependencies } from "./dependencies.ts";
 
@@ -10,7 +11,7 @@ export interface EmittedModuleMetadata {
 /** Emits an individual TypeScript module containing the parsed Thrift AST metadata. */
 export function emitModuleMetadata(
   program: Program,
-  build?: { i64: "bigint" | "number"; lowerCaseMethods: boolean },
+  build?: Metadata["build"],
 ): EmittedModuleMetadata {
   const meta = {
     metadataVersion: 1,

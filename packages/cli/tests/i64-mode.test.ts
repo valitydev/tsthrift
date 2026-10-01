@@ -116,7 +116,7 @@ test.each([undefined, "number", "bigint"] as const)(
   },
 );
 
-test("CLI switches public i64 mode without changing metadata", async () => {
+test("CLI binds the i64 mode while preserving the metadata AST", async () => {
   const options = await setup();
   const args = [
     path.resolve(import.meta.dirname, "../src/cli.ts"),
@@ -136,7 +136,21 @@ test("CLI switches public i64 mode without changing metadata", async () => {
   expect(await readFile(path.join(options.output, "common/models.ts"), "utf8")).toContain(
     "export type Identifier = number;",
   );
-  expect(await readFile(path.join(options.output, "metadata.json"), "utf8")).toBe(metadata);
+  const numberMetadata = JSON.parse(
+    await readFile(path.join(options.output, "metadata.json"), "utf8"),
+  );
+  const bigintMetadata = JSON.parse(metadata);
+  expect(
+    numberMetadata.map(({ build, ...program }: { build: { i64: string } }) => {
+      expect(build.i64).toBe("number");
+      return program;
+    }),
+  ).toEqual(
+    bigintMetadata.map(({ build, ...program }: { build: { i64: string } }) => {
+      expect(build.i64).toBe("bigint");
+      return program;
+    }),
+  );
   await generate({ ...options, models: false, i64: "bigint" });
   expect(await readFile(path.join(options.output, "metadata.json"), "utf8")).toBe(metadata);
 });

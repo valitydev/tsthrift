@@ -1,5 +1,6 @@
 import type { MetadataIndex } from "./index.ts";
-import type { I64Mode, ValueType } from "./types.ts";
+import type { BinaryMode, I64Mode, ValueType } from "./types.ts";
+import { binaryToString } from "../runtime/binary-converter.ts";
 import { numberToI64 } from "../runtime/i64.ts";
 import { DEFAULT_MAX_DEPTH } from "../runtime/wire.ts";
 
@@ -21,6 +22,7 @@ export function evaluateDefault(
   scope: string = namespace,
   seen: Set<string> = new Set<string>(),
   depth = 0,
+  binaryMode: BinaryMode = "base64",
 ): unknown {
   if (depth >= DEFAULT_MAX_DEPTH) throw new Error("Metadata default exceeds nesting limit");
   const parts = reference(value)?.join(".").split(".");
@@ -44,6 +46,7 @@ export function evaluateDefault(
         owner,
         new Set([...seen, key]),
         depth + 1,
+        binaryMode,
       );
     }
     const enumeration = parts.length === 2 ? ast?.enum?.[parts[0]!] : undefined;
@@ -52,14 +55,24 @@ export function evaluateDefault(
       for (const item of enumeration.items) {
         current = item.value ?? current + 1;
         if (item.name === parts[1])
-          return evaluateDefault(index, mode, type, namespace, current, owner, seen, depth + 1);
+          return evaluateDefault(
+            index,
+            mode,
+            type,
+            namespace,
+            current,
+            owner,
+            seen,
+            depth + 1,
+            binaryMode,
+          );
       }
     }
     throw new Error(`Unresolved metadata constant ${key}`);
   }
   const resolved = index.resolveType(type, namespace);
   const child = (childType: ValueType, owner: string, childValue: unknown) =>
-    evaluateDefault(index, mode, childType, owner, childValue, scope, seen, depth + 1);
+    evaluateDefault(index, mode, childType, owner, childValue, scope, seen, depth + 1, binaryMode);
   if (resolved.kind === "complex") {
     if (!Array.isArray(value)) throw new Error("Expected metadata collection constant");
     const container = resolved.type;
@@ -106,6 +119,7 @@ export function evaluateDefault(
               resolved.namespace,
               seen,
               depth + 1,
+              binaryMode,
             ),
           );
         } else if (field.option === "required")
@@ -117,7 +131,9 @@ export function evaluateDefault(
     resolved.kind === "enum" ? "i32" : resolved.kind === "primitive" ? resolved.type : "unknown";
   if (scalar === "string" || scalar === "binary" || scalar === "uuid") {
     if (typeof value !== "string") throw new Error(`Invalid ${scalar} default`);
-    return scalar === "binary" ? new TextEncoder().encode(value) : value;
+    if (scalar !== "binary") return value;
+    const bytes = new TextEncoder().encode(value);
+    return binaryMode === "uint8array" ? bytes : binaryToString(bytes, "base64");
   }
   if (scalar === "bool") {
     if (typeof value === "boolean") return value;

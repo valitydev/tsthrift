@@ -1,7 +1,7 @@
 import { resolveReference, resolveType } from "./resolve-type.ts";
 import type { Program } from "./load-schema.ts";
 import type { I64Mode } from "./i64-mode.ts";
-import { thriftMethodName } from "@vality/tsthrift";
+import { type BinaryMode, thriftMethodName } from "@vality/tsthrift";
 import { reservedWords } from "./identifiers.ts";
 import { tsType } from "./ts-type.ts";
 
@@ -26,6 +26,7 @@ export function emitProgramServices(
   program: Program,
   i64: I64Mode = "bigint",
   lowerCaseMethods = false,
+  binary: BinaryMode = "base64",
 ): EmittedServiceFile[] {
   const files: EmittedServiceFile[] = [];
   const services = program.ast.service ?? {};
@@ -83,7 +84,8 @@ export function emitProgramServices(
       while (paramNames.has(optionsName)) optionsName = `_${optionsName}`;
       const parameters = [
         ...method.args.map(
-          (field) => `${safeParamName(field.name)}: ${tsType(field.type, i64, serviceType)}`,
+          (field) =>
+            `${safeParamName(field.name)}: ${tsType(field.type, i64, serviceType, binary)}`,
         ),
         `${optionsName}?: ThriftRequestOptions`,
       ].join(", ");
@@ -100,7 +102,7 @@ export function emitProgramServices(
           if (typeof resolved.type !== "string")
             throw new TypeError("Expected exception type name");
           const typeName = `${resolved.program.name}.${resolved.type}`;
-          const dataType = tsType(field.type, i64, serviceType);
+          const dataType = tsType(field.type, i64, serviceType, binary);
           return `ThriftServiceError<${JSON.stringify(typeName)}, ${dataType}>`;
         });
         errorTypes.push(
@@ -111,7 +113,7 @@ export function emitProgramServices(
         errorTypes.push(`export type ${errorTypeName} = ThriftSystemError;`);
       }
 
-      const returnType = tsType(method.type, i64, serviceType);
+      const returnType = tsType(method.type, i64, serviceType, binary);
       methods.push(`  ${JSON.stringify(methodName)}(${parameters}): Promise<${returnType}>;`);
     }
 
@@ -158,6 +160,7 @@ export function emitProgramServices(
       `  return createLazyMetadataClient<${serviceName}>({`,
       `    ...config,`,
       `    i64Mode: ${JSON.stringify(i64)},`,
+      `    binaryMode: ${JSON.stringify(binary)},`,
       `    serviceName: ${JSON.stringify(serviceName)},`,
       `    namespace: ${JSON.stringify(program.name)},`,
       `    lowerCaseMethods: ${lowerCaseMethods},`,

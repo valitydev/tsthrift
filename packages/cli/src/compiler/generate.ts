@@ -16,6 +16,7 @@ import {
   emitModuleMetadata,
   emitNamespaceMetadataLoader,
 } from "../metadata/emit-split-metadata.ts";
+import { type BinaryMode, parseBinaryMode } from "./binary-mode.ts";
 import { parseI64Mode } from "./i64-mode.ts";
 import type { I64Mode } from "./i64-mode.ts";
 import { compileOutput } from "./compile.ts";
@@ -39,12 +40,14 @@ export interface GenerateOptions {
   lowerCaseMethods?: boolean;
   metadataJson?: boolean;
   i64?: I64Mode;
+  binary?: BinaryMode;
   allowDuplicateModules?: boolean;
   main?: string;
 }
 
 export interface GenerateResult {
   i64: I64Mode;
+  binary: BinaryMode;
   models: boolean;
   services: boolean;
   lowerCaseMethods: boolean;
@@ -67,6 +70,7 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
   const shouldEmitServices = shouldEmitModels && options.services !== false;
   const lowerCaseMethods = Boolean(options.lowerCaseMethods);
   const i64 = parseI64Mode(options.i64);
+  const binary = parseBinaryMode(options.binary);
 
   const externalNamespaces = options.external
     ? normalizeExternalNamespaces(options.external)
@@ -108,7 +112,7 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
   }
 
   if (options.bundle)
-    await validateExternalBuild(schema, path.dirname(output), i64, lowerCaseMethods);
+    await validateExternalBuild(schema, path.dirname(output), i64, lowerCaseMethods, binary);
 
   await validateOwnedOutput(output);
   if (options.bundle) await validateOwnedOutput(dist);
@@ -116,7 +120,7 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
   const models = shouldEmitModels
     ? schema.localPrograms.map((program) => ({
         name: program.name,
-        content: emitModels(program, i64),
+        content: emitModels(program, i64, binary),
       }))
     : [];
 
@@ -129,7 +133,7 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
     if (shouldEmitModels) {
       await writeFile(
         path.join(staging, "build.ts"),
-        `export const TSTHRIFT_BUILD: { readonly metadataVersion: 1; readonly i64: ${JSON.stringify(i64)}; readonly lowerCaseMethods: ${lowerCaseMethods} } = ${JSON.stringify({ metadataVersion: 1, i64, lowerCaseMethods })};\n`,
+        `export const TSTHRIFT_BUILD: { readonly metadataVersion: 1; readonly i64: ${JSON.stringify(i64)}; readonly lowerCaseMethods: ${lowerCaseMethods}; readonly binary: ${JSON.stringify(binary)} } = ${JSON.stringify({ metadataVersion: 1, i64, lowerCaseMethods, binary })};\n`,
       );
       for (const program of schema.localPrograms) {
         const programDir = path.join(staging, program.name);
@@ -140,7 +144,7 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
           await writeFile(path.join(programDir, "models.ts"), model.content);
         }
 
-        const meta = emitModuleMetadata(program, { i64, lowerCaseMethods });
+        const meta = emitModuleMetadata(program, { i64, lowerCaseMethods, binary });
         await writeFile(path.join(programDir, "metadata.ts"), meta.content);
 
         const loadMeta = emitNamespaceMetadataLoader(program);
@@ -153,7 +157,7 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
         if (hasProgramServices) {
           const servicesDir = path.join(programDir, "services");
           await mkdir(servicesDir, { recursive: true });
-          const serviceFiles = emitProgramServices(program, i64, lowerCaseMethods);
+          const serviceFiles = emitProgramServices(program, i64, lowerCaseMethods, binary);
           for (const file of serviceFiles) {
             await writeFile(path.join(servicesDir, file.relativePath), file.content);
           }
@@ -204,7 +208,10 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
 
     const shouldEmitMetadataJson = options.metadataJson ?? !shouldEmitModels;
     if (shouldEmitMetadataJson) {
-      await writeFile(path.join(staging, "metadata.json"), emitMetadata(schema));
+      await writeFile(
+        path.join(staging, "metadata.json"),
+        emitMetadata(schema, { i64, lowerCaseMethods, binary }),
+      );
     }
     if (isBundled) {
       const entries = [
@@ -224,6 +231,7 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
 
   return {
     i64,
+    binary,
     models: shouldEmitModels,
     services: shouldEmitServices,
     lowerCaseMethods,

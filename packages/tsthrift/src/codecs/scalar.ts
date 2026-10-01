@@ -1,3 +1,4 @@
+import { binaryToString, toBinary } from "../runtime/binary-converter.ts";
 import type { BinaryReader } from "../runtime/binary-reader.ts";
 import type { BinaryWriter } from "../runtime/binary-writer.ts";
 import { DEFAULT_MAX_DEPTH, WireType, type WireTypeValue } from "../runtime/wire.ts";
@@ -60,6 +61,15 @@ export const binary: Codec<Uint8Array> = {
   write(w, v) {
     if (!(v instanceof Uint8Array)) throw new TypeError("Expected Uint8Array");
     w.writeBinary(v);
+  },
+};
+/** Encodes Base64 at the public boundary; the wire contains raw bytes. */
+export const binaryBase64: Codec<string> = {
+  type: WireType.String,
+  read: (r) => binaryToString(r.readBinary(), "base64"),
+  write(w, v) {
+    if (typeof v !== "string") throw new TypeError("Expected Base64 string");
+    w.writeBinary(toBinary(v, "base64"));
   },
 };
 export const uuid: Codec<string> = {

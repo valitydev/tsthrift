@@ -23,7 +23,7 @@ try {
   const input = path.join(directory, "example.thrift");
   await writeFile(input, "service Example { binary echo(1: binary value, 2: i64 number) }");
   const output = path.join(directory, "generated");
-  await generate({ input, output, i64: "number" });
+  await generate({ input, output, i64: "number", binary: "uint8array" });
   await build({
     configFile: false,
     logLevel: "error",

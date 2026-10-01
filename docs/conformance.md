@@ -114,7 +114,7 @@ and canonical hyphenated UUID strings.
 
 ## Limits and verification status
 
-Generated models and runtime values use `Uint8Array` for binary data and bind the selected `i64Mode` into generated factories. Conformance tests verify serialization fidelity, processor argument decoding, and reply roundtrips against Java reference implementations. These tests focus on wire and protocol conformance, leaving production server deployment and end-to-end frontend integration to downstream consumer verification.
+The conformance setup explicitly selects `--binary uint8array`; generated models and runtime values use `Uint8Array` for binary data and bind the selected `i64Mode` into generated factories. Conformance tests verify serialization fidelity, processor argument decoding, and reply roundtrips against Java reference implementations. These tests focus on wire and protocol conformance, leaving production server deployment and end-to-end frontend integration to downstream consumer verification.
 
 Both compiler/runtime pairs must pass on the exact release candidate. Earlier runs
 and support in `setup.ts` do not establish acceptance of later changes.

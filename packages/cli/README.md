@@ -44,6 +44,7 @@ npx --package @vality/tsthrift-cli tsthrift-cli --input "proto/**/*.thrift" [opt
 | `--no-models`                | Generate only `metadata.json` without models or services                          | `false`     |
 | `--no-services`              | Generate models and metadata without service factories                            | `false`     |
 | `--metadata-json`            | Emit monolithic `metadata.json` in output directory                               | `false`     |
+| `--binary <mode>`            | Public `binary` representation: `base64` (`string`) or `uint8array`               | `base64`    |
 | `--i64 <mode>`               | Public `i64` representation: `bigint` (default) or `number`                       | `bigint`    |
 | `--lower-case-methods`       | Generate service client methods starting with a lowercase letter                  | `false`     |
 | `--allow-duplicate-modules`  | Allow duplicate module basenames across includes (first-wins)                     | `false`     |
@@ -106,7 +107,7 @@ also owned by external packages. Unknown mappings are rejected, and the referenc
 published protocol package; generation does not edit package manifests.
 
 External and local packages must use compatible IDL revisions and the same `--i64`
-mode. Inherited service interfaces must also use the same `--lower-case-methods`
+mode and `--binary` representation. Inherited service interfaces must also use the same `--lower-case-methods`
 setting. The CLI does not infer these settings from installed declarations or convert
 between number and bigint models. A package-root mapping must export the referenced
 models/services; use namespace subpaths for multi-module packages.
@@ -125,6 +126,14 @@ npx --package @vality/tsthrift-cli tsthrift-cli \
   --include ./vendor/proto \
   --include ./shared/proto
 ```
+
+#### Binary representation
+
+IDL `binary` generates `string` containing Base64 by default (`--binary base64`). Use
+`--binary uint8array` (or `generate({ ..., binary: "uint8array" })`) for raw bytes.
+This applies to fields, typedefs, collections, constants, defaults, and service
+parameters/results. Generated factories bind the selected mode. Both modes send
+raw bytes on the wire; IDL `string` remains UTF-8 text.
 
 #### Safe number mode for i64
 
@@ -272,11 +281,11 @@ Apache-2.0
 ## Generated package compatibility
 
 Every generated root/namespace exports `TSTHRIFT_BUILD` with `metadataVersion`, `i64`,
-and `lowerCaseMethods`. Bundling verifies installed external packages against this marker
+`binary`, and `lowerCaseMethods`. Bundling verifies installed external packages against this marker
 using Node ESM resolution. Plain source generation does not require installed dependencies;
 runtime metadata initialization also rejects incompatible generated settings.
 Regenerate external packages missing the marker before bundling them together.
-Metadata JSON retains the legacy array/AST shape and adds `metadataVersion: 1`.
+Metadata JSON retains the legacy array/AST shape and adds `metadataVersion: 1` and the selected `build` settings.
 The runtime accepts unversioned legacy metadata but rejects unsupported explicit versions.
 
 Only explicit `required` fields and fields with concrete defaults are emitted as required

@@ -624,6 +624,7 @@ describe("Apache Thrift 0.24 Wire Protocol Comparison & Verification", () => {
 
       const client = await createMetadataClient<BankClient>({
         endpoint: "unused",
+        binaryMode: "uint8array",
         namespace: "bank",
         serviceName: "BankService",
         metadata: complexMetadata,
@@ -737,6 +738,7 @@ describe("Apache Thrift 0.24 Wire Protocol Comparison & Verification", () => {
 
       const client = await createMetadataClient<BankClient>({
         endpoint: "unused",
+        binaryMode: "uint8array",
         namespace: "bank",
         serviceName: "BankService",
         metadata: complexMetadata,
@@ -783,6 +785,7 @@ describe("Apache Thrift 0.24 Wire Protocol Comparison & Verification", () => {
 
       const client = await createMetadataClient<BankClient>({
         endpoint: "unused",
+        binaryMode: "uint8array",
         namespace: "bank",
         serviceName: "BankService",
         metadata: complexMetadata,

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
 import { generate } from "./compiler/generate.ts";
+import { parseBinaryMode } from "./compiler/binary-mode.ts";
 import { parseI64Mode } from "./compiler/i64-mode.ts";
 
 const help = `Usage: tsthrift-cli --input <path/glob> [options]
@@ -18,6 +19,7 @@ Generate metadata, TypeScript models, and service factories.
       --no-models        Generate only metadata.json without models or services
       --no-services      Generate models and metadata without service factories
       --metadata-json    Emit monolithic metadata.json in output directory
+      --binary           Public binary representation: base64 (string, default) | uint8array
       --i64              Public i64 representation: bigint (default) | number
       --lower-case-methods Generate service methods starting with a lowercase letter
       --allow-duplicate-modules Allow duplicate module basenames across includes (first-wins)
@@ -40,6 +42,7 @@ try {
       "no-services": { type: "boolean" },
       "metadata-json": { type: "boolean" },
       i64: { type: "string" },
+      binary: { type: "string" },
       "lower-case-methods": { type: "boolean" },
       "allow-duplicate-modules": { type: "boolean" },
       help: { type: "boolean", short: "h" },
@@ -65,6 +68,7 @@ try {
       lowerCaseMethods: values["lower-case-methods"],
       metadataJson: values["metadata-json"],
       i64: parseI64Mode(values.i64),
+      binary: parseBinaryMode(values.binary),
       allowDuplicateModules: values["allow-duplicate-modules"],
     });
     if (result.dist) {

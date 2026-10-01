@@ -52,9 +52,13 @@ are compatibility responsibilities owned by tsthrift, even when parsing is deleg
 
 Native number mode rejects unsafe i64 values on write and read. Legacy decoding
 could return imprecise numbers; the stricter behavior is intentional and requires
-consumer acceptance. Native binary is Uint8Array, whereas legacy model generation
-declares string and the inspected Woody readBinary implementation returns Buffer.
-No implicit string/Buffer migration is claimed.
+consumer acceptance. Binary defaults to Base64 strings, with explicit `--binary uint8array` for raw bytes.
+Legacy model generation declares string, but Woody reads Buffer and writes string
+binary values using byte-string (`binary`/Latin-1) encoding. Base64 strings are a
+new public representation, not an implicit legacy byte-string conversion. Regenerate
+protocol packages together and explicitly convert existing binary values if present.
+Vality Damsel uses binary for opaque content and MessagePack binary values; UTF-8
+cannot represent all valid values. Base64 conversion preserves arbitrary bytes.
 
 ## Historical Apache callback collision
 

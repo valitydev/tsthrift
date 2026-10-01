@@ -10,7 +10,7 @@ Pure TypeScript Thrift Binary Protocol runtime, dynamic metadata RPC clients, an
 - **Pure TypeScript Binary Protocol:** Native `BinaryReader` and `BinaryWriter` implementing Thrift Binary Protocol over `Uint8Array`.
 - **Zero Node/Buffer dependencies:** Runs in browsers, web workers, Node.js, and edge runtimes.
 - **Configurable `i64` precision:** Support for exact `bigint` (default) or safe `number` mode.
-- **Native JavaScript values:** Plain objects for structs/unions/exceptions, `Map` (with support for struct keys), `Set`, arrays, and `Uint8Array` for binary data.
+- **Native JavaScript values:** Plain objects for structs/unions/exceptions, `Map` (with support for struct keys), `Set`, arrays, and Base64 strings for binary data by default (`binaryMode: "uint8array"` selects raw bytes).
 - **HTTP transport:** Fetch-based transport with configurable timeouts, request cancellation (`AbortSignal`), custom headers, and Woody distributed tracing headers.
 - **Typed error handling:** Clear distinction between transport/system failures (`ThriftSystemError`) and declared Thrift IDL exceptions (`ThriftServiceError`).
 - **Safe call semantics:** Support for `ThriftResult<TData, TError>` pattern alongside throwing clients.
@@ -37,6 +37,7 @@ const client = await createMetadataClient({
   serviceName: "PaymentProcessing",
   endpoint: "/rpc/payment",
   i64Mode: "bigint", // "bigint" (default) or "number"
+  binaryMode: "base64", // Base64 (default); "uint8array" for raw bytes
   timeoutMs: 15_000,
 });
 
@@ -229,6 +230,19 @@ const config = {
 and `calls` (log call starts, default `false`). Failures
 are printed as an `Error` whose stack points to the call site, followed by any `status`,
 `code`, or `data` details.
+
+## Binary values
+
+IDL `string` remains UTF-8 text. IDL `binary` is a Base64 string by default (`binaryMode: "base64"`);
+`binaryMode: "uint8array"` selects raw bytes for direct metadata clients.
+Generated factories bind the CLI's `--binary` mode and cannot override it at runtime.
+Both modes send identical raw bytes in Binary Protocol; Base64 is not sent as text.
+Use `binaryToString(bytes, "base64")` and `toBinary(value, "base64")` for conversion.
+IDL binary constants/defaults encode the literal as UTF-8 bytes before converting
+to the selected representation. Low-level `readBinary`/`writeBinary` still use `Uint8Array`.
+Regenerate protocol packages when adopting the new default. Older build markers
+without a binary mode describe `uint8array`; unversioned metadata needs an explicit
+`binaryMode: "uint8array"` to retain the earlier metadata runtime behavior.
 
 ## Low-Level Runtime API (`@vality/tsthrift/runtime`)
 
