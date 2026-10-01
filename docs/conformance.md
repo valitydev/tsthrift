@@ -86,6 +86,8 @@ The conformance runner honors the following environment variables:
 CI runs both variants in a matrix (`vality-0.20.1` and `apache-0.24.0`) on GitHub Actions
 with Maven caching (`actions/cache@v6` on `~/.m2/repository`) and automated artifact upload on
 failure or completion (`actions/upload-artifact@v7`).
+The Apache compiler is built from the exact release tag selected by the matrix;
+both jobs verify the compiler version before running tests.
 
 ## Coverage
 

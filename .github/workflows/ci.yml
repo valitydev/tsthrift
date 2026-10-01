@@ -88,15 +88,30 @@ jobs:
         with:
           thrift-version: ${{ matrix.thrift-version }}
 
-      - name: Install official Apache Thrift (${{ matrix.thrift-version }}) via Homebrew
+      - name: Build official Apache Thrift (${{ matrix.thrift-version }})
         if: matrix.compiler == 'apache'
+        env:
+          THRIFT_VERSION: ${{ matrix.thrift-version }}
         run: |
-          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          brew install thrift
-          echo "$(/home/linuxbrew/.linuxbrew/bin/brew --prefix)/bin" >> "$GITHUB_PATH"
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ flex bison
+          curl --fail --location --retry 3 \
+            "https://github.com/apache/thrift/archive/refs/tags/v${THRIFT_VERSION}.tar.gz" \
+            --output "$RUNNER_TEMP/thrift.tar.gz"
+          tar -xzf "$RUNNER_TEMP/thrift.tar.gz" -C "$RUNNER_TEMP"
+          cmake -S "$RUNNER_TEMP/thrift-${THRIFT_VERSION}" -B "$RUNNER_TEMP/thrift-build" \
+            -DCMAKE_BUILD_TYPE=Release -DBUILD_LIBRARIES=OFF \
+            -DBUILD_TESTING=OFF -DBUILD_TUTORIALS=OFF \
+            -DCMAKE_INSTALL_PREFIX="$RUNNER_TEMP/thrift-install"
+          cmake --build "$RUNNER_TEMP/thrift-build" --parallel 2
+          cmake --install "$RUNNER_TEMP/thrift-build"
+          echo "$RUNNER_TEMP/thrift-install/bin" >> "$GITHUB_PATH"
 
       - name: Verify Thrift compiler version
-        run: test "$(thrift -version)" = "Thrift version ${{ matrix.thrift-version }}"
+        run: |
+          version=$(thrift -version)
+          echo "$version"
+          test "$version" = "Thrift version ${{ matrix.thrift-version }}"
 
       - name: Cache Maven repository
         uses: actions/cache@v6.1.0
