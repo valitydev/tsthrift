@@ -1,5 +1,15 @@
 # @vality/tsthrift-angular
 
+## 0.1.1
+
+### Patch Changes
+
+- Updated dependencies [cba5c75]
+- Updated dependencies [cba5c75]
+- Updated dependencies [cba5c75]
+- Updated dependencies [cba5c75]
+  - @vality/tsthrift@0.2.0
+
 ## 0.1.0
 
 ### Minor Changes
