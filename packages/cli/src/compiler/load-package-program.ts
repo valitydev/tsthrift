@@ -4,6 +4,7 @@ import path from "node:path";
 import type { ExternalNamespaceConfig } from "./external-namespaces.ts";
 import type { Program } from "./schema.ts";
 import { importFromPackage } from "./resolve-package.ts";
+import { resolveExternalMetadata } from "./resolve-external-metadata.ts";
 
 /** Reconstructs an external namespace's include graph from installed package metadata. */
 export async function loadPackageProgram(
@@ -11,6 +12,7 @@ export async function loadPackageProgram(
   config: ExternalNamespaceConfig,
   packageRoot: string,
 ): Promise<{ program: Program; moduleNames: string[] }> {
+  config = await resolveExternalMetadata(config, packageRoot);
   const specifier = config.metadataPath ?? config.importPath;
   let pool: Metadata[];
   try {

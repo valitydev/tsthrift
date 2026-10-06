@@ -4,7 +4,7 @@ export interface ExternalNamespaceConfig {
   importPath: string;
   /** Root npm package name (inferred from importPath if omitted, e.g. "@vality/base-proto"). */
   package?: string;
-  /** Optional custom import specifier for metadata, if different from importPath. */
+  /** Explicit metadata export; otherwise `<importPath>/metadata` is preferred when available. */
   metadataPath?: string;
 }
 

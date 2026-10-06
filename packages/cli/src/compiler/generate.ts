@@ -216,7 +216,10 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
     if (isBundled) {
       const entries = [
         path.join(staging, "index.ts"),
-        ...schema.localPrograms.map((p) => path.join(staging, p.name, "index.ts")),
+        ...schema.localPrograms.flatMap((p) => [
+          path.join(staging, p.name, "index.ts"),
+          path.join(staging, p.name, "load-metadata.ts"),
+        ]),
       ];
       await publishOutput(dist, async (stagingDist) => {
         await compileOutput({

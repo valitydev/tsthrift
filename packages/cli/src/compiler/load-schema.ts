@@ -6,7 +6,8 @@ import type { ThriftAst } from "@vality/tsthrift";
 import type { Program, Schema } from "./schema.ts";
 import { loadPackageProgram } from "./load-package-program.ts";
 import type { ExternalNamespaceConfig } from "./external-namespaces.ts";
-import { importFromPackage } from "./resolve-package.ts";
+import { resolveFromPackage } from "./resolve-package.ts";
+import { resolveExternalMetadata } from "./resolve-external-metadata.ts";
 
 async function resolveInputFiles(input: string | string[]): Promise<string[]> {
   const patterns = Array.isArray(input) ? input : [input];
@@ -94,12 +95,12 @@ export async function loadSchema(
   async function findPackageModule(name: string): Promise<ExternalNamespaceConfig | undefined> {
     for (const pkg of externalPackages) {
       const importPath = `${pkg}/${name}`;
+      const config = await resolveExternalMetadata({ importPath, package: pkg }, packageRoot);
       try {
-        await importFromPackage(importPath, packageRoot);
+        await resolveFromPackage(config.metadataPath ?? importPath, packageRoot);
       } catch {
         continue;
       }
-      const config: ExternalNamespaceConfig = { importPath, package: pkg };
       externalNamespaces ??= new Map();
       externalNamespaces.set(name, config);
       return config;

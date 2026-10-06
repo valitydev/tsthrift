@@ -118,6 +118,16 @@ so `--no-models` output remains usable without an npm loader. The programmatic
 `metadataPath` option can select a separate metadata entry exporting `loadThriftMetadataByNamespaces`, `loadThriftMetadata`,
 `thriftMetadata`, `metadata`, or a default metadata object/array.
 
+The CLI prefers `<importPath>/metadata` when it resolves to an existing exported module.
+A namespace metadata export maps to `dist/<namespace>/load-metadata.mjs` and its
+`.d.mts` declaration, as shown in the package manifest below. It exports
+`loadThriftMetadata` and `TSTHRIFT_BUILD`, loads the selected namespace and its
+transitive includes, and imports no models or services. Other namespaces remain unloaded;
+each selected namespace's AST is loaded in full. Explicit `metadataPath` takes precedence.
+Packages without this export retain namespace entrypoint loading. Errors inside an
+available metadata entrypoint propagate rather than triggering a namespace fallback.
+Legacy metadata entries without `TSTHRIFT_BUILD` use the model entrypoint for build checks.
+
 #### With multiple include roots
 
 ```sh
@@ -213,6 +223,10 @@ For repositories that distribute generated TypeScript models and clients from `.
     "./*": {
       "types": "./dist/*/index.d.mts",
       "import": "./dist/*/index.mjs"
+    },
+    "./*/metadata": {
+      "types": "./dist/*/load-metadata.d.mts",
+      "import": "./dist/*/load-metadata.mjs"
     },
     "./proto/*": "./proto/*",
     "./package.json": "./package.json"
