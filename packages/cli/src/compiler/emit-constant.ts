@@ -1,5 +1,5 @@
 import { type BinaryMode, type ValueType, binaryToString } from "@vality/tsthrift";
-import type { Program } from "./load-schema.ts";
+import type { Program } from "./schema.ts";
 import { resolveType } from "./resolve-type.ts";
 import { constantReference, referenceName } from "./constant-reference.ts";
 import { emitScalarConstant } from "./emit-scalar-constant.ts";

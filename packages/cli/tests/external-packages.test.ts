@@ -33,12 +33,15 @@ test.each([
       path.join(dir, "node_modules/@vality/tsthrift"),
       "dir",
     );
-    await writeFile(path.join(dir, "common.thrift"), "struct Data { 1: required i64 value }");
+    await writeFile(
+      path.join(dir, "common.thrift"),
+      "typedef i64 ID\nstruct Data { 1: required ID value }",
+    );
     const base = path.join(dir, "base.thrift");
     const child = path.join(dir, "child.thrift");
     await writeFile(
       base,
-      'include "common.thrift"\nconst string MARKER = "EXTERNAL_PACKAGE_ONLY"\nservice Base { i64 get(1: i64 value) }',
+      'include "common.thrift"\ntypedef common.ID ID\nconst string MARKER = "EXTERNAL_PACKAGE_ONLY"\nservice Base { ID get(1: ID value) }',
     );
     await writeFile(
       child,

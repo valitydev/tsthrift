@@ -1,5 +1,5 @@
 import type { Metadata } from "@vality/tsthrift";
-import type { Program, Schema } from "../compiler/load-schema.ts";
+import type { Program, Schema } from "../compiler/schema.ts";
 import { getTransitiveDependencies } from "./dependencies.ts";
 
 export interface EmittedModuleMetadata {

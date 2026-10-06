@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { afterEach, expect, test } from "vite-plus/test";
 import { generate } from "../src/index.ts";
 import { getTransitiveDependencies } from "../src/metadata/dependencies.ts";
-import type { Program } from "../src/compiler/load-schema.ts";
+import type { Program } from "../src/compiler/schema.ts";
 import type { Metadata } from "@vality/tsthrift";
 
 const directories: string[] = [];

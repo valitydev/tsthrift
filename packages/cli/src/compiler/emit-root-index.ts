@@ -1,4 +1,4 @@
-import type { Schema } from "./load-schema.ts";
+import type { Schema } from "./schema.ts";
 
 /** Emits root exports without exposing the main namespace's local metadata loader. */
 export function emitRootIndex(

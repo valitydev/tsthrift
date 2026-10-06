@@ -1,4 +1,4 @@
-import type { Program, Schema } from "./load-schema.ts";
+import type { Program, Schema } from "./schema.ts";
 
 export function emitProgramIndex(program: Program): string {
   const services = Object.keys(program.ast.service ?? {});

@@ -1,5 +1,5 @@
 import type { BinaryMode } from "@vality/tsthrift";
-import type { Schema } from "./load-schema.ts";
+import type { Schema } from "./schema.ts";
 import type { I64Mode } from "./i64-mode.ts";
 import { importFromPackage } from "./resolve-package.ts";
 
