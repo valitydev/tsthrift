@@ -75,6 +75,10 @@ try {
     exports: {
       ".": { types: "./dist/index.d.mts", import: "./dist/index.mjs" },
       "./*": { types: "./dist/*/index.d.mts", import: "./dist/*/index.mjs" },
+      "./*/metadata": {
+        types: "./dist/*/load-metadata.d.mts",
+        import: "./dist/*/load-metadata.mjs",
+      },
     },
     dependencies: { "@vality/tsthrift": runtimeVersion },
   };
@@ -120,6 +124,7 @@ try {
     const unknownNamespace: typeof THRIFT_NAMESPACES[number] = "missing";
     import * as example from "tsthrift-smoke-proto/example";
     import { createExample } from "tsthrift-smoke-proto/example";
+    import { loadThriftMetadata as loadExampleMetadata } from "tsthrift-smoke-proto/example/metadata";
     const bytes: string = BYTES;
     const payload: example.Payload = { id: 42 };
     const promise: Promise<number> = createExample({ endpoint: "unused" }).echo(42);
@@ -142,6 +147,7 @@ try {
     // @ts-expect-error Broad string arrays cannot guarantee known namespace names.
     loadThriftMetadataByNamespaces(arbitraryNames);
     const local = example.loadThriftMetadata();
+    const metadataOnly = loadExampleMetadata();
     // @ts-expect-error Namespace-local loaders do not accept a namespace selection.
     example.loadThriftMetadata(["example"]);
     // @ts-expect-error A root loader requires an explicit namespace selection.
@@ -150,7 +156,7 @@ try {
     declare const failure: ThriftMethodError<typeof THRIFT_SERVICES["example.Example"], "echo">;
     // @ts-expect-error Registry errors must not be any.
     const invalid: boolean = failure;
-    void [bytes, payload, promise, THRIFT_SERVICES, example, metadataConfig, invalid, namespaces, unknownNamespace, selected, all, local];
+    void [bytes, payload, promise, THRIFT_SERVICES, example, metadataConfig, invalid, namespaces, unknownNamespace, selected, all, local, metadataOnly];
   `,
   );
   await run(path.join(directory, "node_modules/.bin/tsc"), [
@@ -170,11 +176,14 @@ try {
     import { BYTES, THRIFT_NAMESPACES, THRIFT_SERVICES, loadThriftMetadataByNamespaces } from 'tsthrift-smoke-proto';
     import * as example from 'tsthrift-smoke-proto/example';
     import { createExample } from 'tsthrift-smoke-proto/example';
+    import { loadThriftMetadata as loadExampleMetadata, TSTHRIFT_BUILD } from 'tsthrift-smoke-proto/example/metadata';
     import { BinaryReader, BinaryWriter, MessageType } from '@vality/tsthrift';
     assert.equal(BYTES, "YWJj");
     assert.ok(!('loadThriftMetadata' in await import('tsthrift-smoke-proto')));
     assert.deepEqual(THRIFT_NAMESPACES, ['example']);
     assert.deepEqual((await example.loadThriftMetadata()).map(m => m.name), ['example']);
+    assert.deepEqual((await loadExampleMetadata()).map(m => m.name), ['example']);
+    assert.equal(TSTHRIFT_BUILD.i64, 'number');
     assert.deepEqual((await loadThriftMetadataByNamespaces(['example', 'example'])).map(m => m.name), ['example']);
     assert.deepEqual((await loadThriftMetadataByNamespaces(THRIFT_NAMESPACES)).map(m => m.name), ['example']);
     await assert.rejects(loadThriftMetadataByNamespaces(), /Expected a namespace string or an array/);

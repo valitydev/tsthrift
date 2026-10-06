@@ -2,24 +2,12 @@ import { validateThriftAst } from "@vality/tsthrift";
 import { glob, lstat, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import parse from "thrift-parser";
-import type { Metadata, ThriftAst } from "@vality/tsthrift";
+import type { ThriftAst } from "@vality/tsthrift";
+import type { Program, Schema } from "./schema.ts";
+import { loadPackageProgram } from "./load-package-program.ts";
 import type { ExternalNamespaceConfig } from "./external-namespaces.ts";
-import { importFromPackage } from "./resolve-package.ts";
-
-export interface Program extends Metadata {
-  filename: string;
-  includes: Map<string, Program>;
-  external?: ExternalNamespaceConfig;
-  /** Read from an installed package's metadata rather than a `.thrift` file. */
-  fromPackage?: true;
-}
-
-export interface Schema {
-  roots: Program[];
-  programs: Program[];
-  localPrograms: Program[];
-  externalPrograms: Program[];
-}
+import { resolveFromPackage } from "./resolve-package.ts";
+import { resolveExternalMetadata } from "./resolve-external-metadata.ts";
 
 async function resolveInputFiles(input: string | string[]): Promise<string[]> {
   const patterns = Array.isArray(input) ? input : [input];
@@ -107,12 +95,12 @@ export async function loadSchema(
   async function findPackageModule(name: string): Promise<ExternalNamespaceConfig | undefined> {
     for (const pkg of externalPackages) {
       const importPath = `${pkg}/${name}`;
+      const config = await resolveExternalMetadata({ importPath, package: pkg }, packageRoot);
       try {
-        await importFromPackage(importPath, packageRoot);
+        await resolveFromPackage(config.metadataPath ?? importPath, packageRoot);
       } catch {
         continue;
       }
-      const config: ExternalNamespaceConfig = { importPath, package: pkg };
       externalNamespaces ??= new Map();
       externalNamespaces.set(name, config);
       return config;
@@ -121,7 +109,7 @@ export async function loadSchema(
   }
 
   /** Builds an external module from the metadata published by its installed package. */
-  async function loadPackageProgram(
+  async function loadExternalProgram(
     name: string,
     config: ExternalNamespaceConfig,
   ): Promise<Program> {
@@ -131,55 +119,8 @@ export async function loadSchema(
     const conflict = filenames.get(name);
     if (conflict)
       throw new Error(`Duplicate module name ${name}: ${conflict} and ${virtualFilename}`);
-    const specifier = config.metadataPath ?? config.importPath;
-    let pool: Metadata[];
-    try {
-      const module = await importFromPackage(specifier, packageRoot);
-      const load = module.loadThriftMetadataByNamespaces ?? module.loadThriftMetadata;
-      const loaded =
-        typeof load === "function"
-          ? await (load as (namespace: string) => Promise<Metadata[]>)(name)
-          : (module.thriftMetadata ?? module.default);
-      pool = Array.isArray(loaded) ? loaded : [loaded as Metadata];
-    } catch (cause) {
-      throw new Error(
-        `Cannot load metadata for external module "${name}" from "${specifier}" (install the package that provides it): ${String(cause)}`,
-        { cause },
-      );
-    }
-    const built = new Map<string, Program>();
-    for (const item of pool) packageModules.add(item.name);
-    const build = (metadata: Metadata): Program => {
-      const existing = built.get(metadata.name);
-      if (existing) return existing;
-      validateThriftAst(metadata.ast);
-      const program: Program = {
-        filename: `package:${config.importPath}`,
-        name: metadata.name,
-        path: metadata.path,
-        ast: metadata.ast,
-        includes: new Map(),
-        external: config,
-        fromPackage: true,
-      };
-      built.set(metadata.name, program);
-      for (const [alias, include] of Object.entries(metadata.ast.include ?? {})) {
-        const dependency = pool.find(
-          (item) =>
-            item.path === include.path || item.name === path.basename(include.path, ".thrift"),
-        );
-        if (!dependency) {
-          throw new Error(
-            `Package metadata for "${metadata.name}" is missing include ${include.path}`,
-          );
-        }
-        program.includes.set(alias, build(dependency));
-      }
-      return program;
-    };
-    const target = pool.find((item) => item.name === name);
-    if (!target) throw new Error(`Package "${specifier}" does not provide metadata for "${name}"`);
-    const program = build(target);
+    const { program, moduleNames } = await loadPackageProgram(name, config, packageRoot);
+    for (const moduleName of moduleNames) packageModules.add(moduleName);
     filenames.set(name, virtualFilename);
     programs.set(virtualFilename, program);
     return program;
@@ -236,7 +177,7 @@ export async function loadSchema(
       const mapped = externalNamespaces?.get(moduleName);
       if (mapped) {
         // Explicit external modules always come from the installed package's metadata.
-        program.includes.set(alias, await loadPackageProgram(moduleName, mapped));
+        program.includes.set(alias, await loadExternalProgram(moduleName, mapped));
         continue;
       }
       const candidates = [path.dirname(filename), ...searchRoots].map((dir) =>
@@ -259,7 +200,7 @@ export async function loadSchema(
             : "";
           throw new Error(`Missing include ${include.path} in ${filename}${searched}`);
         }
-        program.includes.set(alias, await loadPackageProgram(moduleName, config));
+        program.includes.set(alias, await loadExternalProgram(moduleName, config));
         continue;
       }
       program.includes.set(alias, await visit(resolved));

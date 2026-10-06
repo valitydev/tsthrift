@@ -1,4 +1,4 @@
-import type { Schema } from "../compiler/load-schema.ts";
+import type { Schema } from "../compiler/schema.ts";
 import type { Metadata } from "@vality/tsthrift";
 
 /** Preserves the legacy AST, including typedefs and omitted enum values. */

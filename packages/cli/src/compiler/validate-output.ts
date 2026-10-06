@@ -1,4 +1,4 @@
-import type { Schema } from "./load-schema.ts";
+import type { Schema } from "./schema.ts";
 import { thriftMethodName } from "@vality/tsthrift";
 import { reservedWords } from "./identifiers.ts";
 

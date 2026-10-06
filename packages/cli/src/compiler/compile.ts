@@ -4,7 +4,7 @@ import { build } from "tsdown";
 export interface CompileOptions {
   /** `tsconfig.json` generated next to the TypeScript sources. */
   tsconfig: string;
-  /** Package entry points: the root `index.ts` and one `index.ts` per module. */
+  /** Package entry points: the root index, namespace indexes, and metadata loaders. */
   entries: string[];
   outDir: string;
   sourcemap?: boolean;

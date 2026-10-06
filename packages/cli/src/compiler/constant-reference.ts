@@ -1,4 +1,4 @@
-import type { Program } from "./load-schema.ts";
+import type { Program } from "./schema.ts";
 import { enumMembers } from "./enum-members.ts";
 
 export function referenceName(value: unknown): string | undefined {

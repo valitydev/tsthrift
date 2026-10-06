@@ -1,5 +1,5 @@
 import { resolveReference, resolveType } from "./resolve-type.ts";
-import type { Program } from "./load-schema.ts";
+import type { Program } from "./schema.ts";
 import type { I64Mode } from "./i64-mode.ts";
 import { type BinaryMode, thriftMethodName } from "@vality/tsthrift";
 import { reservedWords } from "./identifiers.ts";

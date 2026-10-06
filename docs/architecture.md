@@ -54,6 +54,12 @@ for `createMetadataClient`. External npm modules are
 excluded from generated source/bundles, while standalone JSON retains the full IDL closure. Native RPC clients are
 constructed directly at runtime via `createMetadataClient` using either `loadThriftMetadata` or `metadata.json`.
 
+External metadata imports prefer the public `<package>/<namespace>/metadata` export,
+backed by the generated namespace `load-metadata` module. This entry exports the loader
+and build marker without importing models or services. Protocol package manifests must
+expose it explicitly; generation does not modify manifests. Legacy namespace entrypoints
+remain supported when no metadata-only export exists.
+
 ## Compiler responsibilities
 
 - Schema loading selects entry files and reachable includes.

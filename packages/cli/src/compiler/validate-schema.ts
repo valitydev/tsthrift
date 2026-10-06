@@ -1,5 +1,5 @@
 import type { Field, ValueType } from "@vality/tsthrift";
-import type { Program, Schema } from "./load-schema.ts";
+import type { Program, Schema } from "./schema.ts";
 import { resolveReference, resolveType } from "./resolve-type.ts";
 import { emitConstant } from "./emit-constant.ts";
 import { enumMembers } from "./enum-members.ts";

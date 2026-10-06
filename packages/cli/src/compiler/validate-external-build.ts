@@ -1,5 +1,5 @@
 import type { BinaryMode } from "@vality/tsthrift";
-import type { Schema } from "./load-schema.ts";
+import type { Schema } from "./schema.ts";
 import type { I64Mode } from "./i64-mode.ts";
 import { importFromPackage } from "./resolve-package.ts";
 
@@ -13,10 +13,14 @@ export async function validateExternalBuild(
 ): Promise<void> {
   const checked = new Set<string>();
   for (const program of schema.externalPrograms) {
-    const specifier = program.external!.importPath;
+    const specifier = program.external!.metadataPath ?? program.external!.importPath;
     if (checked.has(specifier)) continue;
     checked.add(specifier);
-    const module = await importFromPackage(specifier, directory);
+    const metadataModule = await importFromPackage(specifier, directory);
+    const module =
+      metadataModule.TSTHRIFT_BUILD === undefined && specifier !== program.external!.importPath
+        ? await importFromPackage(program.external!.importPath, directory)
+        : metadataModule;
     const build = module.TSTHRIFT_BUILD as
       | { metadataVersion?: number; i64?: string; lowerCaseMethods?: boolean; binary?: string }
       | undefined;

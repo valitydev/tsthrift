@@ -166,6 +166,10 @@ For protocol repositories that contain `.thrift` specifications and distribute g
       "types": "./dist/*/index.d.mts",
       "import": "./dist/*/index.mjs"
     },
+    "./*/metadata": {
+      "types": "./dist/*/load-metadata.d.mts",
+      "import": "./dist/*/load-metadata.mjs"
+    },
     "./proto/*": "./proto/*",
     "./package.json": "./package.json"
   },

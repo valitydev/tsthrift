@@ -1,5 +1,5 @@
 import type { BinaryMode, Field } from "@vality/tsthrift";
-import type { Program } from "./load-schema.ts";
+import type { Program } from "./schema.ts";
 import { emitConstant } from "./emit-constant.ts";
 import { enumMembers } from "./enum-members.ts";
 import type { I64Mode } from "./i64-mode.ts";

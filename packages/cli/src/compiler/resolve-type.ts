@@ -1,5 +1,5 @@
 import type { ValueType } from "@vality/tsthrift";
-import type { Program } from "./load-schema.ts";
+import type { Program } from "./schema.ts";
 
 export const primitives: Set<string> = new Set([
   "void",
