@@ -1,5 +1,20 @@
 # @vality/tsthrift-cli
 
+## 0.3.0
+
+### Minor Changes
+
+- 96fa9b8: Support metadata-only namespace exports at `<package>/<namespace>/metadata`, backed by
+  generated namespace loaders with build markers and transitive include loading. Prefer
+  these exports for external metadata discovery, compatibility checks, and generated
+  runtime imports. Preserve namespace entrypoint fallback for existing protocol packages.
+
+### Patch Changes
+
+- 96fa9b8: Fix false circular typedef errors when external protocol metadata contains same-named
+  typedefs in different modules. Keep module identities distinct throughout the external
+  include graph while continuing to reject actual typedef cycles.
+
 ## 0.2.0
 
 ### Minor Changes
