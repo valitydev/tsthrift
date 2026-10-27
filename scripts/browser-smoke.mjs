@@ -31,7 +31,13 @@ try {
     await build({
       configFile: false,
       logLevel: "error",
-      resolve: { alias: { __generated__: path.join(output, "index.ts") } },
+      resolve: {
+        alias: {
+          __generated__: path.join(output, "index.ts"),
+          // The compiler page runs against the built package, not its sources.
+          "@vality/tsthrift-compiler": path.join(root, "packages/compiler/dist/index.mjs"),
+        },
+      },
       build: {
         outDir: path.join(directory, "web"),
         emptyOutDir: false,

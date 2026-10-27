@@ -180,8 +180,9 @@ compiler is required; tests execute directly against the native runtime and wire
 verifiers. Native HTTP tests require permission to bind loopback sockets. See
 [compatibility](compatibility.md) for compatibility verification details.
 
-Browser acceptance also compiles IDL held in a string with `compileSources` inside Chromium and
-calls the Apache-backed server with the resulting metadata.
+Browser acceptance bundles the built compiler `dist` and, inside Chromium, compiles IDL held in a
+string with `compileSources`, calls the Apache-backed server with the resulting metadata, and emits
+the TypeScript package. Web Workers and strict Content-Security-Policy are not covered.
 
 Metadata-only integration runs use a directory containing no generated model,
 codec, or client modules. The same Apache request/reply checks, loopback HTTP,

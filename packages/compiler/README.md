@@ -52,6 +52,36 @@ Includes resolve next to the including file, then in `includeRoots`, using POSIX
 (syntax, missing or circular includes, duplicate module names, unresolved types) are thrown as
 `Error` with the referring file in the message.
 
+## Listing services and methods
+
+`metadata` is plain data, so an interface can be built from it directly:
+
+```ts
+for (const module of metadata) {
+  for (const [service, { functions }] of Object.entries(module.ast.service ?? {})) {
+    for (const method of Object.values(functions)) {
+      console.log(`${module.name}.${service}.${method.name}`, method.args, method.type);
+    }
+  }
+}
+```
+
+A service's inherited methods (`extends`) are listed on the parent service, and `createMetadataClient`
+exposes both.
+
+## Browsers
+
+The package has no Node imports and is exercised in Chromium against its built `dist`: compiling
+IDL held in a string, calling a server with the metadata, and emitting the TypeScript package. It
+needs a bundler, because the `thrift-parser` dependency is CommonJS. Web Workers and strict
+Content-Security-Policy pages are not covered by the acceptance run.
+
+## Not supported
+
+File and glob input, output directories, `--bundle`, and installed-package resolution
+(`--external <package>`) belong to `@vality/tsthrift-cli`. Generated code for modules passed through
+`external` imports them by module name, not from an npm package path.
+
 ## Building blocks
 
 The pipeline behind `compileSources` is exported for hosts with their own file access:
