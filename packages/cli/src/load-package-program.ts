@@ -1,6 +1,5 @@
-import { validateThriftAst } from "@vality/tsthrift";
 import type { Metadata } from "@vality/tsthrift";
-import path from "node:path";
+import { programsFromMetadata } from "@vality/tsthrift-compiler";
 import type { ExternalNamespaceConfig, Program } from "@vality/tsthrift-compiler";
 import { importFromPackage } from "./resolve-package.ts";
 import { resolveExternalMetadata } from "./resolve-external-metadata.ts";
@@ -28,36 +27,5 @@ export async function loadPackageProgram(
       { cause },
     );
   }
-  const built = new Map<string, Program>();
-  const build = (metadata: Metadata): Program => {
-    const existing = built.get(metadata.name);
-    if (existing) return existing;
-    validateThriftAst(metadata.ast);
-    const program: Program = {
-      filename: `package:${config.importPath}:${metadata.name}`,
-      name: metadata.name,
-      path: metadata.path,
-      ast: metadata.ast,
-      includes: new Map(),
-      external: config,
-      fromPackage: true,
-    };
-    built.set(metadata.name, program);
-    for (const [alias, include] of Object.entries(metadata.ast.include ?? {})) {
-      const dependency = pool.find(
-        (item) =>
-          item.path === include.path || item.name === path.basename(include.path, ".thrift"),
-      );
-      if (!dependency) {
-        throw new Error(
-          `Package metadata for "${metadata.name}" is missing include ${include.path}`,
-        );
-      }
-      program.includes.set(alias, build(dependency));
-    }
-    return program;
-  };
-  const target = pool.find((item) => item.name === name);
-  if (!target) throw new Error(`Package "${specifier}" does not provide metadata for "${name}"`);
-  return { program: build(target), moduleNames: pool.map((item) => item.name) };
+  return programsFromMetadata(name, pool, config, specifier);
 }

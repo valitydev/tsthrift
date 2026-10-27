@@ -65,14 +65,18 @@ remain supported when no metadata-only export exists.
 The compiler is split along the environment boundary:
 
 - `@vality/tsthrift-compiler` is environment-independent (no `node:*` imports, enforced by lint).
-  It parses one IDL document (`parseThrift`), validates a `Schema` (`validateProject`: shared
-  validation and constant evaluation preserve the metadata contract), and emits the generated
-  package as in-memory `{ path, content }` files (`emitProject`): bigint/number i64 models,
-  metadata modules and loaders, service factories, registry, build marker, and `metadata.json`.
-  It does not build the include graph; callers supply a `Schema`.
-- `@vality/tsthrift-cli` owns the environment: input files and globs, include roots, duplicate
-  module policy, external npm package resolution and build-marker checks, output ownership, and
-  the `--bundle` build. It writes `emitProject` files into a staging directory.
+  It parses one IDL document (`parseThrift`), walks the include graph through a `SchemaHost`
+  (`buildSchema`: include lookup, circular and duplicate-module policy, external modules),
+  validates the `Schema` (`validateProject`: shared validation and constant evaluation preserve the
+  metadata contract), and emits the generated package as in-memory `{ path, content }` files
+  (`emitProject`): bigint/number i64 models, metadata modules and loaders, service factories,
+  registry, build marker, and `metadata.json`. `compileSources` combines these over in-memory
+  sources and returns `Metadata[]` plus matching `createMetadataClient` mode options, so IDL can be
+  compiled and called without generated modules (for example in a browser).
+- `@vality/tsthrift-cli` owns the environment and supplies the file-system `SchemaHost`: input
+  files and globs, `realpath` identities, include roots, external npm package resolution and
+  build-marker checks, output ownership, and the `--bundle` build. It writes `emitProject` files
+  into a staging directory.
 - Output publication stages and replaces each owned directory separately. Source and bundle publication are not a single transaction.
 
 These are source artifacts, not an automatically published protocol package.
@@ -175,6 +179,9 @@ Run `vp install`, `vp run build`, `vp check`, then `vp test`. No external Thrift
 compiler is required; tests execute directly against the native runtime and wire
 verifiers. Native HTTP tests require permission to bind loopback sockets. See
 [compatibility](compatibility.md) for compatibility verification details.
+
+Browser acceptance also compiles IDL held in a string with `compileSources` inside Chromium and
+calls the Apache-backed server with the resulting metadata.
 
 Metadata-only integration runs use a directory containing no generated model,
 codec, or client modules. The same Apache request/reply checks, loopback HTTP,

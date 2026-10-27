@@ -1,4 +1,18 @@
 export { parseThrift } from "./parse.ts";
+export { compileSources } from "./compile-sources.ts";
+export type { CompileResult, CompileSourcesOptions } from "./compile-sources.ts";
+export { buildSchema } from "./build-schema.ts";
+export type {
+  BuildSchemaOptions,
+  ExternalReference,
+  ExternalResolver,
+  MaybePromise,
+  SchemaHost,
+} from "./build-schema.ts";
+export { createMemoryHost } from "./memory-host.ts";
+export type { MemoryHostOptions, SourceFiles } from "./memory-host.ts";
+export { programsFromMetadata } from "./programs-from-metadata.ts";
+export { schemaMetadata } from "./metadata/emit-metadata.ts";
 export {
   emitProject,
   projectEntries,
