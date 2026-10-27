@@ -23,6 +23,11 @@ export interface BinaryReaderOptions {
 
 /** Reads one complete unframed message; streaming belongs to the transport. */
 const textDecoder = new TextDecoder();
+/** Strings up to this many bytes are decoded in JavaScript when they are all ASCII. */
+const ASCII_FAST_PATH_MAX = 64;
+/** V8 builds a flat string, not a rope, when a concatenation is at most this long. */
+const FLAT_CONCAT_MAX = 12;
+const asciiCodes: number[] = [];
 
 export class BinaryReader {
   private readonly view: DataView;
@@ -94,7 +99,29 @@ export class BinaryReader {
   readString(): string {
     const size = this.readI32();
     const start = this.take(size);
-    return textDecoder.decode(this.bytes.subarray(start, start + size));
+    const bytes = this.bytes;
+    // `TextDecoder` has a high fixed cost per call; short ASCII strings are common in RPC. Longer
+    // strings avoid `+=`, whose result would stay a rope of one node per character.
+    if (size <= FLAT_CONCAT_MAX) {
+      let text = "";
+      for (let i = start; i < start + size; i++) {
+        const code = bytes[i]!;
+        if (code > 127) return textDecoder.decode(bytes.subarray(start, start + size));
+        text += String.fromCharCode(code);
+      }
+      return text;
+    }
+    if (size <= ASCII_FAST_PATH_MAX) {
+      const codes = asciiCodes;
+      for (let i = 0; i < size; i++) {
+        const code = bytes[start + i]!;
+        if (code > 127) return textDecoder.decode(bytes.subarray(start, start + size));
+        codes[i] = code;
+      }
+      codes.length = size;
+      return String.fromCharCode.apply(null, codes);
+    }
+    return textDecoder.decode(bytes.subarray(start, start + size));
   }
 
   readUuid(): string {

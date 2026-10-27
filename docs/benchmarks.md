@@ -20,11 +20,11 @@ rounds of 300 ms.
 
 | Case                          | tsthrift calls/s | tsthrift, no call site | Apache calls/s | tsthrift / Apache | no call site / Apache |
 | ----------------------------- | ---------------- | ---------------------- | -------------- | ----------------- | --------------------- |
-| Ping (tiny message)           | 195.0k           | 435.0k                 | 517.0k         | 0.38x             | 0.84x                 |
-| Put 10 items (encode-heavy)   | 29.4k            | 30.9k                  | 23.1k          | 1.28x             | 1.34x                 |
-| Put 1000 items (encode-heavy) | 345              | 350                    | 215            | 1.61x             | 1.63x                 |
-| Get 10 items (decode-heavy)   | 32.6k            | 36.4k                  | 60.0k          | 0.54x             | 0.61x                 |
-| Get 1000 items (decode-heavy) | 414              | 419                    | 776            | 0.53x             | 0.54x                 |
+| Ping (tiny message)           | 218.4k           | 584.4k                 | 509.7k         | 0.43x             | 1.15x                 |
+| Put 10 items (encode-heavy)   | 71.1k            | 89.8k                  | 21.2k          | 3.36x             | 4.24x                 |
+| Put 1000 items (encode-heavy) | 1.3k             | 1.3k                   | 201            | 6.24x             | 6.25x                 |
+| Get 10 items (decode-heavy)   | 56.3k            | 68.9k                  | 65.5k          | 0.86x             | 1.05x                 |
+| Get 1000 items (decode-heavy) | 814              | 816                    | 766            | 1.06x             | 1.07x                 |
 
 "No call site" sets `Error.stackTraceLimit = 0` during the measurement. The client creates an `Error`
 per call so that errors can report the caller; V8 then skips the stack walk, which approximates a
@@ -44,8 +44,10 @@ What the comparison does not equalize:
 - The tsthrift client is asynchronous and captures a call site for error stacks (see "no call
   site" above); the Apache side is synchronous.
 - Neither side uses a network: both run over a byte stub, not HTTP.
-- tsthrift decodes strings with `TextDecoder`, as required by the Web Standards First contract, which
-  is about a fifth of decode time. Apache uses Node's `Buffer`.
+- Strings: all benchmark strings are ASCII. tsthrift writes ASCII strings of up to 64 characters
+  and reads ASCII strings of up to 64 bytes in JavaScript; other strings use `TextEncoder` and
+  `TextDecoder`, as required by the Web Standards First contract. Non-ASCII text is not measured
+  here. Apache uses Node's `Buffer`.
 - tsthrift returns `number` for `i64` and copies `binary`; Apache returns `Int64` and `Buffer` slices.
 
 ## Start-up: from IDL to a working client

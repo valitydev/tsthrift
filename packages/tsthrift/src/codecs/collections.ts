@@ -8,7 +8,9 @@ export function list<T>(element: Codec<T>): Codec<T[]> {
       const nested = nextDepth(depth);
       const header = reader.readCollectionBegin();
       if (header.elementType !== element.type) throw new Error("List element type mismatch");
-      return Array.from({ length: header.size }, () => element.read(reader, nested));
+      const items: T[] = [];
+      for (let i = 0; i < header.size; i++) items.push(element.read(reader, nested));
+      return items;
     },
     write(writer, value, depth) {
       const nested = nextDepth(depth);

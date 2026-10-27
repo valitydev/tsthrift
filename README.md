@@ -228,9 +228,10 @@ argument/result logging is appropriate. Logger failures do not affect RPC outcom
 Measured on an Apple M1 Pro with Node.js 24 (single run; see [benchmarks](docs/benchmarks.md) for
 methodology, caveats, and `vp run bench` / `vp run bench:startup`):
 
-- Encoding is 1.3–1.6x faster than the Apache `thrift` Binary Protocol on the same values, and
-  decoding is about 0.55x as fast. A tiny in-process call is 0.38x, or 0.84x without the per-call
-  `Error` captured for error stacks; with network latency this cost is negligible.
+- Encoding is 3.4–6x faster than the Apache `thrift` Binary Protocol on the same values, and
+  decoding is on par for large messages (1.06x; 0.86x for small ones). The benchmark strings are
+  ASCII, which tsthrift handles in JavaScript. A tiny in-process call is 0.43x, or 1.15x without
+  the per-call `Error` captured for error stacks; with network latency this cost is negligible.
 - Compiling IDL on the fly, then creating a client, takes about 17 ms for 100 structs and 89 ms for
   1000 structs in a fresh process; precompiled metadata starts 4–5 times faster.
 

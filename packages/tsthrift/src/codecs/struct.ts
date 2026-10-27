@@ -1,4 +1,5 @@
 import { WireType } from "../runtime/wire.ts";
+import { assign } from "./assign.ts";
 import { type Codec, nextDepth } from "./scalar.ts";
 
 export interface WireField {
@@ -29,7 +30,7 @@ export function struct(
     read(reader, depth) {
       const nested = nextDepth(depth);
       const known = getFields();
-      const values = new Map<string, unknown>();
+      const values: Record<string, unknown> = {};
       let count = 0;
       while (true) {
         const header = reader.readFieldBegin();
@@ -39,17 +40,18 @@ export function struct(
           reader.skip(header.type);
           continue;
         }
-        if (values.has(field.name)) throw new Error(`Duplicate field ${name}.${field.name}`);
-        values.set(field.name, field.codec.read(reader, nested));
+        if (Object.hasOwn(values, field.name))
+          throw new Error(`Duplicate field ${name}.${field.name}`);
+        assign(values, field.name, field.codec.read(reader, nested));
         count++;
       }
       if (union && count > 1) throw new Error(`Multiple fields in union ${name}`);
       for (const field of known) {
-        if (values.has(field.name)) continue;
+        if (Object.hasOwn(values, field.name)) continue;
         if (field.required) throw new Error(`Missing required field ${name}.${field.name}`);
-        if (!union && field.defaultValue) values.set(field.name, field.defaultValue());
+        if (!union && field.defaultValue) assign(values, field.name, field.defaultValue());
       }
-      return Object.fromEntries(values);
+      return values;
     },
     write(writer, value, depth) {
       const nested = nextDepth(depth);
