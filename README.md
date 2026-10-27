@@ -223,6 +223,16 @@ argument/result logging is appropriate. Logger failures do not affect RPC outcom
 - Angular 22 and consumer declaration checks are release gates in `test:packages`; production-service and application acceptance belong to downstream integrations.
 - Native UUID support operates with 16-byte fixed-width binary encoding (WireType 16) and canonical hyphenated UUID strings without version/variant restrictions. Packages are ESM-only.
 
+## Performance
+
+Measured on an Apple M1 Pro with Node.js 24 (single run; see [benchmarks](docs/benchmarks.md) for
+methodology, caveats, and `vp run bench` / `vp run bench:startup`):
+
+- Encoding is 1.3–1.6x faster than the Apache `thrift` Binary Protocol on the same values, and
+  decoding is about 0.55x as fast. A tiny call is 0.38x because of per-call client overhead.
+- Compiling IDL on the fly, then creating a client, takes about 17 ms for 100 structs and 89 ms for
+  1000 structs in a fresh process; precompiled metadata starts 4–5 times faster.
+
 ## Development
 
 ```sh
@@ -252,6 +262,7 @@ without Node globals or runtime code generation.
 - [Compatibility audit](docs/compatibility.md)
 - [Architecture](docs/architecture.md)
 - [Binary runtime](docs/runtime.md)
+- [Benchmarks](docs/benchmarks.md)
 - [Latest Damsel binary conformance](docs/conformance.md)
 
 ## Output ownership and bundling

@@ -46,6 +46,16 @@ export default defineConfig({
         dependsOn: ["build"],
         cache: false,
       },
+      bench: {
+        command: "node scripts/bench.mjs",
+        dependsOn: ["build"],
+        cache: false,
+      },
+      "bench:startup": {
+        command: "node scripts/bench-startup.mjs",
+        dependsOn: ["build"],
+        cache: false,
+      },
       "test:browser": {
         command: "node scripts/browser-smoke.mjs",
         dependsOn: ["build"],

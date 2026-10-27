@@ -184,6 +184,10 @@ Browser acceptance bundles the built compiler `dist` and, inside Chromium, compi
 string with `compileSources`, calls the Apache-backed server with the resulting metadata, and emits
 the TypeScript package. Web Workers and strict Content-Security-Policy are not covered.
 
+`vp run bench` and `vp run bench:startup` (not part of `ready` or CI) compare full calls with the
+Apache `thrift` Binary Protocol and measure the cost of obtaining a client from IDL. Methodology,
+results, and caveats are in [benchmarks](benchmarks.md).
+
 Metadata-only integration runs use a directory containing no generated model,
 codec, or client modules. The same Apache request/reply checks, loopback HTTP,
 and browser bundle execution run in both i64 modes. The browser JS context disables
