@@ -2,7 +2,7 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, expect, test } from "vite-plus/test";
-import { publishOutput } from "../src/compiler/publish-output.ts";
+import { publishOutput } from "../src/publish-output.ts";
 
 const directories: string[] = [];
 afterEach(async () => {

@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "@vality/tsthrift": "workspace:^",
-    "thrift-parser": "catalog:",
+    "@vality/tsthrift-compiler": "workspace:^",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },

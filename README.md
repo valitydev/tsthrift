@@ -39,7 +39,8 @@ The factory reserves the method names `then` and `promise` to avoid Promise assi
 
 - `@vality/tsthrift`: Zero-framework core runtime, Binary Protocol, metadata client, and HTTP transport.
 - `@vality/tsthrift-angular`: Angular dependency injection, providers (`provideThriftServices`, `provideThriftService`), and Promise/Observable service factories (`createPromiseService`, `createObservableService`).
-- `@vality/tsthrift-cli`: Pure TypeScript compiler generating models, modular metadata, and framework-agnostic service factories.
+- `@vality/tsthrift-compiler`: Environment-independent compiler core: IDL parsing, validation, and in-memory generation of models, metadata, and service factories without Node imports.
+- `@vality/tsthrift-cli`: Node.js CLI that discovers `.thrift` files, resolves external packages, writes the generated sources, and builds the `--bundle` distribution using the compiler.
 
 ## Framework-agnostic Promise client
 

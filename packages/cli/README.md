@@ -6,7 +6,7 @@ Pure TypeScript compiler and code generator for Apache Thrift IDL files.
 
 ## Features
 
-- **Pure TypeScript compiler:** Built with `@vality/tsthrift` and a TypeScript IDL parser; requires Node.js ^24.11 or >=26.
+- **Pure TypeScript compiler:** Built on `@vality/tsthrift-compiler` and `@vality/tsthrift`; the CLI adds file-system and package resolution and requires Node.js ^24.11 or >=26.
 - **TypeScript model generation:** Generates precise interfaces for structs, unions, exceptions, consts, and enums.
 - **Modular split metadata:** Emits lightweight per-namespace metadata modules and local `load-metadata.ts` loaders that lazily load transitive includes on demand.
 - **Service factories & registry:** Generates typed service client factories (`create<Service>`) and registry descriptors (`THRIFT_SERVICES`, `THRIFT_SERVICES_LIST`) compatible with Angular and pure TypeScript.

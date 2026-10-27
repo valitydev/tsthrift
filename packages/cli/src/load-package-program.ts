@@ -1,8 +1,7 @@
 import { validateThriftAst } from "@vality/tsthrift";
 import type { Metadata } from "@vality/tsthrift";
 import path from "node:path";
-import type { ExternalNamespaceConfig } from "./external-namespaces.ts";
-import type { Program } from "./schema.ts";
+import type { ExternalNamespaceConfig, Program } from "@vality/tsthrift-compiler";
 import { importFromPackage } from "./resolve-package.ts";
 import { resolveExternalMetadata } from "./resolve-external-metadata.ts";
 

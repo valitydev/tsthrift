@@ -1,6 +1,5 @@
 import type { BinaryMode } from "@vality/tsthrift";
-import type { Schema } from "./schema.ts";
-import type { I64Mode } from "./i64-mode.ts";
+import type { I64Mode, Schema } from "@vality/tsthrift-compiler";
 import { importFromPackage } from "./resolve-package.ts";
 
 /** Rejects incompatible installed protocol packages before publishing a bundle. */

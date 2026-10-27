@@ -62,9 +62,17 @@ remain supported when no metadata-only export exists.
 
 ## Compiler responsibilities
 
-- Schema loading selects entry files and reachable includes.
-- Shared validation and constant evaluation preserve the metadata contract.
-- Model emission selects bigint/number i64 and generates TypeScript models.
+The compiler is split along the environment boundary:
+
+- `@vality/tsthrift-compiler` is environment-independent (no `node:*` imports, enforced by lint).
+  It parses one IDL document (`parseThrift`), validates a `Schema` (`validateProject`: shared
+  validation and constant evaluation preserve the metadata contract), and emits the generated
+  package as in-memory `{ path, content }` files (`emitProject`): bigint/number i64 models,
+  metadata modules and loaders, service factories, registry, build marker, and `metadata.json`.
+  It does not build the include graph; callers supply a `Schema`.
+- `@vality/tsthrift-cli` owns the environment: input files and globs, include roots, duplicate
+  module policy, external npm package resolution and build-marker checks, output ownership, and
+  the `--bundle` build. It writes `emitProject` files into a staging directory.
 - Output publication stages and replaces each owned directory separately. Source and bundle publication are not a single transaction.
 
 These are source artifacts, not an automatically published protocol package.
@@ -140,7 +148,7 @@ utility operations (`Uint8Array`, `DataView`, `TextEncoder`/`TextDecoder`) use s
 and Web APIs without Node.js runtime globals or shims. They have no runtime imports of
 Apache Thrift, Buffer, parser, Node, Angular, or RxJS. The core runs natively in browsers,
 Web Workers, and modern Node.js runtimes (`>=24.0.0`). Node.js dependencies are strictly
-isolated to build-time tooling and the `@vality/tsthrift-cli` compiler. `createMetadataClient` loads
+isolated to build-time tooling and `@vality/tsthrift-cli`; `@vality/tsthrift-compiler` has no Node imports. `createMetadataClient` loads
 metadata once at initialization and reuses pure TypeScript codecs and binary protocol reader/writer.
 
 The legacy Apache Thrift target and `@vality/tsthrift/apache` runtime have been removed.

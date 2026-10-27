@@ -8,7 +8,7 @@ export default defineConfig({
     options: { typeAware: true, typeCheck: true },
     overrides: [
       {
-        files: ["packages/tsthrift/src/**/*.ts"],
+        files: ["packages/tsthrift/src/**/*.ts", "packages/compiler/src/**/*.ts"],
         rules: {
           "no-restricted-imports": ["error", { patterns: ["node:*", "buffer", "process"] }],
           "no-restricted-globals": [

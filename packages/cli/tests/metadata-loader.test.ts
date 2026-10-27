@@ -3,10 +3,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach, expect, test } from "vite-plus/test";
-import { generate } from "../src/index.ts";
-import { getTransitiveDependencies } from "../src/metadata/dependencies.ts";
-import type { Program } from "../src/compiler/schema.ts";
+import { getTransitiveDependencies } from "@vality/tsthrift-compiler";
+import type { Program } from "@vality/tsthrift-compiler";
 import type { Metadata } from "@vality/tsthrift";
+import { generate } from "../src/index.ts";
 
 const directories: string[] = [];
 afterEach(async () => {

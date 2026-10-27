@@ -1,11 +1,9 @@
-import { validateThriftAst } from "@vality/tsthrift";
 import { glob, lstat, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
-import parse from "thrift-parser";
+import { parseThrift } from "@vality/tsthrift-compiler";
+import type { ExternalNamespaceConfig, Program, Schema } from "@vality/tsthrift-compiler";
 import type { ThriftAst } from "@vality/tsthrift";
-import type { Program, Schema } from "./schema.ts";
 import { loadPackageProgram } from "./load-package-program.ts";
-import type { ExternalNamespaceConfig } from "./external-namespaces.ts";
 import { resolveFromPackage } from "./resolve-package.ts";
 import { resolveExternalMetadata } from "./resolve-external-metadata.ts";
 
@@ -148,9 +146,7 @@ export async function loadSchema(
     filenames.set(name, filename);
     let ast: ThriftAst;
     try {
-      const parsed: unknown = parse(await readFile(filename, "utf8"));
-      validateThriftAst(parsed);
-      ast = parsed;
+      ast = parseThrift(await readFile(filename, "utf8"));
     } catch (cause) {
       throw new Error(`Cannot parse ${filename}: ${String(cause)}`, { cause });
     }

@@ -453,7 +453,7 @@ test("CLI defaults output to generated and requires only --input", async () => {
 });
 
 test("generate() accepts options without output property", () => {
-  const options: import("../src/compiler/generate.ts").GenerateOptions = {
+  const options: import("../src/generate.ts").GenerateOptions = {
     input: "proto",
   };
   expect(options.output).toBeUndefined();

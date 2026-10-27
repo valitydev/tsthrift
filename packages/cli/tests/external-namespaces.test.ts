@@ -4,12 +4,12 @@ import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, test } from "vite-plus/test";
-import { generate } from "../src/index.ts";
 import {
   inferPackageName,
   normalizeExternalNamespaces,
   parseExternalArgument,
-} from "../src/compiler/external-namespaces.ts";
+} from "@vality/tsthrift-compiler";
+import { generate } from "../src/index.ts";
 
 const execute = promisify(execFile);
 const cliBin = path.resolve(import.meta.dirname, "../dist/cli.mjs");
