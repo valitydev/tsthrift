@@ -18,13 +18,19 @@ Each case is one full call: encode the request, then decode the reply. Values ar
 sides, and the script first requires byte-identical requests and equal decoded replies. Median of 7
 rounds of 300 ms.
 
-| Case                          | tsthrift calls/s | Apache calls/s | tsthrift / Apache |
-| ----------------------------- | ---------------- | -------------- | ----------------- |
-| Ping (tiny message)           | 192.8k           | 512.9k         | 0.38x             |
-| Put 10 items (encode-heavy)   | 28.9k            | 22.4k          | 1.29x             |
-| Put 1000 items (encode-heavy) | 346              | 211            | 1.64x             |
-| Get 10 items (decode-heavy)   | 31.7k            | 58.7k          | 0.54x             |
-| Get 1000 items (decode-heavy) | 397              | 718            | 0.55x             |
+| Case                          | tsthrift calls/s | tsthrift, no call site | Apache calls/s | tsthrift / Apache | no call site / Apache |
+| ----------------------------- | ---------------- | ---------------------- | -------------- | ----------------- | --------------------- |
+| Ping (tiny message)           | 195.0k           | 435.0k                 | 517.0k         | 0.38x             | 0.84x                 |
+| Put 10 items (encode-heavy)   | 29.4k            | 30.9k                  | 23.1k          | 1.28x             | 1.34x                 |
+| Put 1000 items (encode-heavy) | 345              | 350                    | 215            | 1.61x             | 1.63x                 |
+| Get 10 items (decode-heavy)   | 32.6k            | 36.4k                  | 60.0k          | 0.54x             | 0.61x                 |
+| Get 1000 items (decode-heavy) | 414              | 419                    | 776            | 0.53x             | 0.54x                 |
+
+"No call site" sets `Error.stackTraceLimit = 0` during the measurement. The client creates an `Error`
+per call so that errors can report the caller; V8 then skips the stack walk, which approximates a
+client without that feature. Apache captures nothing. Creating an `Error` costs about 3–4 µs with
+the default limit of 10 frames and about 0.4 µs at limit 0 (Node.js 24.22.1, M1 Pro), so the
+difference matters only for in-process calls with no network latency.
 
 An item is a struct with `i64`, `string`, optional `double`, `list<i32>`, `map<string, string>`,
 64 bytes of `binary`, and `bool` fields.
@@ -35,9 +41,9 @@ What the comparison does not equalize:
   is the work generated Apache code performs, without its class wrappers.
 - The tsthrift decoder also validates required fields, duplicate fields, and unions. The Apache
   reference code does not.
-- The tsthrift client is asynchronous and captures a call site for error stacks; the Apache side is
-  synchronous. This per-call cost is about 40% of a tiny call (`takeCallSite`) and negligible for
-  large messages.
+- The tsthrift client is asynchronous and captures a call site for error stacks (see "no call
+  site" above); the Apache side is synchronous.
+- Neither side uses a network: both run over a byte stub, not HTTP.
 - tsthrift decodes strings with `TextDecoder`, as required by the Web Standards First contract, which
   is about a fifth of decode time. Apache uses Node's `Buffer`.
 - tsthrift returns `number` for `i64` and copies `binary`; Apache returns `Int64` and `Buffer` slices.

@@ -356,6 +356,21 @@ async function rate(run, ms) {
   return count / ((performance.now() - start) / 1000);
 }
 
+/**
+ * The client captures a call site (`new Error()`) per call so errors report the caller. V8 skips
+ * the stack walk when the limit is 0, which approximates a client without that feature; Apache
+ * captures nothing. The limit is restored after each measurement.
+ */
+async function rateWithoutCallSite(run, ms) {
+  const limit = Error.stackTraceLimit;
+  Error.stackTraceLimit = 0;
+  try {
+    return await rate(run, ms);
+  } finally {
+    Error.stackTraceLimit = limit;
+  }
+}
+
 const median = (values) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
 const format = (value) =>
   value >= 1000 ? `${(value / 1000).toFixed(1)}k` : value.toFixed(value < 10 ? 2 : 0);
@@ -368,19 +383,24 @@ const rows = [];
 for (const c of cases.filter((item) => !FILTER || item.name.includes(FILTER))) {
   const apacheRun = () => c.apache(1);
   await rate(c.ours, 150);
+  await rateWithoutCallSite(c.ours, 150);
   await rate(apacheRun, 150);
   const ours = [];
+  const lean = [];
   const apache = [];
   for (let round = 0; round < ROUNDS; round++) {
     ours.push(ONLY === "apache" ? 1 : await rate(c.ours, ROUND_MS));
+    lean.push(ONLY === "apache" ? 1 : await rateWithoutCallSite(c.ours, ROUND_MS));
     apache.push(ONLY === "tsthrift" ? 1 : await rate(apacheRun, ROUND_MS));
   }
-  const [o, a] = [median(ours), median(apache)];
+  const [o, l, a] = [median(ours), median(lean), median(apache)];
   rows.push({
     case: c.name,
     "tsthrift calls/s": format(o),
+    "tsthrift, no call site": format(l),
     "Apache calls/s": format(a),
     "tsthrift / Apache": `${(o / a).toFixed(2)}x`,
+    "no call site / Apache": `${(l / a).toFixed(2)}x`,
   });
 }
 console.table(rows);
