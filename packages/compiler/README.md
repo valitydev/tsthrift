@@ -46,7 +46,9 @@ Options: `entries` (default: every `.thrift` source), `includeRoots`, `allowDupl
 
 `external` is published `Metadata[]` (for example a protocol package's `metadata.json`) that
 sources may include without providing the `.thrift` files. Modules from it join `metadata` but not
-the emitted `files`; the pool does not need to be fully reachable.
+the emitted `files`; the pool does not need to be fully reachable. Returned metadata includes
+each reachable external dependency once. Legacy metadata without `metadataVersion` is accepted;
+unknown explicit versions are rejected.
 
 Includes resolve next to the including file, then in `includeRoots`, using POSIX paths. Errors
 (syntax, missing or circular includes, duplicate module names, unresolved types) are thrown as

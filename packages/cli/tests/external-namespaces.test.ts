@@ -448,6 +448,11 @@ export const loadThriftMetadata = async () => closure;`,
       external: { base: "@vality/dep-proto/base" },
     });
     const metadata = JSON.parse(await readFile(path.join(output, "metadata.json"), "utf8"));
+    expect(metadata.map((entry: { name: string }) => entry.name).sort()).toEqual([
+      "base",
+      "child",
+      "common",
+    ]);
     const base = metadata.find((entry: { name: string }) => entry.name === "base");
     expect(JSON.stringify(base.ast)).toContain('"name":"id"');
     expect(JSON.stringify(base.ast)).not.toContain("fromSource");

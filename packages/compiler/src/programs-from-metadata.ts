@@ -18,6 +18,8 @@ export function programsFromMetadata(
   const build = (metadata: Metadata): Program => {
     const existing = built.get(metadata.name);
     if (existing) return existing;
+    if (metadata.metadataVersion !== undefined && metadata.metadataVersion !== 1)
+      throw new TypeError("Unsupported metadata version");
     validateThriftAst(metadata.ast);
     const program: Program = {
       filename: `package:${config.importPath}:${metadata.name}`,
