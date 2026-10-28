@@ -39,7 +39,7 @@ The runtime client performs these checks through `MetadataCodecs` constructed fr
 - `writeString`/`readString` use UTF-8, with platform replacement behavior for
   malformed Unicode. `writeBinary`/`readBinary` use raw Uint8Array bytes.
 - Structs have no opening bytes. Write field headers with `writeFieldBegin(type,
-id)` and terminate each struct with `writeFieldStop()`. `readFieldBegin()` returns
+  id)` and terminate each struct with `writeFieldStop()`. `readFieldBegin()` returns
   `{ type, id }`; STOP returns `{ type: 0, id: 0 }`.
 - `writeMapBegin`/`readMapBegin` handle map key type, value type, and size.
   `writeCollectionBegin`/`readCollectionBegin` handle the shared list/set header.
