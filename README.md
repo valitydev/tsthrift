@@ -39,7 +39,8 @@ The factory reserves the method names `then` and `promise` to avoid Promise assi
 
 - `@vality/tsthrift`: Zero-framework core runtime, Binary Protocol, metadata client, and HTTP transport.
 - `@vality/tsthrift-angular`: Angular dependency injection, providers (`provideThriftServices`, `provideThriftService`), and Promise/Observable service factories (`createPromiseService`, `createObservableService`).
-- `@vality/tsthrift-cli`: Pure TypeScript compiler generating models, modular metadata, and framework-agnostic service factories.
+- `@vality/tsthrift-compiler`: Environment-independent compiler core: IDL parsing, validation, and in-memory generation of models, metadata, and service factories without Node imports.
+- `@vality/tsthrift-cli`: Node.js CLI that discovers `.thrift` files, resolves external packages, writes the generated sources, and builds the `--bundle` distribution using the compiler.
 
 ## Framework-agnostic Promise client
 
@@ -222,6 +223,18 @@ argument/result logging is appropriate. Logger failures do not affect RPC outcom
 - Angular 22 and consumer declaration checks are release gates in `test:packages`; production-service and application acceptance belong to downstream integrations.
 - Native UUID support operates with 16-byte fixed-width binary encoding (WireType 16) and canonical hyphenated UUID strings without version/variant restrictions. Packages are ESM-only.
 
+## Performance
+
+Measured on an Apple M1 Pro with Node.js 24 (single run; see [benchmarks](docs/benchmarks.md) for
+methodology, caveats, and `vp run bench` / `vp run bench:startup`):
+
+- Encoding is 3.4–6x faster than the Apache `thrift` Binary Protocol on the same values, and
+  decoding is on par for large messages (1.06x; 0.86x for small ones). The benchmark strings are
+  ASCII, which tsthrift handles in JavaScript. A tiny in-process call is 0.43x, or 1.15x without
+  the per-call `Error` captured for error stacks; with network latency this cost is negligible.
+- Compiling IDL on the fly, then creating a client, takes about 17 ms for 100 structs and 89 ms for
+  1000 structs in a fresh process; precompiled metadata starts 4–5 times faster.
+
 ## Development
 
 ```sh
@@ -251,6 +264,7 @@ without Node globals or runtime code generation.
 - [Compatibility audit](docs/compatibility.md)
 - [Architecture](docs/architecture.md)
 - [Binary runtime](docs/runtime.md)
+- [Benchmarks](docs/benchmarks.md)
 - [Latest Damsel binary conformance](docs/conformance.md)
 
 ## Output ownership and bundling

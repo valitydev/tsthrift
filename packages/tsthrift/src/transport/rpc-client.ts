@@ -12,6 +12,7 @@ import {
 } from "./errors.ts";
 import { createHttpTransport } from "./http-transport.ts";
 import { type HttpTransportConfig, type RequestOptions, type TransportFunction } from "./types.ts";
+import { assign } from "../codecs/assign.ts";
 import { type Codec, i32, string } from "../codecs/scalar.ts";
 import { struct } from "../codecs/struct.ts";
 
@@ -85,46 +86,50 @@ export function createRpcClient<T extends object>(
     name,
     async (...args: unknown[]) => {
       const callSite = takeCallSite();
-      const options = args[method.argumentNames.length] as RequestOptions | undefined;
-      const callArgs = args.slice(0, method.argumentNames.length);
+      const argumentCount = method.argumentNames.length;
+      const options = args[argumentCount] as RequestOptions | undefined;
       const wireName = method.wireName ?? name;
       const correlation: { traceId?: string } = {};
       const started = performance.now();
       sequence = sequence === 2147483647 ? 1 : sequence + 1;
       const sequenceId = sequence;
-      const context = {
-        name,
-        wireName,
-        serviceName,
-        namespace,
-        sequenceId,
-        ...(config.logPayloads ? { args: callArgs } : {}),
-      };
+      const logger = config.loggingFn;
+      const context = logger
+        ? {
+            name,
+            wireName,
+            serviceName,
+            namespace,
+            sequenceId,
+            ...(config.logPayloads ? { args: args.slice(0, argumentCount) } : {}),
+          }
+        : undefined;
       try {
-        emitLog(config.loggingFn, { ...context, type: "call", durationMs: 0 });
+        if (context) emitLog(logger, { ...context, type: "call", durationMs: 0 });
+        const payload: Record<string, unknown> = {};
+        for (let i = 0; i < argumentCount; i++) assign(payload, method.argumentNames[i]!, args[i]);
         const writer = new BinaryWriter();
         writer.writeMessageBegin(
           wireName,
           method.oneway ? MessageType.Oneway : MessageType.Call,
           sequenceId,
         );
-        method.args.write(
-          writer,
-          Object.fromEntries(method.argumentNames.map((arg, i) => [arg, callArgs[i]])),
-        );
+        method.args.write(writer, payload);
         const request = writer.finish();
         callContexts.set(request, correlation);
         const bytes = await transport(request, options);
         const response = method.oneway
           ? undefined
           : decodeReply(bytes, wireName, sequenceId, method);
-        emitLog(config.loggingFn, {
-          ...context,
-          traceId: correlation.traceId,
-          type: "success",
-          durationMs: performance.now() - started,
-          ...(config.logPayloads ? { response } : {}),
-        });
+        if (context) {
+          emitLog(logger, {
+            ...context,
+            traceId: correlation.traceId,
+            type: "success",
+            durationMs: performance.now() - started,
+            ...(config.logPayloads ? { response } : {}),
+          });
+        }
         return response;
       } catch (error) {
         const durationMs = performance.now() - started;
@@ -139,13 +144,15 @@ export function createRpcClient<T extends object>(
             traceId: correlation.traceId,
           };
         }
-        emitLog(config.loggingFn, {
-          ...context,
-          traceId: correlation.traceId,
-          type: "error",
-          durationMs,
-          error: toLogError(error, config.logPayloads),
-        });
+        if (context) {
+          emitLog(logger, {
+            ...context,
+            traceId: correlation.traceId,
+            type: "error",
+            durationMs,
+            error: toLogError(error, config.logPayloads),
+          });
+        }
         throw error;
       }
     },

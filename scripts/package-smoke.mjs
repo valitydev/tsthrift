@@ -20,7 +20,7 @@ async function json(filename, value) {
 }
 
 try {
-  for (const name of ["tsthrift", "cli", "angular"]) {
+  for (const name of ["tsthrift", "compiler", "cli", "angular"]) {
     await run(
       "vp",
       ["exec", "pnpm", "pack", "--pack-destination", directory],
@@ -28,7 +28,7 @@ try {
     );
   }
   const archives = (await readdir(directory)).filter((file) => file.endsWith(".tgz"));
-  assert.equal(archives.length, 3);
+  assert.equal(archives.length, 4);
   for (const archive of archives) {
     const { stdout } = await run("tar", ["-tf", path.join(directory, archive)]);
     assert.match(stdout, /package\/README.md/);
@@ -50,7 +50,7 @@ try {
     `
     import assert from 'node:assert/strict';
     import { createRequire } from 'node:module';
-    for (const name of ['@vality/tsthrift', '@vality/tsthrift/runtime', '@vality/tsthrift-cli', '@vality/tsthrift-angular']) {
+    for (const name of ['@vality/tsthrift', '@vality/tsthrift/runtime', '@vality/tsthrift-compiler', '@vality/tsthrift-cli', '@vality/tsthrift-angular']) {
       assert.ok(Object.keys(await import(name)).length);
       assert.ok(Object.keys(createRequire(import.meta.url)(name)).length);
     }

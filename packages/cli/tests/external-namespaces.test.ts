@@ -4,12 +4,12 @@ import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, test } from "vite-plus/test";
-import { generate } from "../src/index.ts";
 import {
   inferPackageName,
   normalizeExternalNamespaces,
   parseExternalArgument,
-} from "../src/compiler/external-namespaces.ts";
+} from "@vality/tsthrift-compiler";
+import { generate } from "../src/index.ts";
 
 const execute = promisify(execFile);
 const cliBin = path.resolve(import.meta.dirname, "../dist/cli.mjs");
@@ -448,6 +448,11 @@ export const loadThriftMetadata = async () => closure;`,
       external: { base: "@vality/dep-proto/base" },
     });
     const metadata = JSON.parse(await readFile(path.join(output, "metadata.json"), "utf8"));
+    expect(metadata.map((entry: { name: string }) => entry.name).sort()).toEqual([
+      "base",
+      "child",
+      "common",
+    ]);
     const base = metadata.find((entry: { name: string }) => entry.name === "base");
     expect(JSON.stringify(base.ast)).toContain('"name":"id"');
     expect(JSON.stringify(base.ast)).not.toContain("fromSource");

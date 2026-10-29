@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
-import { generate } from "./compiler/generate.ts";
-import { parseBinaryMode } from "./compiler/binary-mode.ts";
-import { parseI64Mode } from "./compiler/i64-mode.ts";
+import { parseBinaryMode, parseI64Mode } from "@vality/tsthrift-compiler";
+import { generate } from "./generate.ts";
 
 const help = `Usage: tsthrift-cli --input <path/glob> [options]
 

@@ -1,4 +1,4 @@
-import type { Program } from "../compiler/schema.ts";
+import type { Program } from "../schema.ts";
 
 /**
  * Returns the unique transitive dependencies of a program in deterministic order.

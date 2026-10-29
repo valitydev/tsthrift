@@ -24,32 +24,51 @@ try {
   await writeFile(input, "service Example { binary echo(1: binary value, 2: i64 number) }");
   const output = path.join(directory, "generated");
   await generate({ input, output, i64: "number", binary: "uint8array" });
-  await build({
-    configFile: false,
-    logLevel: "error",
-    resolve: { alias: { __generated__: path.join(output, "index.ts") } },
-    build: {
-      outDir: path.join(directory, "web"),
-      minify: true,
-      lib: {
-        entry: path.join(root, "packages/angular/tests/browser-smoke.ts"),
-        name: "Smoke",
-        formats: ["iife"],
-        fileName: () => "smoke.js",
+  for (const [entry, name, file] of [
+    ["packages/angular/tests/browser-smoke.ts", "Smoke", "smoke"],
+    ["packages/compiler/tests/browser-smoke.ts", "CompilerSmoke", "compiler"],
+  ]) {
+    await build({
+      configFile: false,
+      logLevel: "error",
+      resolve: {
+        alias: {
+          __generated__: path.join(output, "index.ts"),
+          // The compiler page runs against the built package, not its sources.
+          "@vality/tsthrift-compiler": path.join(root, "packages/compiler/dist/index.mjs"),
+        },
       },
-    },
-  });
-  const javascript = await readFile(path.join(directory, "web/smoke.js"));
+      build: {
+        outDir: path.join(directory, "web"),
+        emptyOutDir: false,
+        minify: true,
+        lib: {
+          entry: path.join(root, entry),
+          name,
+          formats: ["iife"],
+          fileName: () => `${file}.js`,
+        },
+      },
+    });
+  }
+  const scripts = new Map(
+    await Promise.all(
+      ["smoke", "compiler"].map(async (file) => [
+        `/${file}.js`,
+        await readFile(path.join(directory, `web/${file}.js`)),
+      ]),
+    ),
+  );
   const serverErrors = [];
   server = createServer(async (req, res) => {
     if (req.url === "/") {
       res.setHeader("content-type", "text/html; charset=utf-8");
-      res.end('<script src="/smoke.js"></script>');
+      res.end('<script src="/smoke.js"></script><script src="/compiler.js"></script>');
       return;
     }
-    if (req.url === "/smoke.js") {
+    if (scripts.has(req.url)) {
       res.setHeader("content-type", "text/javascript; charset=utf-8");
-      res.end(javascript);
+      res.end(scripts.get(req.url));
       return;
     }
     if (req.url === "/favicon.ico") {
@@ -103,9 +122,13 @@ try {
     [],
   );
   const result = await page.evaluate(() => globalThis.Smoke.runBrowserSmoke());
+  const compiled = await page.evaluate(() =>
+    globalThis.CompilerSmoke.runCompilerBrowserSmoke(new URL("/thrift", location.href).href),
+  );
   assert.deepEqual(serverErrors, []);
   assert.deepEqual(pageErrors, []);
   console.log(result);
+  console.log(compiled);
 } finally {
   await browser?.close();
   server?.closeAllConnections();

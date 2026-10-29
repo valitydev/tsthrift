@@ -1,4 +1,4 @@
-import type { ExternalNamespaceConfig } from "./external-namespaces.ts";
+import type { ExternalNamespaceConfig } from "@vality/tsthrift-compiler";
 import { resolveFromPackage } from "./resolve-package.ts";
 
 /** Prefers a metadata-only export while retaining legacy namespace entrypoints. */

@@ -62,9 +62,21 @@ remain supported when no metadata-only export exists.
 
 ## Compiler responsibilities
 
-- Schema loading selects entry files and reachable includes.
-- Shared validation and constant evaluation preserve the metadata contract.
-- Model emission selects bigint/number i64 and generates TypeScript models.
+The compiler is split along the environment boundary:
+
+- `@vality/tsthrift-compiler` is environment-independent (no `node:*` imports, enforced by lint).
+  It parses one IDL document (`parseThrift`), walks the include graph through a `SchemaHost`
+  (`buildSchema`: include lookup, circular and duplicate-module policy, external modules),
+  validates the `Schema` (`validateProject`: shared validation and constant evaluation preserve the
+  metadata contract), and emits the generated package as in-memory `{ path, content }` files
+  (`emitProject`): bigint/number i64 models, metadata modules and loaders, service factories,
+  registry, build marker, and `metadata.json`. `compileSources` combines these over in-memory
+  sources and returns `Metadata[]` plus matching `createMetadataClient` mode options, so IDL can be
+  compiled and called without generated modules (for example in a browser).
+- `@vality/tsthrift-cli` owns the environment and supplies the file-system `SchemaHost`: input
+  files and globs, `realpath` identities, include roots, external npm package resolution and
+  build-marker checks, output ownership, and the `--bundle` build. It writes `emitProject` files
+  into a staging directory.
 - Output publication stages and replaces each owned directory separately. Source and bundle publication are not a single transaction.
 
 These are source artifacts, not an automatically published protocol package.
@@ -140,7 +152,7 @@ utility operations (`Uint8Array`, `DataView`, `TextEncoder`/`TextDecoder`) use s
 and Web APIs without Node.js runtime globals or shims. They have no runtime imports of
 Apache Thrift, Buffer, parser, Node, Angular, or RxJS. The core runs natively in browsers,
 Web Workers, and modern Node.js runtimes (`>=24.0.0`). Node.js dependencies are strictly
-isolated to build-time tooling and the `@vality/tsthrift-cli` compiler. `createMetadataClient` loads
+isolated to build-time tooling and `@vality/tsthrift-cli`; `@vality/tsthrift-compiler` has no Node imports. `createMetadataClient` loads
 metadata once at initialization and reuses pure TypeScript codecs and binary protocol reader/writer.
 
 The legacy Apache Thrift target and `@vality/tsthrift/apache` runtime have been removed.
@@ -167,6 +179,14 @@ Run `vp install`, `vp run build`, `vp check`, then `vp test`. No external Thrift
 compiler is required; tests execute directly against the native runtime and wire
 verifiers. Native HTTP tests require permission to bind loopback sockets. See
 [compatibility](compatibility.md) for compatibility verification details.
+
+Browser acceptance bundles the built compiler `dist` and, inside Chromium, compiles IDL held in a
+string with `compileSources`, calls the Apache-backed server with the resulting metadata, and emits
+the TypeScript package. Web Workers and strict Content-Security-Policy are not covered.
+
+`vp run bench` and `vp run bench:startup` (not part of `ready` or CI) compare full calls with the
+Apache `thrift` Binary Protocol and measure the cost of obtaining a client from IDL. Methodology,
+results, and caveats are in [benchmarks](benchmarks.md).
 
 Metadata-only integration runs use a directory containing no generated model,
 codec, or client modules. The same Apache request/reply checks, loopback HTTP,

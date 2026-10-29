@@ -2,10 +2,8 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, expect, test } from "vite-plus/test";
-import { loadSchema } from "../src/compiler/load-schema.ts";
-import { validateSchema } from "../src/compiler/validate-schema.ts";
-import { emitModels } from "../src/compiler/emit-models.ts";
-import { emitProgramServices } from "../src/compiler/emit-services.ts";
+import { emitProject, resolveProjectOptions, validateProject } from "@vality/tsthrift-compiler";
+import { loadSchema } from "../src/load-schema.ts";
 
 const fixtures = path.join(import.meta.dirname, "fixtures");
 const directories: string[] = [];
@@ -24,7 +22,9 @@ test("loads only selected inputs and reachable includes, preserving legacy metad
   const schema = await loadSchema(path.join(fixtures, "proto", "example.thrift"), [
     path.join(fixtures, "dependency"),
   ]);
-  validateSchema(schema);
+  const options = resolveProjectOptions();
+  validateProject(schema, options);
+  const files = new Map(emitProject(schema, options).map((file) => [file.path, file.content]));
   expect(schema.programs.map((program) => program.name).sort()).toEqual(["common", "example"]);
   const program = schema.roots[0]!;
   expect(program.ast.include).toEqual({ common: { path: "shared/common.thrift" } });
@@ -46,33 +46,14 @@ test("loads only selected inputs and reachable includes, preserving legacy metad
     option: "optional",
   });
   expect(program.ast.service?.Example?.extends).toBe("common.Base");
-  const models = emitModels(program);
+  const models = files.get("example/models.ts")!;
   expect(models).toContain('import * as common from "../common/models.js"');
   expect(models).toContain("globalThis.Map<string, Identifier[]>");
   expect(models).toContain('"CLOSED" = 5');
   expect(models).toContain('new globalThis.Map([["first", 1]])');
-  const services = emitProgramServices(program);
-  expect(services[0]!.content).toContain("extends common_Base");
-  expect(services[0]!.content).toContain(
-    '"next"(id: bigint, options?: ThriftRequestOptions): Promise<bigint>',
-  );
-});
-
-test.each([
-  ["const i64 LIMIT = 9223372036854775807", /Unsafe numeric literal/],
-  ['struct Data { 1: i32 a = "invalid" }', /Invalid i32 constant/],
-  ["service Example { oneway i32 ping() }", /Invalid oneway/],
-  ["struct Data { -1: i32 a i32 b -2: i32 c }", /Duplicate field ID/],
-  ["service Example { void then() }", /Reserved service method/],
-  ["typedef Missing ID", /Unresolved type Missing/],
-  ["struct X { 1: UnknownType id }", /Unresolved type UnknownType/],
-  ["typedef B A typedef A B", /Circular typedef/],
-  ["struct X { 1: i64 a 1: i64 b }", /Duplicate field ID/],
-  ["enum X { A = 2147483647 B }", /outside i32 range/],
-  ["service A extends B {} service B extends A {}", /Circular service inheritance/],
-])("rejects unsupported or unresolved schema: %s", async (text, error) => {
-  const schema = await source(text);
-  expect(() => validateSchema(schema)).toThrow(error);
+  const service = files.get("example/services/Example.ts")!;
+  expect(service).toContain("extends common_Base");
+  expect(service).toContain('"next"(id: bigint, options?: ThriftRequestOptions): Promise<bigint>');
 });
 
 test("reports a missing include with its referring file", async () => {
@@ -121,24 +102,4 @@ test("shadows duplicate module when allowDuplicateModules is true (first-wins)",
   const sharedProgram = schema.programs.find((p) => p.name === "shared");
   expect(sharedProgram?.ast.struct?.SharedA).toBeDefined();
   expect(sharedProgram?.ast.struct?.SharedB).toBeUndefined();
-});
-
-test("supports native uuid field in schema and emits string type", async () => {
-  const schema = await source("struct Record { 1: uuid id }");
-  validateSchema(schema);
-  const models = emitModels(schema.roots[0]!);
-  expect(models).toContain('"id": string;');
-});
-
-test("marks default-requiredness fields with @remarks requiredness", async () => {
-  const schema = await source(
-    "struct S { 1: string plain 2: optional string maybe 3: required string must }\nunion U { 1: string a }",
-  );
-  validateSchema(schema);
-  const models = emitModels(schema.roots[0]!);
-  expect(models).toContain('  /** @remarks requiredness */\n  "plain": string;');
-  expect(models.match(/@remarks requiredness/g)).toHaveLength(1);
-  expect(models).toContain('"maybe"?: string;');
-  expect(models).toContain('"must": string;');
-  expect(models).toContain('"a"?: string;');
 });

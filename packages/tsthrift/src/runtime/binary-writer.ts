@@ -11,6 +11,10 @@ import {
 
 /** Writes unframed, big-endian Thrift Binary Protocol messages. */
 const textEncoder = new TextEncoder();
+/** Strings up to this many UTF-16 units are written in JavaScript when they are all ASCII. */
+const ASCII_FAST_PATH_MAX = 64;
+/** Other strings up to this many UTF-16 units are encoded straight into the buffer. */
+const ENCODE_INTO_MAX = 4096;
 
 export class BinaryWriter {
   private bytes: Uint8Array;
@@ -89,6 +93,31 @@ export class BinaryWriter {
 
   writeString(value: string): void {
     if (typeof value !== "string") throw new TypeError("Expected string");
+    const length = value.length;
+    if (length <= ASCII_FAST_PATH_MAX) {
+      // Short ASCII strings are common in RPC, and this loop beats `encodeInto` on them.
+      const start = this.reserve(4 + length);
+      const bytes = this.bytes;
+      let i = 0;
+      for (; i < length; i++) {
+        const code = value.charCodeAt(i);
+        if (code > 127) break;
+        bytes[start + 4 + i] = code;
+      }
+      if (i === length) {
+        this.view.setInt32(start, length);
+        return;
+      }
+      this.offset = start;
+    }
+    if (length <= ENCODE_INTO_MAX && this.offset + 4 + length * 3 <= this.maxBytes) {
+      // UTF-8 needs at most 3 bytes per UTF-16 unit; the unused tail is given back.
+      const start = this.reserve(4 + length * 3);
+      const { written } = textEncoder.encodeInto(value, this.bytes.subarray(start + 4));
+      this.view.setInt32(start, written);
+      this.offset = start + 4 + written;
+      return;
+    }
     this.writeBinary(textEncoder.encode(value));
   }
 
