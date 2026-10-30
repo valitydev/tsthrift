@@ -1,5 +1,11 @@
 # @vality/tsthrift-compiler
 
+## 0.1.1
+
+### Patch Changes
+
+- 8ac14df: Update workspace catalog dependencies and republish via automated release workflow.
+
 ## 0.1.0
 
 ### Minor Changes
