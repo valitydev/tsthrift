@@ -1,6 +1,6 @@
 {
   "name": "@vality/tsthrift-compiler",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Environment-independent Thrift IDL compiler core: IDL to metadata and generated TypeScript sources in memory.",
   "homepage": "https://github.com/valitydev/tsthrift#readme",
   "bugs": {

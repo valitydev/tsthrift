@@ -31,7 +31,7 @@ jobs:
         run: test "$(git rev-parse HEAD)" = "${{ github.event.workflow_run.head_sha }}"
 
       - name: Setup Vite+ and Node.js
-        uses: voidzero-dev/setup-vp@v1.21.1
+        uses: voidzero-dev/setup-vp@v1.22.0
         with:
           node-version: "lts"
           cache: true
